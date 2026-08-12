@@ -1,0 +1,98 @@
+<#
+7F LedgerOS — apply TS-error fixes and rebuild.
+
+Usage (from the ROOT of your project, i.e. the folder that contains
+package.json, pnpm-workspace.yaml, apps/, packages/, prisma/):
+
+    powershell -ExecutionPolicy Bypass -File .\apply-fixes.ps1
+
+Put 7f-ledgeros-ts-fixes.patch in the same folder as this script
+(or next to it), or pass -PatchPath to point at it explicitly.
+
+What this does:
+  1. Sanity-checks you're at the project root.
+  2. Applies the patch with `git apply` (dry-run first, so nothing
+     touches your tree if something won't apply cleanly).
+  3. Regenerates the Prisma client (schema/migrations are untouched,
+     but generated types must match the code changes).
+  4. Rebuilds workspace packages, then runs `tsc --noEmit` for the API
+     app to get a clean, current TypeScript error count/list.
+  5. Runs the API test suite.
+
+It does NOT touch prisma/schema.prisma, prisma/migrations/, or your
+database — only application source files under apps/api/src.
+#>
+
+param(
+    [string]$PatchPath = ".\7f-ledgeros-ts-fixes.patch"
+)
+
+$ErrorActionPreference = "Stop"
+
+function Assert-ProjectRoot {
+    if (-not (Test-Path ".\package.json") -or -not (Test-Path ".\pnpm-workspace.yaml")) {
+        Write-Error "This doesn't look like the project root (package.json / pnpm-workspace.yaml not found here). cd into the 7F LedgerOS root and re-run."
+        exit 1
+    }
+}
+
+function Assert-Git {
+    $null = Get-Command git -ErrorAction SilentlyContinue
+    if (-not $?) {
+        Write-Error "git is required to apply the patch (git apply). Install Git for Windows, or ask me for a version of the fixes as raw file replacements instead."
+        exit 1
+    }
+}
+
+Write-Host "== 7F LedgerOS: applying TS-error fixes ==" -ForegroundColor Cyan
+
+Assert-ProjectRoot
+Assert-Git
+
+if (-not (Test-Path $PatchPath)) {
+    Write-Error "Patch file not found at '$PatchPath'. Pass -PatchPath <path to 7f-ledgeros-ts-fixes.patch>."
+    exit 1
+}
+
+Write-Host "`n-- Dry-run: checking the patch applies cleanly --" -ForegroundColor Yellow
+git apply --check $PatchPath
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nThe patch did not apply cleanly against your working tree." -ForegroundColor Red
+    Write-Host "This usually means your copy of the project differs from the zip I analyzed (local edits, different branch, etc.)." -ForegroundColor Red
+    Write-Host "Paste me the conflict output above and I'll produce an updated patch, or tell me and I'll give you the changed files individually instead." -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "-- Patch applies cleanly. Applying for real --" -ForegroundColor Yellow
+git apply $PatchPath
+Write-Host "-- Applied. 21 files changed. --" -ForegroundColor Green
+
+Write-Host "`n-- Regenerating Prisma client (schema/migrations untouched) --" -ForegroundColor Yellow
+pnpm run db:generate
+if ($LASTEXITCODE -ne 0) { Write-Error "prisma generate failed — check the output above."; exit 1 }
+
+Write-Host "`n-- Building workspace packages (@7f/*) --" -ForegroundColor Yellow
+pnpm run build:packages
+if ($LASTEXITCODE -ne 0) { Write-Error "Workspace package build failed — check the output above."; exit 1 }
+
+Write-Host "`n-- Type-checking apps/api (no emit) --" -ForegroundColor Yellow
+Push-Location apps/api
+$tscOutput = & pnpm exec tsc --noEmit -p tsconfig.json 2>&1
+$tscExit = $LASTEXITCODE
+$tscOutput | Tee-Object -FilePath "..\..\tsc-output.txt"
+Pop-Location
+
+if ($tscExit -eq 0) {
+    Write-Host "`n0 TypeScript errors. 🎉" -ForegroundColor Green
+} else {
+    $errorCount = ($tscOutput | Select-String -Pattern "error TS" -AllMatches).Matches.Count
+    Write-Host "`n$errorCount TypeScript error(s) remain — full output saved to tsc-output.txt" -ForegroundColor Yellow
+    Write-Host "Paste tsc-output.txt back to me and I'll fix the next batch." -ForegroundColor Yellow
+}
+
+Write-Host "`n-- Running apps/api test suite --" -ForegroundColor Yellow
+Push-Location apps/api
+pnpm test 2>&1 | Tee-Object -FilePath "..\..\test-output.txt"
+Pop-Location
+
+Write-Host "`n== Done. See tsc-output.txt and test-output.txt for full logs. ==" -ForegroundColor Cyan

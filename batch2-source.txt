@@ -1,0 +1,2563 @@
+﻿import { ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import * as crypto from 'crypto';
+import { ApiKeyStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { RowLevelSecurityService } from '../security/row-level-security.service';
+import { SecurityScope } from '../security/security.types';
+import { GenerateApiKeyDto, RevokeApiKeyDto } from './dto/api-key.dto';
+
+const KEY_PREFIX = '7f_live_';
+const RAW_KEY_BYTES = 32;
+const DISPLAY_PREFIX_LENGTH = 12; // "7f_live_" + first 4 hex chars â€” enough to recognize a key in a list without exposing anything useful
+
+/**
+ * API Gateway, Checkpoint A â€” API Keys.
+ *
+ * The inbound counterpart to this codebase's outbound *ProviderRegistry
+ * abstractions â€” see the schema's own ApiKey doc comment for the full
+ * reasoning, including why keyHash reuses AuthService.hashToken()'s
+ * exact sha256 convention rather than bcrypt.
+ *
+ * generateKey() is the ONLY place the plaintext key ever exists outside
+ * the caller's own request â€” it is not stored anywhere, not logged, and
+ * cannot be recovered later; losing it means generating a new key.
+ */
+@Injectable()
+export class ApiKeyService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rowLevelSecurity: RowLevelSecurityService,
+  ) {}
+
+  private hashKey(rawKey: string): string {
+    return crypto.createHash('sha256').update(rawKey).digest('hex');
+  }
+
+  /** Returns the plaintext key ONCE, alongside the persisted (hash-only) record. Callers must show `plaintextKey` to the user immediately and never request it again. */
+  async generateKey(dto: GenerateApiKeyDto, createdById: string) {
+    const rawKey = `${KEY_PREFIX}${crypto.randomBytes(RAW_KEY_BYTES).toString('hex')}`;
+    const keyHash = this.hashKey(rawKey);
+    const keyPrefix = rawKey.slice(0, DISPLAY_PREFIX_LENGTH);
+
+    const record = await this.prisma.apiKey.create({
+      data: {
+        entityId: dto.entityId,
+        name: dto.name,
+        keyPrefix,
+        keyHash,
+        scopes: dto.scopes ?? [],
+        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+        rateLimitPerMinute: dto.rateLimitPerMinute,
+        createdById,
+      },
+    });
+
+    return { plaintextKey: rawKey, apiKey: record };
+  }
+
+  findKeys(scope: SecurityScope, entityId?: string) {
+    const rls = this.rowLevelSecurity.buildWhere(scope, { dimensions: ['entity'] });
+    // Explicit select â€” never return keyHash, even though it's a
+    // one-way hash, on general "don't expose internal secrets" hygiene.
+    return this.prisma.apiKey.findMany({
+      where: { AND: [rls, { entityId }] },
+      select: {
+        id: true,
+        entityId: true,
+        name: true,
+        keyPrefix: true,
+        scopes: true,
+        status: true,
+        expiresAt: true,
+        rateLimitPerMinute: true,
+        lastUsedAt: true,
+        revokedAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  private async requireKey(id: string) {
+    const key = await this.prisma.apiKey.findUnique({ where: { id } });
+    if (!key) throw new NotFoundException(`API key ${id} not found`);
+    return key;
+  }
+
+  async revokeKey(id: string, dto: RevokeApiKeyDto, revokedById: string) {
+    const key = await this.requireKey(id);
+    if (key.status === ApiKeyStatus.REVOKED) {
+      throw new ConflictException('API key is already revoked');
+    }
+    return this.prisma.apiKey.update({
+      where: { id },
+      data: { status: ApiKeyStatus.REVOKED, revokedAt: new Date(), revokedById },
+    });
+  }
+
+  /** Validates a raw key presented by a caller (e.g. via ApiKeyGuard's
+   *  X-API-Key header) â€” hash lookup, ACTIVE status, not expired.
+   *  Updates lastUsedAt on every successful validation (best-effort;
+   *  a failed write here should never block the request it's tracking,
+   *  so this is fire-and-forget rather than awaited). */
+  async validateKey(rawKey: string) {
+    const keyHash = this.hashKey(rawKey);
+    const key = await this.prisma.apiKey.findUnique({ where: { keyHash } });
+
+    if (!key || key.status !== ApiKeyStatus.ACTIVE) {
+      throw new UnauthorizedException('Invalid or revoked API key');
+    }
+    if (key.expiresAt && key.expiresAt < new Date()) {
+      throw new UnauthorizedException('API key has expired');
+    }
+
+    this.prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined);
+
+    return key;
+  }
+}
+import { Test } from '@nestjs/testing';
+import { JwtService } from '@nestjs/jwt';
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { AuthService } from '../auth.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { PasswordPolicyService } from '../../security-hardening/password-policy.service';
+import { LoginHistoryService } from '../../security-hardening/login-history.service';
+import { AccountLockoutService } from '../../security-hardening/account-lockout.service';
+import { MfaService } from '../../security-hardening/mfa.service';
+import { SessionService } from '../../security-hardening/session.service';
+import { TrustedDeviceService } from '../../security-hardening/trusted-device.service';
+import { IpRestrictionService } from '../../security-hardening/ip-restriction.service';
+
+function buildPrismaMock() {
+  return { user: { findUnique: jest.fn() }, refreshToken: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn(), updateMany: jest.fn() } };
+}
+
+// login() returns a union: the MFA-challenge shape (mfaRequired: true, challengeToken, ...)
+// has no accessToken at all, so TS won't let a test read `.accessToken` off the union without
+// narrowing first. This narrows to the non-MFA/token-issuing branch for tests that expect one.
+type LoginResult = Awaited<ReturnType<AuthService['login']>>;
+function expectTokensIssued(result: LoginResult): Extract<LoginResult, { mfaRequired: false }> {
+  if (result.mfaRequired) throw new Error('Expected login() to issue tokens, but it returned an MFA challenge');
+  return result;
+}
+
+describe('AuthService (Release K/M/N/P integration)', () => {
+  let service: AuthService;
+  let prisma: ReturnType<typeof buildPrismaMock>;
+  let passwordPolicy: { getEffectivePolicy: jest.Mock; isExpired: jest.Mock };
+  let loginHistory: { record: jest.Mock };
+  let accountLockout: { assertNotLocked: jest.Mock; registerFailure: jest.Mock; registerSuccess: jest.Mock };
+  let mfa: { verifyLoginCode: jest.Mock };
+  let sessions: { touchLastUsed: jest.Mock };
+  let trustedDevices: { checkTrustedDevice: jest.Mock; trustDevice: jest.Mock };
+  let ipRestriction: { isIpAllowed: jest.Mock };
+  let jwt: { signAsync: jest.Mock; verifyAsync: jest.Mock };
+
+  beforeEach(async () => {
+    prisma = buildPrismaMock();
+    passwordPolicy = { getEffectivePolicy: jest.fn().mockResolvedValue({ expiryDays: null }), isExpired: jest.fn().mockReturnValue(false) };
+    loginHistory = { record: jest.fn() };
+    accountLockout = { assertNotLocked: jest.fn(), registerFailure: jest.fn(), registerSuccess: jest.fn() };
+    mfa = { verifyLoginCode: jest.fn() };
+    sessions = { touchLastUsed: jest.fn() };
+    trustedDevices = { checkTrustedDevice: jest.fn(), trustDevice: jest.fn() };
+    ipRestriction = { isIpAllowed: jest.fn().mockResolvedValue(true) }; // unrestricted by default in existing tests
+    jwt = { signAsync: jest.fn().mockResolvedValue('signed-jwt'), verifyAsync: jest.fn() };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        AuthService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: JwtService, useValue: jwt },
+        { provide: PasswordPolicyService, useValue: passwordPolicy },
+        { provide: LoginHistoryService, useValue: loginHistory },
+        { provide: AccountLockoutService, useValue: accountLockout },
+        { provide: MfaService, useValue: mfa },
+        { provide: SessionService, useValue: sessions },
+        { provide: TrustedDeviceService, useValue: trustedDevices },
+        { provide: IpRestrictionService, useValue: ipRestriction },
+      ],
+    }).compile();
+    service = moduleRef.get(AuthService);
+  });
+
+  afterEach(() => jest.clearAllMocks());
+
+  it('checks lockout before validating credentials, and propagates a lockout rejection', async () => {
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true, passwordHash: 'hash', lockedUntil: new Date() });
+    accountLockout.assertNotLocked.mockImplementation(() => {
+      throw new ForbiddenException('locked');
+    });
+
+    await expect(service.login('a@b.com', 'whatever')).rejects.toThrow(ForbiddenException);
+    expect(accountLockout.registerFailure).not.toHaveBeenCalled();
+  });
+
+  it('registers a failure and records LOGIN_FAILURE on a wrong password, without locking below threshold', async () => {
+    const hash = await bcrypt.hash('correct', 10);
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null });
+
+    await expect(service.login('a@b.com', 'wrong')).rejects.toThrow(UnauthorizedException);
+
+    expect(accountLockout.registerFailure).toHaveBeenCalledWith('u1', 'a@b.com', {}, { expiryDays: null });
+  });
+
+  it('records LOGIN_FAILURE for an unknown email without touching AccountLockoutService', async () => {
+    prisma.user.findUnique.mockResolvedValue(null);
+
+    await expect(service.login('nobody@x.com', 'whatever')).rejects.toThrow(UnauthorizedException);
+
+    expect(accountLockout.registerFailure).not.toHaveBeenCalled();
+    expect(loginHistory.record).toHaveBeenCalledWith(null, 'nobody@x.com', 'LOGIN_FAILURE', {}, 'Unknown email');
+  });
+
+  it('resets the lockout counter and returns tokens plus passwordExpired on success', async () => {
+    const hash = await bcrypt.hash('correct', 10);
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null });
+    prisma.refreshToken.create.mockResolvedValue({});
+
+    const result = expectTokensIssued(await service.login('a@b.com', 'correct'));
+
+    expect(accountLockout.registerSuccess).toHaveBeenCalledWith('u1');
+    expect(loginHistory.record).toHaveBeenCalledWith('u1', 'a@b.com', 'LOGIN_SUCCESS', {});
+    expect(result.accessToken).toBe('signed-jwt');
+    expect(result.passwordExpired).toBe(false);
+  });
+
+  it('flags passwordExpired when PasswordPolicyService.isExpired returns true', async () => {
+    const hash = await bcrypt.hash('correct', 10);
+    prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: new Date('2020-01-01') });
+    prisma.refreshToken.create.mockResolvedValue({});
+    passwordPolicy.isExpired.mockReturnValue(true);
+
+    const result = await service.login('a@b.com', 'correct');
+
+    expect(result.passwordExpired).toBe(true);
+  });
+
+  // Release M â€” MFA login challenge
+  describe('login() with MFA enabled', () => {
+    it('does not issue real tokens â€” returns a challenge instead', async () => {
+      const hash = await bcrypt.hash('correct', 10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null, mfaEnabled: true,
+      });
+
+      const result = await service.login('a@b.com', 'correct');
+
+      expect(result.mfaRequired).toBe(true);
+      expect(result.challengeToken).toBe('signed-jwt');
+      expect(result).not.toHaveProperty('accessToken');
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+      // Lockout/history recording for the password step still happens â€”
+      // MFA only gates the FINAL token issuance, not the password check.
+      expect(accountLockout.registerSuccess).toHaveBeenCalledWith('u1');
+      expect(loginHistory.record).toHaveBeenCalledWith(
+        'u1',
+        'a@b.com',
+        'LOGIN_SUCCESS',
+        {},
+        'Password verified â€” MFA challenge pending',
+      );
+    });
+
+    it('sets mfaRequired: false for an account without MFA enabled', async () => {
+      const hash = await bcrypt.hash('correct', 10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null, mfaEnabled: false,
+      });
+      prisma.refreshToken.create.mockResolvedValue({});
+
+      const result = expectTokensIssued(await service.login('a@b.com', 'correct'));
+      expect(result.mfaRequired).toBe(false);
+      expect(result.accessToken).toBe('signed-jwt');
+    });
+  });
+
+  describe('verifyMfaAndLogin', () => {
+    it('rejects an expired or invalid challenge token', async () => {
+      jwt.verifyAsync.mockRejectedValue(new Error('expired'));
+      await expect(service.verifyMfaAndLogin('bad-token', '123456')).rejects.toThrow(UnauthorizedException);
+      expect(mfa.verifyLoginCode).not.toHaveBeenCalled();
+    });
+
+    it('rejects a challenge token that is not typ: mfa-challenge', async () => {
+      jwt.verifyAsync.mockResolvedValue({ sub: 'u1', typ: 'something-else' });
+      await expect(service.verifyMfaAndLogin('token', '123456')).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('issues real tokens once the second-factor code is verified', async () => {
+      jwt.verifyAsync.mockResolvedValue({ sub: 'u1', typ: 'mfa-challenge' });
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true });
+      mfa.verifyLoginCode.mockResolvedValue({ usedRecoveryCode: false });
+      prisma.refreshToken.create.mockResolvedValue({});
+
+      const result = await service.verifyMfaAndLogin('challenge-token', '654321');
+
+      expect(mfa.verifyLoginCode).toHaveBeenCalledWith('u1', '654321');
+      expect(result.accessToken).toBe('signed-jwt');
+      expect(result.usedRecoveryCode).toBe(false);
+      expect(loginHistory.record).toHaveBeenCalledWith('u1', 'a@b.com', 'LOGIN_SUCCESS', {}, 'MFA via TOTP');
+    });
+
+    it('propagates an invalid second-factor code as UnauthorizedException', async () => {
+      jwt.verifyAsync.mockResolvedValue({ sub: 'u1', typ: 'mfa-challenge' });
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true });
+      mfa.verifyLoginCode.mockRejectedValue(new UnauthorizedException('Invalid authenticator code'));
+
+      await expect(service.verifyMfaAndLogin('challenge-token', 'wrong')).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  // Release N â€” trusted-device MFA bypass
+  describe('login() with a trusted device token', () => {
+    it('skips the MFA challenge and issues real tokens when the device is trusted', async () => {
+      const hash = await bcrypt.hash('correct', 10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null, mfaEnabled: true,
+      });
+      trustedDevices.checkTrustedDevice.mockResolvedValue('device-1');
+      prisma.refreshToken.create.mockResolvedValue({});
+
+      const result = expectTokensIssued(await service.login('a@b.com', 'correct', {}, 'raw-device-token'));
+
+      expect(trustedDevices.checkTrustedDevice).toHaveBeenCalledWith('u1', 'raw-device-token');
+      expect(result.mfaRequired).toBe(false);
+      expect(result.accessToken).toBe('signed-jwt');
+      expect(loginHistory.record).toHaveBeenCalledWith('u1', 'a@b.com', 'LOGIN_SUCCESS', {}, 'MFA skipped â€” trusted device');
+    });
+
+    it('falls back to a normal MFA challenge when the device token does not match', async () => {
+      const hash = await bcrypt.hash('correct', 10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null, mfaEnabled: true,
+      });
+      trustedDevices.checkTrustedDevice.mockResolvedValue(null);
+
+      const result = await service.login('a@b.com', 'correct', {}, 'stale-device-token');
+
+      expect(result.mfaRequired).toBe(true);
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyMfaAndLogin() with rememberDevice', () => {
+    it('creates a trusted device and returns its plaintext token alongside real tokens', async () => {
+      jwt.verifyAsync.mockResolvedValue({ sub: 'u1', typ: 'mfa-challenge' });
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true });
+      mfa.verifyLoginCode.mockResolvedValue({ usedRecoveryCode: false });
+      trustedDevices.trustDevice.mockResolvedValue({ deviceId: 'device-1', deviceToken: 'raw-new-device-token' });
+      prisma.refreshToken.create.mockResolvedValue({});
+
+      const result = await service.verifyMfaAndLogin('challenge-token', '654321', {}, true, 'My Laptop');
+
+      expect(trustedDevices.trustDevice).toHaveBeenCalledWith('u1', { deviceName: 'My Laptop' });
+      expect(result.deviceToken).toBe('raw-new-device-token');
+      expect(result.accessToken).toBe('signed-jwt');
+    });
+
+    it('does not create a trusted device when rememberDevice is false', async () => {
+      jwt.verifyAsync.mockResolvedValue({ sub: 'u1', typ: 'mfa-challenge' });
+      prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true });
+      mfa.verifyLoginCode.mockResolvedValue({ usedRecoveryCode: false });
+      prisma.refreshToken.create.mockResolvedValue({});
+
+      const result = await service.verifyMfaAndLogin('challenge-token', '654321');
+
+      expect(trustedDevices.trustDevice).not.toHaveBeenCalled();
+      expect(result.deviceToken).toBeUndefined();
+    });
+  });
+
+  // Release P â€” IP Restrictions
+  describe('login() with IP restrictions', () => {
+    it('rejects with ForbiddenException and records a failure when the IP is not allowlisted', async () => {
+      const hash = await bcrypt.hash('correct', 10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null, mfaEnabled: false,
+      });
+      ipRestriction.isIpAllowed.mockResolvedValue(false);
+
+      await expect(service.login('a@b.com', 'correct', { ipAddress: '198.51.100.7' })).rejects.toThrow(ForbiddenException);
+
+      expect(ipRestriction.isIpAllowed).toHaveBeenCalledWith('198.51.100.7', 'u1');
+      expect(loginHistory.record).toHaveBeenCalledWith(
+        'u1', 'a@b.com', 'LOGIN_FAILURE', { ipAddress: '198.51.100.7' }, 'IP address not allowlisted',
+      );
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+    });
+
+    it('does not check IP restriction until after credentials validate', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u1', email: 'a@b.com', isActive: true, passwordHash: await bcrypt.hash('correct', 10), lockedUntil: null,
+      });
+
+      await expect(service.login('a@b.com', 'WRONG', {})).rejects.toThrow(UnauthorizedException);
+      expect(ipRestriction.isIpAllowed).not.toHaveBeenCalled();
+    });
+
+    it('proceeds to issue tokens when the IP is allowed', async () => {
+      const hash = await bcrypt.hash('correct', 10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null, mfaEnabled: false,
+      });
+      prisma.refreshToken.create.mockResolvedValue({});
+
+      const result = expectTokensIssued(await service.login('a@b.com', 'correct', { ipAddress: '203.0.113.5' }));
+
+      expect(result.mfaRequired).toBe(false);
+      expect(result.accessToken).toBe('signed-jwt');
+    });
+  });
+});
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { GoalStatus, PerformanceCycleStatus, ReviewStatus } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+
+interface CreateCycleDto {
+  entityId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+}
+
+interface CreateGoalDto {
+  employeeId: string;
+  cycleId?: string;
+  title: string;
+  description?: string;
+  weight?: number;
+  targetDate?: string;
+}
+
+interface CreateKpiDto {
+  employeeId: string;
+  cycleId?: string;
+  name: string;
+  targetValue: number;
+  unit?: string;
+  weight?: number;
+}
+
+interface AssessCompetencyDto {
+  employeeId: string;
+  competencyId: string;
+  cycleId?: string;
+  rating: number;
+  comments?: string;
+}
+
+interface SubmitSelfAssessmentDto {
+  employeeId: string;
+  cycleId: string;
+  selfRating: number;
+  selfComments?: string;
+}
+
+interface SubmitManagerReviewDto {
+  managerRating: number;
+  managerComments?: string;
+  promotionRecommended?: boolean;
+  incrementRecommended?: number;
+  bonusRecommended?: number;
+  pipRequired?: boolean;
+}
+
+@Injectable()
+export class PerformanceService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  // -------------------------------------------------------------------
+  // CYCLES
+  // -------------------------------------------------------------------
+
+  async createCycle(dto: CreateCycleDto) {
+    const existing = await this.prisma.performanceCycle.findUnique({
+      where: { entityId_name: { entityId: dto.entityId, name: dto.name } },
+    });
+    if (existing) throw new ConflictException(`Performance cycle "${dto.name}" already exists for this entity`);
+    return this.prisma.performanceCycle.create({
+      data: { ...dto, startDate: new Date(dto.startDate), endDate: new Date(dto.endDate) },
+    });
+  }
+
+  findCycles(entityId?: string) {
+    return this.prisma.performanceCycle.findMany({ where: entityId ? { entityId } : undefined, orderBy: { startDate: 'desc' } });
+  }
+
+  /** Moves a cycle to CALIBRATION â€” reviews should be locked from further self/manager edits from here on (enforced in submitManagerReview/submitSelfAssessment via cycle status). */
+  async startCalibration(cycleId: string) {
+    const cycle = await this.getCycleOrThrow(cycleId);
+    if (cycle.status !== PerformanceCycleStatus.OPEN) throw new ConflictException(`Cycle must be OPEN to start calibration (currently ${cycle.status})`);
+    return this.prisma.performanceCycle.update({ where: { id: cycleId }, data: { status: PerformanceCycleStatus.CALIBRATION } });
+  }
+
+  async closeCycle(cycleId: string) {
+    const cycle = await this.getCycleOrThrow(cycleId);
+    if (cycle.status !== PerformanceCycleStatus.CALIBRATION) throw new ConflictException(`Cycle must be in CALIBRATION to close (currently ${cycle.status})`);
+    const incomplete = await this.prisma.performanceReview.count({
+      where: { cycleId, status: { not: ReviewStatus.COMPLETED } },
+    });
+    if (incomplete > 0) throw new ConflictException(`${incomplete} review(s) are not yet COMPLETED`);
+    return this.prisma.performanceCycle.update({ where: { id: cycleId }, data: { status: PerformanceCycleStatus.CLOSED } });
+  }
+
+  // -------------------------------------------------------------------
+  // GOALS / OKRs
+  // -------------------------------------------------------------------
+
+  createGoal(dto: CreateGoalDto) {
+    return this.prisma.goal.create({
+      data: { ...dto, targetDate: dto.targetDate ? new Date(dto.targetDate) : undefined, status: GoalStatus.NOT_STARTED },
+    });
+  }
+
+  updateGoalProgress(id: string, progressPercent: number) {
+    if (progressPercent < 0 || progressPercent > 100) throw new BadRequestException('progressPercent must be 0-100');
+    const status = progressPercent >= 100 ? GoalStatus.COMPLETED : progressPercent > 0 ? GoalStatus.IN_PROGRESS : GoalStatus.NOT_STARTED;
+    return this.prisma.goal.update({ where: { id }, data: { progressPercent, status } });
+  }
+
+  findGoals(employeeId: string, cycleId?: string) {
+    return this.prisma.goal.findMany({ where: { employeeId, cycleId } });
+  }
+
+  // -------------------------------------------------------------------
+  // KPIs
+  // -------------------------------------------------------------------
+
+  createKpi(dto: CreateKpiDto) {
+    return this.prisma.kpi.create({ data: { ...dto, weight: dto.weight ?? 0 } });
+  }
+
+  updateKpiActual(id: string, actualValue: number) {
+    return this.prisma.kpi.update({ where: { id }, data: { actualValue } });
+  }
+
+  findKpis(employeeId: string, cycleId?: string) {
+    return this.prisma.kpi.findMany({ where: { employeeId, cycleId } });
+  }
+
+  // -------------------------------------------------------------------
+  // COMPETENCIES
+  // -------------------------------------------------------------------
+
+  createCompetency(name: string, description?: string) {
+    return this.prisma.competency.create({ data: { name, description } });
+  }
+
+  findCompetencies() {
+    return this.prisma.competency.findMany();
+  }
+
+  assessCompetency(dto: AssessCompetencyDto, assessedById: string) {
+    if (dto.rating < 1 || dto.rating > 5) throw new BadRequestException('rating must be between 1 and 5');
+    return this.prisma.competencyAssessment.create({ data: { ...dto, assessedById } });
+  }
+
+  findCompetencyAssessments(employeeId: string, cycleId?: string) {
+    return this.prisma.competencyAssessment.findMany({ where: { employeeId, cycleId }, include: { competency: true } });
+  }
+
+  // -------------------------------------------------------------------
+  // REVIEWS (self -> manager -> peer -> calibration -> completed)
+  // -------------------------------------------------------------------
+
+  async submitSelfAssessment(dto: SubmitSelfAssessmentDto) {
+    if (dto.selfRating < 1 || dto.selfRating > 5) throw new BadRequestException('selfRating must be between 1 and 5');
+    return this.prisma.performanceReview.upsert({
+      where: { employeeId_cycleId: { employeeId: dto.employeeId, cycleId: dto.cycleId } },
+      create: {
+        employeeId: dto.employeeId,
+        cycleId: dto.cycleId,
+        reviewerId: await this.resolveReviewerId(dto.employeeId),
+        selfRating: dto.selfRating,
+        selfComments: dto.selfComments,
+        status: ReviewStatus.SELF_ASSESSMENT,
+      },
+      update: { selfRating: dto.selfRating, selfComments: dto.selfComments, status: ReviewStatus.SELF_ASSESSMENT },
+    });
+  }
+
+  async submitManagerReview(reviewId: string, dto: SubmitManagerReviewDto) {
+    if (dto.managerRating < 1 || dto.managerRating > 5) throw new BadRequestException('managerRating must be between 1 and 5');
+    const review = await this.getReviewOrThrow(reviewId);
+    return this.prisma.performanceReview.update({
+      where: { id: reviewId },
+      data: {
+        managerRating: dto.managerRating,
+        managerComments: dto.managerComments,
+        promotionRecommended: dto.promotionRecommended ?? false,
+        incrementRecommended: dto.incrementRecommended,
+        bonusRecommended: dto.bonusRecommended,
+        pipRequired: dto.pipRequired ?? false,
+        status: ReviewStatus.MANAGER_REVIEW,
+      },
+    });
+  }
+
+  async addPeerFeedback(reviewId: string, peerComments: string) {
+    const review = await this.getReviewOrThrow(reviewId);
+    const merged = review.peerComments ? `${review.peerComments}\n---\n${peerComments}` : peerComments;
+    return this.prisma.performanceReview.update({ where: { id: reviewId }, data: { peerComments: merged, status: ReviewStatus.PEER_REVIEW } });
+  }
+
+  /** Calibration sets the final agreed rating, which may differ from the raw manager rating. */
+  async calibrateReview(reviewId: string, calibratedRating: number) {
+    if (calibratedRating < 1 || calibratedRating > 5) throw new BadRequestException('calibratedRating must be between 1 and 5');
+    const review = await this.getReviewOrThrow(reviewId);
+    if (!review.managerRating) throw new ConflictException('Cannot calibrate a review before the manager review is submitted');
+    return this.prisma.performanceReview.update({
+      where: { id: reviewId },
+      data: { calibratedRating, status: ReviewStatus.CALIBRATED },
+    });
+  }
+
+  async completeReview(reviewId: string) {
+    const review = await this.getReviewOrThrow(reviewId);
+    if (!review.calibratedRating) throw new ConflictException('Cannot complete a review before calibration');
+    return this.prisma.performanceReview.update({
+      where: { id: reviewId },
+      data: { status: ReviewStatus.COMPLETED, completedAt: new Date() },
+    });
+  }
+
+  findReviews(employeeId?: string, cycleId?: string) {
+    return this.prisma.performanceReview.findMany({ where: { employeeId, cycleId }, orderBy: { createdAt: 'desc' } });
+  }
+
+  /** Performance history for one employee across every cycle they've been reviewed in. */
+  findPerformanceHistory(employeeId: string) {
+    return this.prisma.performanceReview.findMany({
+      where: { employeeId, status: ReviewStatus.COMPLETED },
+      include: { cycle: true },
+      orderBy: { completedAt: 'desc' },
+    });
+  }
+
+  // -------------------------------------------------------------------
+  // INTERNAL HELPERS
+  // -------------------------------------------------------------------
+
+  private async resolveReviewerId(employeeId: string): Promise<string> {
+    const employee = await this.prisma.employee.findUnique({ where: { id: employeeId } });
+    if (!employee) throw new NotFoundException(`Employee ${employeeId} not found`);
+    if (!employee.reportsToId) throw new ConflictException('This employee has no manager (reportsToId) set, so no reviewer can be assigned');
+    return employee.reportsToId;
+  }
+
+  private async getCycleOrThrow(id: string) {
+    const cycle = await this.prisma.performanceCycle.findUnique({ where: { id } });
+    if (!cycle) throw new NotFoundException(`Performance cycle ${id} not found`);
+    return cycle;
+  }
+
+  private async getReviewOrThrow(id: string) {
+    const review = await this.prisma.performanceReview.findUnique({ where: { id } });
+    if (!review) throw new NotFoundException(`Performance review ${id} not found`);
+    return review;
+  }
+}
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  LandAcquisitionStatus,
+  LandParcelStatus,
+  MasterPlanStatus,
+  PlotStatus,
+  SurveyPlanStatus,
+  TitleStatus,
+} from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { RowLevelSecurityService } from '../security/row-level-security.service';
+import { SecurityScope } from '../security/security.types';
+import {
+  AddTitleDeedDto,
+  CreateLandParcelDto,
+  CreateMasterPlanDto,
+  CreateSurveyPlanDto,
+  PlotDefinitionDto,
+  RecordLandAcquisitionDto,
+} from './dto/land-bank.dto';
+
+@Injectable()
+export class LandBankService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly rowLevelSecurity: RowLevelSecurityService,
+  ) {}
+
+  // ---- Land Parcels ----
+
+  async createParcel(dto: CreateLandParcelDto, createdById?: string) {
+    const existing = await this.prisma.landParcel.findUnique({
+      where: { entityId_code: { entityId: dto.entityId, code: dto.code } },
+    });
+    if (existing) throw new ConflictException(`Parcel code "${dto.code}" already exists for this entity`);
+
+    return this.prisma.landParcel.create({
+      data: {
+        entityId: dto.entityId,
+        code: dto.code,
+        name: dto.name,
+        description: dto.description,
+        location: dto.location,
+        stateProvince: dto.stateProvince,
+        localGovernmentArea: dto.localGovernmentArea,
+        areaSqm: dto.areaSqm,
+        acquisitionCostBudget: dto.acquisitionCostBudget,
+        createdById,
+      },
+    });
+  }
+
+  findParcels(scope: SecurityScope, entityId?: string, status?: LandParcelStatus) {
+    const rls = this.rowLevelSecurity.buildWhere(scope, { dimensions: ['entity', 'businessUnit'] });
+    return this.prisma.landParcel.findMany({
+      where: { AND: [rls, { entityId, status }] },
+      include: { acquisitions: true, titleDeeds: true, surveyPlans: true, plots: true },
+      orderBy: { code: 'asc' },
+    });
+  }
+
+  async getParcel(parcelId: string) {
+    const parcel = await this.prisma.landParcel.findUnique({
+      where: { id: parcelId },
+      include: { acquisitions: true, titleDeeds: true, surveyPlans: true, plots: { include: { release: true } } },
+    });
+    if (!parcel) throw new NotFoundException('Land parcel not found');
+    return parcel;
+  }
+
+  private async requireParcel(parcelId: string) {
+    const parcel = await this.prisma.landParcel.findUnique({ where: { id: parcelId } });
+    if (!parcel) throw new NotFoundException('Land parcel not found');
+    return parcel;
+  }
+
+  // ---- Land Acquisitions ----
+
+  async recordAcquisition(dto: RecordLandAcquisitionDto, createdById?: string) {
+    await this.requireParcel(dto.parcelId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const acquisition = await tx.landAcquisition.create({
+        data: {
+          parcelId: dto.parcelId,
+          vendorName: dto.vendorName,
+          vendorContact: dto.vendorContact,
+          agreedPrice: dto.agreedPrice,
+          currency: dto.currency ?? 'NGN',
+          paymentTerms: dto.paymentTerms,
+          dueDiligenceNotes: dto.dueDiligenceNotes,
+          createdById,
+        },
+      });
+      await tx.landParcel.update({
+        where: { id: dto.parcelId },
+        data: { status: LandParcelStatus.UNDER_ACQUISITION },
+      });
+      return acquisition;
+    });
+  }
+
+  async updateAcquisitionStatus(acquisitionId: string, status: LandAcquisitionStatus) {
+    const acquisition = await this.prisma.landAcquisition.findUnique({ where: { id: acquisitionId } });
+    if (!acquisition) throw new NotFoundException('Land acquisition not found');
+    if (acquisition.status === LandAcquisitionStatus.COMPLETED) {
+      throw new BadRequestException('Cannot change status of a completed acquisition');
+    }
+    return this.prisma.landAcquisition.update({ where: { id: acquisitionId }, data: { status } });
+  }
+
+  async completeAcquisition(acquisitionId: string, acquisitionDate: string) {
+    const acquisition = await this.prisma.landAcquisition.findUnique({ where: { id: acquisitionId } });
+    if (!acquisition) throw new NotFoundException('Land acquisition not found');
+    if (acquisition.status === LandAcquisitionStatus.COMPLETED) {
+      throw new ConflictException('Acquisition is already completed');
+    }
+    if (acquisition.status === LandAcquisitionStatus.CANCELLED) {
+      throw new BadRequestException('Cannot complete a cancelled acquisition');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.landAcquisition.update({
+        where: { id: acquisitionId },
+        data: {
+          status: LandAcquisitionStatus.COMPLETED,
+          acquisitionDate: new Date(acquisitionDate),
+          completedAt: new Date(),
+        },
+      });
+      await tx.landParcel.update({
+        where: { id: acquisition.parcelId },
+        data: { status: LandParcelStatus.ACQUIRED },
+      });
+      return updated;
+    });
+
+    // NOTE (deferred): capitalizing the acquisition cost via
+    // PostingEngineService (e.g. Dr Land Bank Asset / Cr AP or Cash) is
+    // intentionally out of scope for this slice â€” it belongs with Fixed
+    // Assets (Phase 5C, Construction in Progress) once that module exists.
+  }
+
+  // ---- Titles ----
+
+  async addTitleDeed(dto: AddTitleDeedDto, createdById?: string) {
+    await this.requireParcel(dto.parcelId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const title = await tx.titleDeed.create({
+        data: {
+          parcelId: dto.parcelId,
+          titleType: dto.titleType,
+          titleNumber: dto.titleNumber,
+          issuingAuthority: dto.issuingAuthority,
+          applicationDate: dto.applicationDate ? new Date(dto.applicationDate) : undefined,
+          documentRef: dto.documentRef,
+          notes: dto.notes,
+          status: TitleStatus.IN_PROGRESS,
+          createdById,
+        },
+      });
+      const parcel = await tx.landParcel.findUnique({ where: { id: dto.parcelId } });
+      if (parcel && parcel.status !== LandParcelStatus.TITLED) {
+        await tx.landParcel.update({ where: { id: dto.parcelId }, data: { status: LandParcelStatus.IN_TITLING } });
+      }
+      return title;
+    });
+  }
+
+  async perfectTitleDeed(titleId: string, issuedDate: string, expiryDate?: string, titleNumber?: string) {
+    const title = await this.prisma.titleDeed.findUnique({ where: { id: titleId } });
+    if (!title) throw new NotFoundException('Title deed not found');
+    if (title.status === TitleStatus.PERFECTED) throw new ConflictException('Title is already perfected');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.titleDeed.update({
+        where: { id: titleId },
+        data: {
+          status: TitleStatus.PERFECTED,
+          issuedDate: new Date(issuedDate),
+          expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+          titleNumber: titleNumber ?? title.titleNumber,
+        },
+      });
+      await tx.landParcel.update({ where: { id: title.parcelId }, data: { status: LandParcelStatus.TITLED } });
+      return updated;
+    });
+  }
+
+  async rejectTitleDeed(titleId: string, reason: string) {
+    const title = await this.prisma.titleDeed.findUnique({ where: { id: titleId } });
+    if (!title) throw new NotFoundException('Title deed not found');
+    return this.prisma.titleDeed.update({
+      where: { id: titleId },
+      data: { status: TitleStatus.REJECTED, notes: [title.notes, `Rejected: ${reason}`].filter(Boolean).join(' | ') },
+    });
+  }
+
+  findTitleDeeds(parcelId: string) {
+    return this.prisma.titleDeed.findMany({ where: { parcelId }, orderBy: { createdAt: 'desc' } });
+  }
+
+  // ---- Survey Plans ----
+
+  async createSurveyPlan(dto: CreateSurveyPlanDto, createdById?: string) {
+    await this.requireParcel(dto.parcelId);
+    const existing = await this.prisma.surveyPlan.findUnique({
+      where: { parcelId_planNumber: { parcelId: dto.parcelId, planNumber: dto.planNumber } },
+    });
+    if (existing) throw new ConflictException(`Survey plan "${dto.planNumber}" already exists for this parcel`);
+
+    return this.prisma.surveyPlan.create({
+      data: {
+        parcelId: dto.parcelId,
+        planNumber: dto.planNumber,
+        surveyorName: dto.surveyorName,
+        surveyDate: dto.surveyDate ? new Date(dto.surveyDate) : undefined,
+        areaSqm: dto.areaSqm,
+        coordinates: dto.coordinates as any,
+        documentRef: dto.documentRef,
+        status: SurveyPlanStatus.SUBMITTED,
+        createdById,
+      },
+    });
+  }
+
+  async approveSurveyPlan(surveyPlanId: string) {
+    const plan = await this.prisma.surveyPlan.findUnique({ where: { id: surveyPlanId } });
+    if (!plan) throw new NotFoundException('Survey plan not found');
+    if (plan.status === SurveyPlanStatus.APPROVED) throw new ConflictException('Survey plan is already approved');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.surveyPlan.update({
+        where: { id: surveyPlanId },
+        data: { status: SurveyPlanStatus.APPROVED },
+      });
+      await tx.landParcel.update({ where: { id: plan.parcelId }, data: { status: LandParcelStatus.SURVEYED } });
+      return updated;
+    });
+  }
+
+  async rejectSurveyPlan(surveyPlanId: string, reason: string) {
+    const plan = await this.prisma.surveyPlan.findUnique({ where: { id: surveyPlanId } });
+    if (!plan) throw new NotFoundException('Survey plan not found');
+    return this.prisma.surveyPlan.update({
+      where: { id: surveyPlanId },
+      data: { status: SurveyPlanStatus.REJECTED },
+      // reason is intentionally not persisted on a dedicated column in this
+      // slice; it's captured via the automatic audit trail (AuditInterceptor)
+      // on the mutating request. Revisit if a queryable rejection reason is needed.
+    });
+  }
+
+  findSurveyPlans(parcelId: string) {
+    return this.prisma.surveyPlan.findMany({ where: { parcelId }, orderBy: { createdAt: 'desc' } });
+  }
+
+  // ---- Plots ----
+
+  async subdivideParcel(parcelId: string, surveyPlanId: string, plotDefs: PlotDefinitionDto[]) {
+    if (!plotDefs?.length) throw new BadRequestException('At least one plot must be provided');
+
+    const parcel = await this.requireParcel(parcelId);
+    const surveyPlan = await this.prisma.surveyPlan.findUnique({ where: { id: surveyPlanId } });
+    if (!surveyPlan || surveyPlan.parcelId !== parcelId) {
+      throw new NotFoundException('Survey plan not found for this parcel');
+    }
+    if (surveyPlan.status !== SurveyPlanStatus.APPROVED) {
+      throw new BadRequestException('Parcel can only be subdivided against an approved survey plan');
+    }
+
+    const totalPlotArea = plotDefs.reduce((sum, p) => sum + Number(p.areaSqm), 0);
+    if (totalPlotArea > Number(parcel.areaSqm)) {
+      throw new BadRequestException('Total plot area exceeds the parcel area');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const plots = await Promise.all(
+        plotDefs.map((p) =>
+          tx.plot.create({
+            data: {
+              parcelId,
+              surveyPlanId,
+              plotNumber: p.plotNumber,
+              areaSqm: p.areaSqm,
+              useType: p.useType,
+              notes: p.notes,
+              status: PlotStatus.AVAILABLE,
+            },
+          }),
+        ),
+      );
+      await tx.landParcel.update({ where: { id: parcelId }, data: { status: LandParcelStatus.SUBDIVIDED } });
+      return plots;
+    });
+  }
+
+  findPlots(parcelId: string, status?: PlotStatus) {
+    return this.prisma.plot.findMany({ where: { parcelId, status }, orderBy: { plotNumber: 'asc' } });
+  }
+
+  async updatePlotStatus(plotId: string, status: PlotStatus) {
+    const plot = await this.prisma.plot.findUnique({ where: { id: plotId } });
+    if (!plot) throw new NotFoundException('Plot not found');
+    return this.prisma.plot.update({ where: { id: plotId }, data: { status } });
+  }
+
+  // ---- Estate Master Planning ----
+
+  async createMasterPlan(dto: CreateMasterPlanDto, createdById?: string) {
+    const estate = await this.prisma.estate.findUnique({ where: { id: dto.estateId } });
+    if (!estate) throw new NotFoundException('Estate not found');
+
+    const latest = await this.prisma.estateMasterPlan.findFirst({
+      where: { estateId: dto.estateId },
+      orderBy: { version: 'desc' },
+    });
+    const nextVersion = (latest?.version ?? 0) + 1;
+
+    return this.prisma.estateMasterPlan.create({
+      data: {
+        estateId: dto.estateId,
+        version: nextVersion,
+        summary: dto.summary,
+        totalPlannedUnits: dto.totalPlannedUnits,
+        createdById,
+        zones: dto.zones?.length
+          ? {
+              create: dto.zones.map((z) => ({
+                code: z.code,
+                name: z.name,
+                useType: z.useType,
+                plannedAreaSqm: z.plannedAreaSqm,
+                plannedUnitCount: z.plannedUnitCount,
+              })),
+            }
+          : undefined,
+      },
+      include: { zones: true },
+    });
+  }
+
+  findMasterPlans(estateId: string) {
+    return this.prisma.estateMasterPlan.findMany({
+      where: { estateId },
+      include: { zones: true },
+      orderBy: { version: 'desc' },
+    });
+  }
+
+  async getMasterPlan(masterPlanId: string) {
+    const plan = await this.prisma.estateMasterPlan.findUnique({
+      where: { id: masterPlanId },
+      include: { zones: true },
+    });
+    if (!plan) throw new NotFoundException('Master plan not found');
+    return plan;
+  }
+
+  async approveMasterPlan(masterPlanId: string) {
+    const plan = await this.prisma.estateMasterPlan.findUnique({ where: { id: masterPlanId } });
+    if (!plan) throw new NotFoundException('Master plan not found');
+    if (plan.status === MasterPlanStatus.APPROVED) throw new ConflictException('Master plan is already approved');
+    if (plan.status === MasterPlanStatus.SUPERSEDED) {
+      throw new BadRequestException('Cannot approve a superseded master plan');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      // Supersede whichever plan for this estate is currently approved, if any.
+      await tx.estateMasterPlan.updateMany({
+        where: { estateId: plan.estateId, status: MasterPlanStatus.APPROVED },
+        data: { status: MasterPlanStatus.SUPERSEDED },
+      });
+      return tx.estateMasterPlan.update({
+        where: { id: masterPlanId },
+        data: { status: MasterPlanStatus.APPROVED, approvedAt: new Date() },
+      });
+    });
+  }
+
+  // ---- Plot -> Project Release (Land Bank -> Real Estate hand-off) ----
+
+  async releasePlotToProject(plotId: string, projectId: string, notes?: string, createdById?: string) {
+    const plot = await this.prisma.plot.findUnique({ where: { id: plotId } });
+    if (!plot) throw new NotFoundException('Plot not found');
+    if (plot.status !== PlotStatus.AVAILABLE) {
+      throw new BadRequestException('Only an AVAILABLE plot can be released to a project');
+    }
+    const project = await this.prisma.project.findUnique({ where: { id: projectId } });
+    if (!project) throw new NotFoundException('Project not found');
+
+    const existingRelease = await this.prisma.plotProjectRelease.findUnique({ where: { plotId } });
+    if (existingRelease && !existingRelease.cancelledAt) {
+      throw new ConflictException('Plot already has an active release');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const release = existingRelease
+        ? await tx.plotProjectRelease.update({
+            where: { plotId },
+            data: {
+              projectId,
+              notes,
+              releaseDate: new Date(),
+              cancelledAt: null,
+              cancelReason: null,
+              createdById,
+            },
+          })
+        : await tx.plotProjectRelease.create({
+            data: { plotId, projectId, notes, createdById },
+          });
+      await tx.plot.update({ where: { id: plotId }, data: { status: PlotStatus.ALLOCATED } });
+      return release;
+    });
+  }
+
+  async cancelPlotRelease(plotId: string, reason: string) {
+    const release = await this.prisma.plotProjectRelease.findUnique({ where: { plotId } });
+    if (!release || release.cancelledAt) throw new NotFoundException('No active release found for this plot');
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.plotProjectRelease.update({
+        where: { plotId },
+        data: { cancelledAt: new Date(), cancelReason: reason },
+      });
+      await tx.plot.update({ where: { id: plotId }, data: { status: PlotStatus.AVAILABLE } });
+      return updated;
+    });
+  }
+
+  findReleasesForProject(projectId: string) {
+    return this.prisma.plotProjectRelease.findMany({
+      where: { projectId, cancelledAt: null },
+      include: { plot: true },
+      orderBy: { releaseDate: 'desc' },
+    });
+  }
+}
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import * as crypto from 'crypto';
+import { IntegrationsService } from '../../integrations/integrations.service';
+import { PaymentWebhookHandlerRegistry } from '../payment-webhook-handler.registry';
+import { ParsedPaymentWebhookEvent, PaymentWebhookHandler } from '../payment-webhook-handler.interface';
+import { FLUTTERWAVE_PROVIDER_CODE, fromFlutterwaveMajorUnits, mapFlutterwaveStatus, mapFlutterwaveRefundStatus } from './flutterwave.provider';
+
+interface FlutterwaveChargeWebhookPayload {
+  event: string;
+  data: {
+    id: number;
+    tx_ref: string;
+    amount: number;
+    currency: string;
+    status: string;
+    created_at: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Release IE.3, Checkpoint H â€” Flutterwave's refund.* webhook shape.
+ * data.id is the SAME refund id FlutterwaveProvider.refundPayment()
+ * already returns as refundReference at initiation (and the same id
+ * verifyRefund's GET /refunds/:id â€” Checkpoint G â€” polls by), same
+ * "data.id matches what refundPayment already returned" relationship
+ * PaystackRefundWebhookPayload's own doc comment describes for Paystack.
+ */
+interface FlutterwaveRefundWebhookPayload {
+  event: string;
+  data: {
+    id: number;
+    status: string;
+    [key: string]: unknown;
+  };
+}
+
+/**
+ * Release IE.3, Checkpoint D â€” Flutterwave's PaymentWebhookHandler
+ * (charge events). Release IE.3, Checkpoint H added refund-event
+ * parsing below, the same "charge first, refund is its own later
+ * checkpoint" split PaystackWebhookHandler's own D/E had.
+ *
+ * Registers into PaymentWebhookHandlerRegistry via onModuleInit(), same
+ * pattern FlutterwaveProvider (flutterwave.provider.ts) and
+ * PaystackWebhookHandler both use, for the identical reason: it needs
+ * constructor-injected IntegrationsService.
+ *
+ * Signature scheme is genuinely different from Paystack's, not just a
+ * different header name â€” Flutterwave does NOT sign the payload with
+ * HMAC. Instead you configure a static "Secret Hash" string in the
+ * Flutterwave dashboard, and every webhook request echoes that exact
+ * string back verbatim in the `verif-hash` header; verification is a
+ * constant-time string comparison against the configured value, not a
+ * digest computation. Stored as credentials.webhookSecretHash on the
+ * SAME IntegrationProvider row FlutterwaveProvider already reads
+ * credentials.secretKey from (PAYMENT_FLUTTERWAVE_PROVIDER_ID) â€” it's a
+ * second credential on the same gateway connection, not a separate
+ * integration to configure.
+ *
+ * KNOWN LIMITATION (same honesty this codebase already gives Paystack's
+ * own handler for its own, narrower version of the same limitation):
+ * parseEvent only understands charge-shaped and refund-shaped events.
+ * Flutterwave also sends transfer.*, subscription.*, and other event
+ * types to the same configured webhook URL if enabled; this handler
+ * throws on anything without the fields either shape needs rather than
+ * silently ignoring it, which surfaces as a 500 to Flutterwave (who will
+ * retry). Safe today because only charge and refund events are enabled
+ * on the Flutterwave dashboard for this integration; general event-type
+ * filtering is a real gap for whichever later checkpoint enables
+ * additional Flutterwave event types.
+ *
+ * The refund.* event-name detection below is Flutterwave's documented
+ * webhook naming convention for its refund lifecycle notifications â€”
+ * mirrored after Paystack's own `event.startsWith('refund.')` dispatch
+ * for the same reason: covers whichever specific refund.* variant
+ * (completed/failed/pending-style) Flutterwave sends without this
+ * handler needing to enumerate each one by name.
+ */
+@Injectable()
+export class FlutterwaveWebhookHandler implements PaymentWebhookHandler, OnModuleInit {
+  private readonly logger = new Logger(FlutterwaveWebhookHandler.name);
+  private resolvedSecretHash: Promise<string> | null = null;
+
+  constructor(
+    private readonly integrations: IntegrationsService,
+    private readonly registry: PaymentWebhookHandlerRegistry,
+  ) {}
+
+  onModuleInit(): void {
+    this.registry.register(FLUTTERWAVE_PROVIDER_CODE, this);
+    this.logger.log(`Registered payment webhook handler "${FLUTTERWAVE_PROVIDER_CODE}"`);
+  }
+
+  async verifySignature(rawBody: string | Buffer, headers: Record<string, string | undefined>): Promise<boolean> {
+    const provided = headers['verif-hash'];
+    if (!provided) return false;
+
+    const expected = await this.getSecretHash();
+
+    // A plain string comparison, not an HMAC digest â€” see the class doc
+    // comment. Still done in constant time (via Buffer.from + timingSafeEqual)
+    // rather than `===`, the same defensive habit every other signature
+    // check in this codebase (Paystack, Twilio, WhatsApp) uses, even
+    // though a shared-secret string is a lower-value timing-attack target
+    // than an HMAC key.
+    const expectedBuf = Buffer.from(expected, 'utf-8');
+    const providedBuf = Buffer.from(provided, 'utf-8');
+    if (expectedBuf.length !== providedBuf.length) return false;
+    return crypto.timingSafeEqual(expectedBuf, providedBuf);
+  }
+
+  parseEvent(rawBody: string | Buffer): ParsedPaymentWebhookEvent {
+    const text = Buffer.isBuffer(rawBody) ? rawBody.toString('utf-8') : rawBody;
+    const payload = JSON.parse(text) as { event: string; data?: Record<string, unknown> };
+
+    if (payload.event?.startsWith('refund.')) {
+      return { kind: 'refund', event: this.parseRefundEvent(payload as FlutterwaveRefundWebhookPayload) };
+    }
+    // Default to charge parsing â€” same "anything not explicitly refund.*
+    // falls through to charge parsing, including truly unsupported event
+    // types" posture PaystackWebhookHandler.parseEvent uses, per the
+    // class doc comment's KNOWN LIMITATION note.
+    return { kind: 'charge', event: this.parseChargeEvent(payload as FlutterwaveChargeWebhookPayload) };
+  }
+
+  private parseChargeEvent(payload: FlutterwaveChargeWebhookPayload) {
+    if (!payload.data?.tx_ref || !payload.data?.status) {
+      // See the class doc comment's KNOWN LIMITATION note.
+      throw new Error(
+        `Flutterwave webhook event "${payload.event}" has no data.tx_ref/data.status â€” only charge- and refund-shaped events are supported by this handler yet`,
+      );
+    }
+
+    const status = mapFlutterwaveStatus(payload.data.status);
+    return {
+      reference: payload.data.tx_ref,
+      status,
+      amount: fromFlutterwaveMajorUnits(payload.data.amount),
+      currency: payload.data.currency,
+      paidAt: status === 'SUCCESSFUL' && payload.data.created_at ? new Date(payload.data.created_at) : undefined,
+      providerReference: String(payload.data.id),
+      raw: payload.data as unknown as Record<string, unknown>,
+    };
+  }
+
+  /** Release IE.3, Checkpoint H. data.id matches the refundReference FlutterwaveProvider.refundPayment() returned at initiation â€” see FlutterwaveRefundWebhookPayload's doc comment. */
+  private parseRefundEvent(payload: FlutterwaveRefundWebhookPayload) {
+    if (payload.data?.id === undefined || !payload.data?.status) {
+      throw new Error(`Flutterwave webhook event "${payload.event}" has no data.id/data.status â€” cannot match it to a PaymentRefund`);
+    }
+
+    return {
+      refundReference: String(payload.data.id),
+      status: mapFlutterwaveRefundStatus(payload.data.status),
+      raw: payload.data as unknown as Record<string, unknown>,
+    };
+  }
+
+  private async getSecretHash(): Promise<string> {
+    if (!this.resolvedSecretHash) {
+      this.resolvedSecretHash = this.resolveSecretHash();
+    }
+    return this.resolvedSecretHash;
+  }
+
+  private async resolveSecretHash(): Promise<string> {
+    const providerId = process.env.PAYMENT_FLUTTERWAVE_PROVIDER_ID;
+    if (!providerId) {
+      throw new Error(
+        'PAYMENT_FLUTTERWAVE_PROVIDER_ID is not set â€” FlutterwaveWebhookHandler needs the same IntegrationProvider FlutterwaveProvider uses.',
+      );
+    }
+    const credentials = await this.integrations.getDecryptedCredentials(providerId);
+    const webhookSecretHash = credentials?.webhookSecretHash as string | undefined;
+    if (!webhookSecretHash) {
+      throw new Error(
+        `Integration provider ${providerId} is missing credentials.webhookSecretHash â€” set it to the same "Secret Hash" value configured in the Flutterwave dashboard's webhook settings.`,
+      );
+    }
+    return webhookSecretHash;
+  }
+}
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BudgetCommitmentSourceType,
+  PRStatus,
+  POStatus,
+  ProcurementGRNStatus,
+  VendorInvoiceStatus,
+  ThreeWayMatchStatus,
+} from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { PostingEngineService } from '../general-ledger/posting-engine.service';
+import { BudgetingService } from '../budgeting/budgeting.service';
+import { InventoryService } from '../inventory/inventory.service';
+import { RowLevelSecurityService } from '../security/row-level-security.service';
+import { SecurityScope } from '../security/security.types';
+import { CreateRequisitionDto } from './dto/create-requisition.dto';
+import { RequisitionDecisionDto } from './dto/requisition-decision.dto';
+import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
+import { CreateGRNDto } from './dto/create-grn.dto';
+import { CreateVendorInvoiceDto } from './dto/create-vendor-invoice.dto';
+import { CreateThreeWayMatchDto } from './dto/create-three-way-match.dto';
+import { CompleteThreeWayMatchDto } from './dto/complete-three-way-match.dto';
+
+// Tolerance for quantity/currency comparisons, guarding against floating
+// point drift on decimal math â€” mirrors the convention already used by
+// PostingEngineService (CENTS_TOLERANCE) and InventoryService (QTY_TOLERANCE).
+const QTY_TOLERANCE = 0.0005;
+const AMOUNT_TOLERANCE = 0.01;
+
+@Injectable()
+export class ProcurementService {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly postingEngine: PostingEngineService,
+    private readonly budgeting: BudgetingService,
+    private readonly inventory: InventoryService,
+    private readonly rowLevelSecurity: RowLevelSecurityService,
+  ) {}
+
+  // -------------------------------------------------------------------
+  // PURCHASE REQUISITION
+  // -------------------------------------------------------------------
+
+  async createRequisition(dto: CreateRequisitionDto, userId: string) {
+    const entity = await this.prisma.entity.findUnique({ where: { id: dto.entityId } });
+    if (!entity || !entity.isActive) throw new NotFoundException(`Entity ${dto.entityId} not found or inactive`);
+
+    const existing = await this.prisma.purchaseRequisition.findUnique({
+      where: { entityId_prNumber: { entityId: dto.entityId, prNumber: dto.prNumber } },
+    });
+    if (existing) throw new ConflictException(`Requisition number ${dto.prNumber} already exists for this entity`);
+
+    return this.prisma.purchaseRequisition.create({
+      data: {
+        entityId: dto.entityId,
+        prNumber: dto.prNumber,
+        requestedById: userId,
+        projectId: dto.projectId,
+        departmentId: dto.departmentId,
+        costCenterId: dto.costCenterId,
+        fundingSourceId: dto.fundingSourceId,
+        justification: dto.justification,
+        status: PRStatus.DRAFT,
+        lines: {
+          create: dto.lines.map((line) => ({
+            description: line.description,
+            accountId: line.accountId,
+            budgetLineId: line.budgetLineId,
+            quantity: line.quantity,
+            estimatedUnitCost: line.estimatedUnitCost,
+            projectId: line.projectId,
+            phaseId: line.phaseId,
+            departmentId: line.departmentId,
+            costCenterId: line.costCenterId,
+            fundingSourceId: line.fundingSourceId,
+          })),
+        },
+      },
+      include: { lines: true },
+    });
+  }
+
+  findAllRequisitions(scope: SecurityScope, filters: { entityId?: string; status?: PRStatus }) {
+    const rls = this.rowLevelSecurity.buildWhere(scope, {
+      dimensions: ['entity', 'department', 'costCenter', 'project', 'businessUnit'],
+    });
+    return this.prisma.purchaseRequisition.findMany({
+      where: { AND: [rls, { entityId: filters.entityId, status: filters.status }] },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findRequisition(id: string, scope: SecurityScope) {
+    const pr = await this.prisma.purchaseRequisition.findUnique({
+      where: { id },
+      include: { lines: true, purchaseOrders: true },
+    });
+    if (!pr) throw new NotFoundException(`Requisition ${id} not found`);
+    if (
+      !this.rowLevelSecurity.canAccess(
+        scope,
+        { entityId: pr.entityId, departmentId: pr.departmentId, costCenterId: pr.costCenterId, projectId: pr.projectId },
+        { dimensions: ['entity', 'department', 'costCenter', 'project', 'businessUnit'] },
+      )
+    ) {
+      throw new NotFoundException(`Requisition ${id} not found`);
+    }
+    return pr;
+  }
+
+  async submitRequisition(id: string, userId: string) {
+    const pr = await this.getRequisitionOrThrow(id);
+    this.assertPRStatus(pr.status, [PRStatus.DRAFT, PRStatus.REJECTED], 'submit');
+    return this.prisma.purchaseRequisition.update({
+      where: { id },
+      data: { status: PRStatus.SUBMITTED, submittedAt: new Date() },
+    });
+  }
+
+  async approveRequisition(id: string, userId: string, dto?: RequisitionDecisionDto) {
+    const pr = await this.getRequisitionOrThrow(id);
+    this.assertPRStatus(pr.status, [PRStatus.SUBMITTED], 'approve');
+    if (pr.requestedById === userId) {
+      throw new BadRequestException('The requester of a requisition cannot also approve it');
+    }
+    return this.prisma.purchaseRequisition.update({
+      where: { id },
+      data: { status: PRStatus.APPROVED, approvedById: userId, approvedAt: new Date() },
+    });
+  }
+
+  async rejectRequisition(id: string, userId: string, dto?: RequisitionDecisionDto) {
+    const pr = await this.getRequisitionOrThrow(id);
+    this.assertPRStatus(pr.status, [PRStatus.SUBMITTED], 'reject');
+    return this.prisma.purchaseRequisition.update({
+      where: { id },
+      data: { status: PRStatus.REJECTED, rejectedReason: dto?.comments },
+    });
+  }
+
+  // -------------------------------------------------------------------
+  // PURCHASE ORDER
+  // -------------------------------------------------------------------
+
+  async createPurchaseOrder(dto: CreatePurchaseOrderDto, userId: string) {
+    const entity = await this.prisma.entity.findUnique({ where: { id: dto.entityId } });
+    if (!entity || !entity.isActive) throw new NotFoundException(`Entity ${dto.entityId} not found or inactive`);
+
+    const vendor = await this.prisma.vendor.findUnique({ where: { id: dto.vendorId } });
+    if (!vendor || !vendor.isActive) throw new NotFoundException(`Vendor ${dto.vendorId} not found or inactive`);
+
+    if (dto.requisitionId) {
+      const pr = await this.prisma.purchaseRequisition.findUnique({ where: { id: dto.requisitionId } });
+      if (!pr) throw new NotFoundException(`Requisition ${dto.requisitionId} not found`);
+      if (pr.status !== PRStatus.APPROVED) {
+        throw new ConflictException('A purchase order can only be raised against an approved requisition');
+      }
+      if (pr.entityId !== dto.entityId) {
+        throw new BadRequestException('Requisition belongs to a different entity');
+      }
+    }
+
+    const existing = await this.prisma.purchaseOrder.findUnique({
+      where: { entityId_poNumber: { entityId: dto.entityId, poNumber: dto.poNumber } },
+    });
+    if (existing) throw new ConflictException(`PO number ${dto.poNumber} already exists for this entity`);
+
+    return this.prisma.purchaseOrder.create({
+      data: {
+        entityId: dto.entityId,
+        poNumber: dto.poNumber,
+        requisitionId: dto.requisitionId,
+        vendorId: dto.vendorId,
+        orderDate: new Date(dto.orderDate),
+        status: POStatus.DRAFT,
+        createdById: userId,
+        lines: {
+          create: dto.lines.map((line) => ({
+            requisitionLineId: line.requisitionLineId,
+            description: line.description,
+            accountId: line.accountId,
+            stockItemId: line.stockItemId,
+            budgetLineId: line.budgetLineId,
+            quantity: line.quantity,
+            unitCost: line.unitCost,
+            projectId: line.projectId,
+            phaseId: line.phaseId,
+            departmentId: line.departmentId,
+            costCenterId: line.costCenterId,
+            fundingSourceId: line.fundingSourceId,
+          })),
+        },
+      },
+      include: { lines: true },
+    });
+  }
+
+  findAllPurchaseOrders(scope: SecurityScope, filters: { entityId?: string; status?: POStatus; vendorId?: string }) {
+    const rls = this.rowLevelSecurity.buildWhere(scope, { dimensions: ['entity', 'businessUnit'] });
+    return this.prisma.purchaseOrder.findMany({
+      where: { AND: [rls, { entityId: filters.entityId, status: filters.status, vendorId: filters.vendorId }] },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async findPurchaseOrder(id: string, scope: SecurityScope) {
+    const po = await this.prisma.purchaseOrder.findUnique({
+      where: { id },
+      include: { lines: true, goodsReceipts: true, vendorInvoices: true },
+    });
+    if (!po) throw new NotFoundException(`Purchase order ${id} not found`);
+    if (!this.rowLevelSecurity.canAccess(scope, { entityId: po.entityId }, { dimensions: ['entity', 'businessUnit'] })) {
+      throw new NotFoundException(`Purchase order ${id} not found`);
+    }
+    return po;
+  }
+
+  /**
+   * Checks available budget (Budget - Actual - Commitments) on every line
+   * BEFORE raising any commitment, then raises one BudgetCommitment per
+   * line via BudgetingService. Note: as with the rest of this codebase's
+   * subsystem postings (see RevenueRecognitionService), the pre-check and
+   * the per-line commitment creation are not wrapped in a single DB
+   * transaction â€” under concurrent approvals of different POs against the
+   * same budget line there is a narrow race window between the check and
+   * the write. Acceptable for this phase; tightening this (e.g. a
+   * SELECT ... FOR UPDATE on BudgetLine) is a good follow-up once
+   * concurrent PO approval volume warrants it.
+   */
+  async approvePurchaseOrder(id: string, userId: string) {
+    const po = await this.prisma.purchaseOrder.findUnique({ where: { id }, include: { lines: true } });
+    if (!po) throw new NotFoundException(`Purchase order ${id} not found`);
+    this.assertPOStatus(po.status, [POStatus.DRAFT], 'approve');
+    if (po.createdById === userId) {
+      throw new BadRequestException('The preparer of a purchase order cannot also approve it');
+    }
+    if (po.lines.length === 0) throw new BadRequestException('Purchase order has no lines');
+
+    for (const line of po.lines) {
+      const available = await this.budgeting.getAvailableForLine(line.budgetLineId);
+      const required = Number(line.quantity) * Number(line.unitCost);
+      if (available < required) {
+        throw new BadRequestException(
+          `Insufficient available budget for PO line "${line.description}": available ${available}, required ${required}`,
+        );
+      }
+    }
+
+    for (const line of po.lines) {
+      const required = Number(line.quantity) * Number(line.unitCost);
+      const commitment = await this.budgeting.createCommitment(
+        {
+          budgetLineId: line.budgetLineId,
+          amount: required,
+          sourceType: BudgetCommitmentSourceType.PURCHASE_ORDER,
+          sourceId: line.id,
+          description: `PO ${po.poNumber} â€” ${line.description}`,
+        },
+        userId,
+      );
+      await this.prisma.purchaseOrderLine.update({
+        where: { id: line.id },
+        data: { budgetCommitmentId: commitment.id },
+      });
+    }
+
+    return this.prisma.purchaseOrder.update({
+      where: { id },
+      data: { status: POStatus.APPROVED, approvedById: userId, approvedAt: new Date() },
+      include: { lines: true },
+    });
+  }
+
+  async rejectPurchaseOrder(id: string, userId: string) {
+    const po = await this.getPurchaseOrderOrThrow(id);
+    this.assertPOStatus(po.status, [POStatus.DRAFT], 'reject');
+    return this.prisma.purchaseOrder.update({ where: { id }, data: { status: POStatus.CANCELLED } });
+  }
+
+  // -------------------------------------------------------------------
+  // GOODS RECEIPT (ProcurementGRN)
+  // -------------------------------------------------------------------
+
+  /**
+   * Records a (possibly partial) delivery against an approved PO:
+   *   1. Posts Dr <line account> / Cr GR/IR clearing through
+   *      PostingEngineService.postSystemEntry (the GL kernel).
+   *   2. Records the matching StockMovement/StockBalance update via
+   *      InventoryService for any line tied to a stock item â€” never
+   *      duplicating that logic here.
+   *   3. Releases the corresponding BudgetCommitment by the received
+   *      value (commitment -> actual).
+   *   4. Advances quantityReceived on each PO line and rolls the PO's own
+   *      status up to PARTIALLY_RECEIVED / FULLY_RECEIVED.
+   */
+  async receiveGoods(dto: CreateGRNDto, userId: string) {
+    const po = await this.prisma.purchaseOrder.findUnique({
+      where: { id: dto.purchaseOrderId },
+      include: { lines: true },
+    });
+    if (!po) throw new NotFoundException(`Purchase order ${dto.purchaseOrderId} not found`);
+    if (!([POStatus.APPROVED, POStatus.PARTIALLY_RECEIVED] as POStatus[]).includes(po.status)) {
+      throw new ConflictException(`Cannot receive goods against a PO with status ${po.status}`);
+    }
+
+    const poLineById = new Map(po.lines.map((l) => [l.id, l]));
+    for (const grnLine of dto.lines) {
+      const poLine = poLineById.get(grnLine.purchaseOrderLineId);
+      if (!poLine) throw new BadRequestException(`PO line ${grnLine.purchaseOrderLineId} does not belong to this PO`);
+      const remaining = Number(poLine.quantity) - Number(poLine.quantityReceived);
+      if (grnLine.quantityReceived > remaining + QTY_TOLERANCE) {
+        throw new BadRequestException(
+          `Cannot receive ${grnLine.quantityReceived}: only ${remaining} remains outstanding on PO line "${poLine.description}"`,
+        );
+      }
+    }
+
+    const existing = await this.prisma.procurementGRN.findUnique({
+      where: { entityId_grnNumber: { entityId: dto.entityId, grnNumber: dto.grnNumber } },
+    });
+    if (existing) throw new ConflictException(`GRN number ${dto.grnNumber} already exists for this entity`);
+
+    const grn = await this.prisma.procurementGRN.create({
+      data: {
+        entityId: dto.entityId,
+        grnNumber: dto.grnNumber,
+        purchaseOrderId: po.id,
+        vendorId: po.vendorId,
+        warehouseId: dto.warehouseId,
+        receiptDate: new Date(dto.receiptDate),
+        referenceNumber: dto.referenceNumber,
+        grIrClearingAccountId: dto.grIrClearingAccountId,
+        status: ProcurementGRNStatus.DRAFT,
+        createdById: userId,
+        lines: {
+          create: dto.lines.map((l) => {
+            const poLine = poLineById.get(l.purchaseOrderLineId)!;
+            return {
+              purchaseOrderLineId: l.purchaseOrderLineId,
+              stockItemId: poLine.stockItemId,
+              quantityReceived: l.quantityReceived,
+              unitCost: l.unitCost ?? poLine.unitCost,
+            };
+          }),
+        },
+      },
+      include: { lines: true },
+    });
+
+    let total = 0;
+    const journalLines = grn.lines.map((line) => {
+      const poLine = poLineById.get(line.purchaseOrderLineId)!;
+      const value = Number(line.quantityReceived) * Number(line.unitCost);
+      total += value;
+      return {
+        accountId: poLine.accountId,
+        debit: value,
+        credit: 0,
+        projectId: poLine.projectId ?? undefined,
+        phaseId: poLine.phaseId ?? undefined,
+        departmentId: poLine.departmentId ?? undefined,
+        costCenterId: poLine.costCenterId ?? undefined,
+        fundingSourceId: poLine.fundingSourceId ?? undefined,
+        vendorId: po.vendorId,
+      };
+    });
+    journalLines.push({
+      accountId: dto.grIrClearingAccountId,
+      debit: 0,
+      credit: total,
+      projectId: undefined,
+      phaseId: undefined,
+      departmentId: undefined,
+      costCenterId: undefined,
+      fundingSourceId: undefined,
+      vendorId: po.vendorId,
+    });
+
+    const posted = await this.postingEngine.postSystemEntry(
+      {
+        entityId: dto.entityId,
+        entryDate: dto.receiptDate,
+        description: `Goods receipt ${dto.grnNumber} â€” PO ${po.poNumber}`,
+        sourceType: 'PROCUREMENT',
+        sourceReference: grn.id,
+        lines: journalLines,
+      } as never,
+      userId,
+    );
+
+    for (const line of grn.lines) {
+      const poLine = poLineById.get(line.purchaseOrderLineId)!;
+
+      if (poLine.stockItemId) {
+        await this.inventory.receiveStockForReference({
+          stockItemId: poLine.stockItemId,
+          warehouseId: dto.warehouseId,
+          quantity: Number(line.quantityReceived),
+          unitCost: Number(line.unitCost),
+          movementDate: new Date(dto.receiptDate),
+          referenceType: 'ProcurementGRN',
+          referenceId: grn.id,
+        });
+      }
+
+      if (poLine.budgetCommitmentId) {
+        await this.budgeting.releaseCommitment(
+          poLine.budgetCommitmentId,
+          Number(line.quantityReceived) * Number(line.unitCost),
+        );
+      }
+
+      await this.prisma.purchaseOrderLine.update({
+        where: { id: poLine.id },
+        data: { quantityReceived: Number(poLine.quantityReceived) + Number(line.quantityReceived) },
+      });
+    }
+
+    await this.prisma.procurementGRN.update({
+      where: { id: grn.id },
+      data: { status: ProcurementGRNStatus.POSTED, postedAt: new Date() },
+    });
+
+    const refreshedLines = await this.prisma.purchaseOrderLine.findMany({ where: { purchaseOrderId: po.id } });
+    const fullyReceived = refreshedLines.every((l) => Number(l.quantityReceived) >= Number(l.quantity) - QTY_TOLERANCE);
+    const anyReceived = refreshedLines.some((l) => Number(l.quantityReceived) > QTY_TOLERANCE);
+    await this.prisma.purchaseOrder.update({
+      where: { id: po.id },
+      data: { status: fullyReceived ? POStatus.FULLY_RECEIVED : anyReceived ? POStatus.PARTIALLY_RECEIVED : po.status },
+    });
+
+    return { grn, journalEntry: posted };
+  }
+
+  // -------------------------------------------------------------------
+  // VENDOR INVOICE
+  // -------------------------------------------------------------------
+
+  async createVendorInvoice(dto: CreateVendorInvoiceDto, userId: string) {
+    const entity = await this.prisma.entity.findUnique({ where: { id: dto.entityId } });
+    if (!entity || !entity.isActive) throw new NotFoundException(`Entity ${dto.entityId} not found or inactive`);
+
+    const vendor = await this.prisma.vendor.findUnique({ where: { id: dto.vendorId } });
+    if (!vendor || !vendor.isActive) throw new NotFoundException(`Vendor ${dto.vendorId} not found or inactive`);
+
+    if (dto.purchaseOrderId) {
+      const po = await this.prisma.purchaseOrder.findUnique({ where: { id: dto.purchaseOrderId } });
+      if (!po) throw new NotFoundException(`Purchase order ${dto.purchaseOrderId} not found`);
+      if (po.entityId !== dto.entityId || po.vendorId !== dto.vendorId) {
+        throw new BadRequestException('Purchase order does not belong to this entity/vendor');
+      }
+    }
+
+    const existing = await this.prisma.vendorInvoice.findUnique({
+      where: {
+        entityId_vendorId_invoiceNumber: {
+          entityId: dto.entityId,
+          vendorId: dto.vendorId,
+          invoiceNumber: dto.invoiceNumber,
+        },
+      },
+    });
+    if (existing) throw new ConflictException(`Invoice ${dto.invoiceNumber} already exists for this vendor`);
+
+    return this.prisma.vendorInvoice.create({
+      data: {
+        entityId: dto.entityId,
+        invoiceNumber: dto.invoiceNumber,
+        vendorId: dto.vendorId,
+        purchaseOrderId: dto.purchaseOrderId,
+        invoiceDate: new Date(dto.invoiceDate),
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        status: VendorInvoiceStatus.PENDING_MATCH,
+        createdById: userId,
+        lines: {
+          create: dto.lines.map((line) => ({
+            purchaseOrderLineId: line.purchaseOrderLineId,
+            description: line.description,
+            accountId: line.accountId,
+            quantity: line.quantity,
+            unitCost: line.unitCost,
+          })),
+        },
+      },
+      include: { lines: true },
+    });
+  }
+
+  async findVendorInvoice(id: string) {
+    const invoice = await this.prisma.vendorInvoice.findUnique({ where: { id }, include: { lines: true } });
+    if (!invoice) throw new NotFoundException(`Vendor invoice ${id} not found`);
+    return invoice;
+  }
+
+  // -------------------------------------------------------------------
+  // THREE-WAY MATCH
+  // -------------------------------------------------------------------
+
+  /**
+   * Links a PO, a GRN raised against it, and a vendor invoice, and
+   * computes quantity/price variance between what was received and what
+   * was billed. Does not itself post anything â€” completing the match
+   * (below) is the step that raises the AP voucher.
+   */
+  async createThreeWayMatch(dto: CreateThreeWayMatchDto) {
+    const [po, grn, invoice] = await Promise.all([
+      this.prisma.purchaseOrder.findUnique({ where: { id: dto.purchaseOrderId } }),
+      this.prisma.procurementGRN.findUnique({ where: { id: dto.grnId }, include: { lines: true } }),
+      this.prisma.vendorInvoice.findUnique({ where: { id: dto.vendorInvoiceId }, include: { lines: true } }),
+    ]);
+    if (!po) throw new NotFoundException(`Purchase order ${dto.purchaseOrderId} not found`);
+    if (!grn) throw new NotFoundException(`GRN ${dto.grnId} not found`);
+    if (!invoice) throw new NotFoundException(`Vendor invoice ${dto.vendorInvoiceId} not found`);
+    if (grn.purchaseOrderId !== po.id) throw new BadRequestException('GRN does not belong to this PO');
+    if (invoice.purchaseOrderId && invoice.purchaseOrderId !== po.id) {
+      throw new BadRequestException('Vendor invoice does not belong to this PO');
+    }
+
+    const grnQty = grn.lines.reduce((sum, l) => sum + Number(l.quantityReceived), 0);
+    const grnValue = grn.lines.reduce((sum, l) => sum + Number(l.quantityReceived) * Number(l.unitCost), 0);
+    const invoiceQty = invoice.lines.reduce((sum, l) => sum + Number(l.quantity), 0);
+    const invoiceValue = invoice.lines.reduce((sum, l) => sum + Number(l.quantity) * Number(l.unitCost), 0);
+
+    const quantityVarianceQty = invoiceQty - grnQty;
+    const priceVarianceAmount = invoiceValue - grnValue;
+    const withinTolerance =
+      Math.abs(quantityVarianceQty) <= QTY_TOLERANCE && Math.abs(priceVarianceAmount) <= AMOUNT_TOLERANCE;
+
+    return this.prisma.threeWayMatch.create({
+      data: {
+        purchaseOrderId: po.id,
+        grnId: grn.id,
+        vendorInvoiceId: invoice.id,
+        status: withinTolerance ? ThreeWayMatchStatus.MATCHED : ThreeWayMatchStatus.MATCHED_WITH_VARIANCE,
+        quantityVarianceQty,
+        priceVarianceAmount,
+      },
+    });
+  }
+
+  async findThreeWayMatch(id: string) {
+    const match = await this.prisma.threeWayMatch.findUnique({
+      where: { id },
+      include: { purchaseOrder: true, grn: true, vendorInvoice: { include: { lines: true } } },
+    });
+    if (!match) throw new NotFoundException(`Three-way match ${id} not found`);
+    return match;
+  }
+
+  /**
+   * Completes a three-way match by posting the AP voucher:
+   *   Dr GR/IR clearing (the account the matched GRN accrued to)
+   *   Cr AP control account
+   * Invoice lines with no purchaseOrderLineId (e.g. freight/other
+   * charges billed with no prior GRN accrual) are debited directly to
+   * their own account instead, since there is no GR/IR entry to clear
+   * for them.
+   */
+  async completeThreeWayMatch(id: string, dto: CompleteThreeWayMatchDto, userId: string) {
+    const match = await this.prisma.threeWayMatch.findUnique({
+      where: { id },
+      include: {
+        purchaseOrder: true,
+        grn: true,
+        vendorInvoice: { include: { lines: true } },
+      },
+    });
+    if (!match) throw new NotFoundException(`Three-way match ${id} not found`);
+    if (match.vendorInvoice.status === VendorInvoiceStatus.POSTED) {
+      throw new ConflictException('This vendor invoice has already been posted to AP');
+    }
+
+    let invoiceTotal = 0;
+    const journalLines = match.vendorInvoice.lines.map((line) => {
+      const value = Number(line.quantity) * Number(line.unitCost);
+      invoiceTotal += value;
+      return {
+        accountId: line.purchaseOrderLineId ? match.grn.grIrClearingAccountId : line.accountId,
+        debit: value,
+        credit: 0,
+        vendorId: match.purchaseOrder.vendorId,
+      };
+    });
+    journalLines.push({
+      accountId: dto.apControlAccountId,
+      debit: 0,
+      credit: invoiceTotal,
+      vendorId: match.purchaseOrder.vendorId,
+    });
+
+    const posted = await this.postingEngine.postSystemEntry(
+      {
+        entityId: match.purchaseOrder.entityId,
+        entryDate: new Date().toISOString(),
+        description: `AP voucher â€” Vendor invoice ${match.vendorInvoice.invoiceNumber} (3-way match)`,
+        sourceType: 'PROCUREMENT',
+        sourceReference: match.vendorInvoiceId,
+        lines: journalLines,
+      } as never,
+      userId,
+    );
+
+    await this.prisma.vendorInvoice.update({
+      where: { id: match.vendorInvoiceId },
+      data: { status: VendorInvoiceStatus.POSTED, postedAt: new Date() },
+    });
+
+    await this.prisma.threeWayMatch.update({
+      where: { id },
+      data: {
+        matchedById: userId,
+        matchedAt: new Date(),
+        notes: dto.notes ?? match.notes,
+      },
+    });
+
+    for (const line of match.vendorInvoice.lines) {
+      if (line.purchaseOrderLineId) {
+        await this.prisma.purchaseOrderLine.update({
+          where: { id: line.purchaseOrderLineId },
+          data: { quantityInvoiced: { increment: line.quantity } },
+        });
+      }
+    }
+
+    const po = await this.prisma.purchaseOrder.findUnique({
+      where: { id: match.purchaseOrderId },
+      include: { lines: true },
+    });
+    if (po) {
+      const fullyInvoiced = po.lines.every((l) => Number(l.quantityInvoiced) >= Number(l.quantity) - QTY_TOLERANCE);
+      if (fullyInvoiced && po.status !== POStatus.FULLY_INVOICED) {
+        await this.prisma.purchaseOrder.update({ where: { id: po.id }, data: { status: POStatus.FULLY_INVOICED } });
+      } else if (!fullyInvoiced && po.status === POStatus.FULLY_RECEIVED) {
+        await this.prisma.purchaseOrder.update({ where: { id: po.id }, data: { status: POStatus.PARTIALLY_INVOICED } });
+      }
+    }
+
+    return { journalEntry: posted, vendorInvoiceId: match.vendorInvoiceId };
+  }
+
+  // -------------------------------------------------------------------
+  // INTERNAL HELPERS
+  // -------------------------------------------------------------------
+
+  private async getRequisitionOrThrow(id: string) {
+    const pr = await this.prisma.purchaseRequisition.findUnique({ where: { id } });
+    if (!pr) throw new NotFoundException(`Requisition ${id} not found`);
+    return pr;
+  }
+
+  private async getPurchaseOrderOrThrow(id: string) {
+    const po = await this.prisma.purchaseOrder.findUnique({ where: { id } });
+    if (!po) throw new NotFoundException(`Purchase order ${id} not found`);
+    return po;
+  }
+
+  private assertPRStatus(current: PRStatus, allowed: PRStatus[], action: string) {
+    if (!allowed.includes(current)) {
+      throw new ConflictException(
+        `Cannot ${action} a requisition with status ${current}. Expected one of: ${allowed.join(', ')}`,
+      );
+    }
+  }
+
+  private assertPOStatus(current: POStatus, allowed: POStatus[], action: string) {
+    if (!allowed.includes(current)) {
+      throw new ConflictException(
+        `Cannot ${action} a purchase order with status ${current}. Expected one of: ${allowed.join(', ')}`,
+      );
+    }
+  }
+}
+import { Test } from '@nestjs/testing';
+import { BadRequestException, ConflictException } from '@nestjs/common';
+import { OfferStatus } from '@prisma/client';
+import { OfferService } from '../offer.service';
+import { PrismaService } from '../../prisma/prisma.service';
+import { WorkflowEngineService } from '../../workflow/workflow.service';
+import { SignatureProviderRegistry } from '../../signatures/signature-provider.registry';
+import { DOCUSIGN_PROVIDER_CODE } from '../../signatures/providers/docusign.provider';
+import { ADOBE_SIGN_PROVIDER_CODE } from '../../signatures/providers/adobe-sign.provider';
+
+function buildPrismaMock() {
+  return {
+    jobApplication: { findUnique: jest.fn(), update: jest.fn() },
+    offer: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findMany: jest.fn() },
+  };
+}
+
+function buildWorkflowMock() {
+  return { startInstance: jest.fn(), getInstance: jest.fn() };
+}
+
+function buildSignatureProvidersMock() {
+  return { isRegistered: jest.fn().mockReturnValue(false), get: jest.fn() };
+}
+
+describe('OfferService', () => {
+  let service: OfferService;
+  let prisma: ReturnType<typeof buildPrismaMock>;
+  let workflow: ReturnType<typeof buildWorkflowMock>;
+  let signatureProviders: ReturnType<typeof buildSignatureProvidersMock>;
+
+  beforeEach(async () => {
+    prisma = buildPrismaMock();
+    workflow = buildWorkflowMock();
+    signatureProviders = buildSignatureProvidersMock();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        OfferService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: WorkflowEngineService, useValue: workflow },
+        { provide: SignatureProviderRegistry, useValue: signatureProviders },
+      ],
+    }).compile();
+    service = moduleRef.get(OfferService);
+  });
+
+  afterEach(() => jest.clearAllMocks());
+
+  describe('create', () => {
+    it('rejects a non-positive salary', async () => {
+      prisma.jobApplication.findUnique.mockResolvedValue({ id: 'app1', offer: null, vacancy: {} });
+      await expect(
+        service.create({ jobApplicationId: 'app1', jobTitle: 'Engineer', proposedSalary: 0 }, 'u1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects creating a second offer for the same application', async () => {
+      prisma.jobApplication.findUnique.mockResolvedValue({ id: 'app1', offer: { id: 'off1' }, vacancy: {} });
+      await expect(
+        service.create({ jobApplicationId: 'app1', jobTitle: 'Engineer', proposedSalary: 500000 }, 'u1'),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    describe('signatureProviderCode (Digital Signature Providers, Checkpoint M)', () => {
+      it('defaults to DOCUSIGN_PROVIDER_CODE when the caller does not specify a provider', async () => {
+        prisma.jobApplication.findUnique.mockResolvedValue({ id: 'app1', offer: null, vacancy: {} });
+        prisma.offer.create.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+
+        await service.create({ jobApplicationId: 'app1', jobTitle: 'Engineer', proposedSalary: 500000 }, 'u1');
+
+        expect(prisma.offer.create).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ signatureProviderCode: DOCUSIGN_PROVIDER_CODE }) }),
+        );
+      });
+
+      it('persists the caller-chosen provider when specified', async () => {
+        prisma.jobApplication.findUnique.mockResolvedValue({ id: 'app1', offer: null, vacancy: {} });
+        prisma.offer.create.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+
+        await service.create(
+          { jobApplicationId: 'app1', jobTitle: 'Engineer', proposedSalary: 500000, signatureProviderCode: ADOBE_SIGN_PROVIDER_CODE },
+          'u1',
+        );
+
+        expect(prisma.offer.create).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ signatureProviderCode: ADOBE_SIGN_PROVIDER_CODE }) }),
+        );
+      });
+    });
+  });
+
+  describe('submitForApproval', () => {
+    it('rejects submitting a non-DRAFT offer', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        status: OfferStatus.APPROVED,
+        jobApplication: { candidate: {}, vacancy: {} },
+      });
+      await expect(service.submitForApproval('off1', 'u1')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('send', () => {
+    it('rejects sending an offer that is not APPROVED', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        status: OfferStatus.DRAFT,
+        jobApplication: { candidate: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' }, vacancy: {} },
+      });
+      await expect(service.send('off1')).rejects.toThrow(ConflictException);
+    });
+
+    it('marks an APPROVED offer SENT and returns letter text (no signature provider registered)', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        status: OfferStatus.APPROVED,
+        jobTitle: 'Engineer',
+        gradeLevel: null,
+        proposedSalary: 500000,
+        currency: 'NGN',
+        startDate: null,
+        jobApplicationId: 'app1',
+        jobApplication: { candidate: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' }, vacancy: {} },
+      });
+      prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+      prisma.jobApplication.update.mockResolvedValue({});
+
+      const result: any = await service.send('off1');
+      expect(result.status).toBe(OfferStatus.SENT);
+      expect(result.letterText).toContain('Ada Lovelace');
+      expect(signatureProviders.get).not.toHaveBeenCalled();
+    });
+
+    describe('e-signature sync (Digital Signature Providers, Checkpoint C)', () => {
+      function baseOffer() {
+        return {
+          id: 'off1',
+          status: OfferStatus.APPROVED,
+          jobTitle: 'Engineer',
+          gradeLevel: null,
+          proposedSalary: 500000,
+          currency: 'NGN',
+          startDate: null,
+          jobApplicationId: 'app1',
+          jobApplication: { candidate: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' }, vacancy: {} },
+        };
+      }
+
+      it('sends the letter for signature and persists signatureProviderCode/EnvelopeId on success', async () => {
+        prisma.offer.findUnique.mockResolvedValue(baseOffer());
+        prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+        prisma.jobApplication.update.mockResolvedValue({});
+        signatureProviders.isRegistered.mockReturnValue(true);
+        const sendForSignature = jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-abc' });
+        signatureProviders.get.mockReturnValue({ sendForSignature });
+
+        const result: any = await service.send('off1');
+
+        expect(sendForSignature).toHaveBeenCalledWith({
+          documentName: 'offer-letter-off1.txt',
+          documentBuffer: expect.any(Buffer),
+          documentContentType: 'text/plain',
+          signers: [{ email: 'ada@example.com', name: 'Ada Lovelace' }],
+          subject: 'Your offer letter â€” please sign',
+        });
+        expect(result.signatureProviderCode).toBe(DOCUSIGN_PROVIDER_CODE);
+        expect(result.signatureProviderEnvelopeId).toBe('env-abc');
+        expect(result.signatureSyncFailedAt).toBeNull();
+      });
+
+      it('still returns the SENT offer (with letterText) when the signature provider throws', async () => {
+        prisma.offer.findUnique.mockResolvedValue(baseOffer());
+        prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+        prisma.jobApplication.update.mockResolvedValue({});
+        signatureProviders.isRegistered.mockReturnValue(true);
+        signatureProviders.get.mockReturnValue({ sendForSignature: jest.fn().mockRejectedValue(new Error('DocuSign unreachable')) });
+
+        const result: any = await service.send('off1');
+
+        expect(result.status).toBe(OfferStatus.SENT);
+        expect(result.letterText).toContain('Ada Lovelace');
+        // tryMarkSignatureSyncFailed's own update call â€” the offer.update mock
+        // implementation above echoes back whatever `data` it was called with.
+        expect(prisma.offer.update).toHaveBeenCalledWith(
+          expect.objectContaining({ where: { id: 'off1' }, data: { signatureSyncFailedAt: expect.any(Date) } }),
+        );
+      });
+
+      it('does not attempt to send when no signature provider is registered', async () => {
+        prisma.offer.findUnique.mockResolvedValue(baseOffer());
+        prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+        prisma.jobApplication.update.mockResolvedValue({});
+        signatureProviders.isRegistered.mockReturnValue(false);
+
+        await service.send('off1');
+
+        expect(signatureProviders.get).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('provider-selectable e-signature sync (Digital Signature Providers, Checkpoint M)', () => {
+      it('sends via the provider stored on the offer (from create()), not a hardcoded DOCUSIGN_PROVIDER_CODE', async () => {
+        prisma.offer.findUnique.mockResolvedValue({
+          id: 'off1',
+          status: OfferStatus.APPROVED,
+          jobTitle: 'Engineer',
+          gradeLevel: null,
+          proposedSalary: 500000,
+          currency: 'NGN',
+          startDate: null,
+          jobApplicationId: 'app1',
+          signatureProviderCode: ADOBE_SIGN_PROVIDER_CODE,
+          jobApplication: { candidate: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' }, vacancy: {} },
+        });
+        prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+        prisma.jobApplication.update.mockResolvedValue({});
+        signatureProviders.isRegistered.mockReturnValue(true);
+        const sendForSignature = jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-adobe' });
+        signatureProviders.get.mockReturnValue({ sendForSignature });
+
+        const result: any = await service.send('off1');
+
+        expect(signatureProviders.isRegistered).toHaveBeenCalledWith(ADOBE_SIGN_PROVIDER_CODE);
+        expect(signatureProviders.get).toHaveBeenCalledWith(ADOBE_SIGN_PROVIDER_CODE);
+        expect(result.signatureProviderCode).toBe(ADOBE_SIGN_PROVIDER_CODE);
+        expect(result.signatureProviderEnvelopeId).toBe('env-adobe');
+      });
+    });
+  });
+
+  describe('findWithFailedSignatureSync', () => {
+    it('queries offers with a non-null signatureSyncFailedAt, most recent first', async () => {
+      prisma.offer.findMany.mockResolvedValue([{ id: 'off1', signatureSyncFailedAt: new Date() }]);
+
+      const result = await service.findWithFailedSignatureSync();
+
+      expect(prisma.offer.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { signatureSyncFailedAt: { not: null } }, orderBy: { signatureSyncFailedAt: 'desc' } }),
+      );
+      expect(result).toHaveLength(1);
+    });
+  });
+
+  describe('retrySignatureSync', () => {
+    function failedOffer(overrides: Partial<Record<string, unknown>> = {}) {
+      return {
+        id: 'off1',
+        jobTitle: 'Engineer',
+        gradeLevel: null,
+        proposedSalary: 500000,
+        currency: 'NGN',
+        startDate: null,
+        jobApplicationId: 'app1',
+        signatureSyncFailedAt: new Date(),
+        signatureProviderEnvelopeId: null,
+        jobApplication: { candidate: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' }, vacancy: {} },
+      };
+    }
+
+    it('rejects retrying an offer with no failed signature sync', async () => {
+      prisma.offer.findUnique.mockResolvedValue({ ...failedOffer(), signatureSyncFailedAt: null });
+      await expect(service.retrySignatureSync('off1')).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects retrying when a signature envelope already exists (no update/void retry path yet)', async () => {
+      prisma.offer.findUnique.mockResolvedValue({ ...failedOffer(), signatureProviderEnvelopeId: 'env-existing' });
+      await expect(service.retrySignatureSync('off1')).rejects.toThrow(ConflictException);
+    });
+
+    it('re-sends for signature and clears the failure flag on success', async () => {
+      prisma.offer.findUnique.mockResolvedValue(failedOffer());
+      prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+      signatureProviders.isRegistered.mockReturnValue(true);
+      const sendForSignature = jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-retry' });
+      signatureProviders.get.mockReturnValue({ sendForSignature });
+
+      const result: any = await service.retrySignatureSync('off1');
+
+      expect(sendForSignature).toHaveBeenCalledWith({
+        documentName: 'offer-letter-off1.txt',
+        documentBuffer: expect.any(Buffer),
+        documentContentType: 'text/plain',
+        signers: [{ email: 'ada@example.com', name: 'Ada Lovelace' }],
+        subject: 'Your offer letter â€” please sign',
+      });
+      expect(result.signatureProviderEnvelopeId).toBe('env-retry');
+      expect(result.signatureSyncFailedAt).toBeNull();
+      expect(result.letterText).toContain('Ada Lovelace');
+    });
+
+    it('throws a ConflictException when the retry itself fails', async () => {
+      prisma.offer.findUnique.mockResolvedValue(failedOffer());
+      prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+      signatureProviders.isRegistered.mockReturnValue(true);
+      signatureProviders.get.mockReturnValue({ sendForSignature: jest.fn().mockRejectedValue(new Error('DocuSign unreachable')) });
+
+      await expect(service.retrySignatureSync('off1')).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('respond', () => {
+    it('rejects responding to an offer that has not been SENT', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        status: OfferStatus.DRAFT,
+        jobApplication: { candidate: {}, vacancy: {} },
+      });
+      await expect(service.respond('off1', true)).rejects.toThrow(ConflictException);
+    });
+
+    it('accepts a SENT offer', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        status: OfferStatus.SENT,
+        jobApplication: { candidate: {}, vacancy: {} },
+      });
+      prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+      const result: any = await service.respond('off1', true);
+      expect(result.status).toBe(OfferStatus.ACCEPTED);
+    });
+  });
+
+  describe('withdraw', () => {
+    it('withdraws an offer with no signature envelope, without touching the signature provider', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        signatureProviderEnvelopeId: null,
+        signatureProviderCode: null,
+        jobApplication: { candidate: {}, vacancy: {} },
+      });
+      prisma.offer.update.mockResolvedValue({ id: 'off1', status: OfferStatus.WITHDRAWN });
+
+      const result: any = await service.withdraw('off1');
+
+      expect(signatureProviders.get).not.toHaveBeenCalled();
+      expect(result.status).toBe(OfferStatus.WITHDRAWN);
+    });
+
+    it('voids the outstanding signature envelope on withdrawal (Checkpoint G)', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        signatureProviderEnvelopeId: 'env-1',
+        signatureProviderCode: DOCUSIGN_PROVIDER_CODE,
+        jobApplication: { candidate: {}, vacancy: {} },
+      });
+      prisma.offer.update.mockResolvedValue({ id: 'off1', status: OfferStatus.WITHDRAWN });
+      const voidEnvelope = jest.fn().mockResolvedValue(undefined);
+      signatureProviders.get.mockReturnValue({ voidEnvelope });
+
+      const result: any = await service.withdraw('off1');
+
+      expect(signatureProviders.get).toHaveBeenCalledWith(DOCUSIGN_PROVIDER_CODE);
+      expect(voidEnvelope).toHaveBeenCalledWith({ providerEnvelopeId: 'env-1', reason: 'Offer withdrawn' });
+      expect(result.status).toBe(OfferStatus.WITHDRAWN);
+    });
+
+    it('still withdraws the offer even when voiding the envelope fails', async () => {
+      prisma.offer.findUnique.mockResolvedValue({
+        id: 'off1',
+        signatureProviderEnvelopeId: 'env-1',
+        signatureProviderCode: DOCUSIGN_PROVIDER_CODE,
+        jobApplication: { candidate: {}, vacancy: {} },
+      });
+      prisma.offer.update.mockResolvedValue({ id: 'off1', status: OfferStatus.WITHDRAWN });
+      signatureProviders.get.mockReturnValue({ voidEnvelope: jest.fn().mockRejectedValue(new Error('DocuSign unreachable')) });
+
+      const result: any = await service.withdraw('off1');
+
+      expect(result.status).toBe(OfferStatus.WITHDRAWN);
+    });
+  });
+
+  describe('checkSignatureStatus', () => {
+    function outstandingOffer(overrides: Record<string, unknown> = {}) {
+      return {
+        id: 'off1',
+        status: OfferStatus.SENT,
+        signatureProviderEnvelopeId: 'env-1',
+        signatureProviderCode: DOCUSIGN_PROVIDER_CODE,
+        jobApplication: { candidate: {}, vacancy: {} },
+        ...overrides,
+      };
+    }
+
+    it('throws ConflictException when the offer has no outstanding envelope', async () => {
+      prisma.offer.findUnique.mockResolvedValue(outstandingOffer({ signatureProviderEnvelopeId: null, signatureProviderCode: null }));
+      await expect(service.checkSignatureStatus('off1')).rejects.toThrow(ConflictException);
+      expect(signatureProviders.get).not.toHaveBeenCalled();
+    });
+
+    it('throws ConflictException when the offer is not SENT', async () => {
+      prisma.offer.findUnique.mockResolvedValue(outstandingOffer({ status: OfferStatus.ACCEPTED }));
+      await expect(service.checkSignatureStatus('off1')).rejects.toThrow(ConflictException);
+      expect(signatureProviders.get).not.toHaveBeenCalled();
+    });
+
+    it('calls getStatus with the stored envelope id via the stored provider code', async () => {
+      prisma.offer.findUnique.mockResolvedValue(outstandingOffer());
+      const getStatus = jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-1', status: 'SENT' });
+      signatureProviders.get.mockReturnValue({ getStatus });
+
+      await service.checkSignatureStatus('off1');
+
+      expect(signatureProviders.get).toHaveBeenCalledWith(DOCUSIGN_PROVIDER_CODE);
+      expect(getStatus).toHaveBeenCalledWith('env-1');
+    });
+
+    it('returns the offer unchanged (no Prisma update) when the provider still reports SENT', async () => {
+      prisma.offer.findUnique.mockResolvedValue(outstandingOffer());
+      signatureProviders.get.mockReturnValue({ getStatus: jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-1', status: 'SENT' }) });
+
+      const result: any = await service.checkSignatureStatus('off1');
+
+      expect(prisma.offer.update).not.toHaveBeenCalled();
+      expect(result.status).toBe(OfferStatus.SENT);
+      expect(result.providerStatus).toBe('SENT');
+    });
+
+    it('transitions the offer to ACCEPTED (via respond) when the provider reports COMPLETED', async () => {
+      prisma.offer.findUnique.mockResolvedValue(outstandingOffer());
+      signatureProviders.get.mockReturnValue({ getStatus: jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-1', status: 'COMPLETED' }) });
+      prisma.offer.update.mockResolvedValue({ id: 'off1', status: OfferStatus.ACCEPTED, respondedAt: new Date() });
+
+      const result: any = await service.checkSignatureStatus('off1');
+
+      expect(prisma.offer.update).toHaveBeenCalledWith({
+        where: { id: 'off1' },
+        data: { status: OfferStatus.ACCEPTED, respondedAt: expect.any(Date), declineReason: undefined },
+      });
+      expect(result.status).toBe(OfferStatus.ACCEPTED);
+      expect(result.providerStatus).toBe('COMPLETED');
+    });
+
+    it('transitions the offer to DECLINED (via respond) with a fixed reason when the provider reports DECLINED', async () => {
+      prisma.offer.findUnique.mockResolvedValue(outstandingOffer());
+      signatureProviders.get.mockReturnValue({ getStatus: jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-1', status: 'DECLINED' }) });
+      prisma.offer.update.mockResolvedValue({ id: 'off1', status: OfferStatus.DECLINED, respondedAt: new Date() });
+
+      const result: any = await service.checkSignatureStatus('off1');
+
+      expect(prisma.offer.update).toHaveBeenCalledWith({
+        where: { id: 'off1' },
+        data: { status: OfferStatus.DECLINED, respondedAt: expect.any(Date), declineReason: 'Declined via signature provider' },
+      });
+      expect(result.status).toBe(OfferStatus.DECLINED);
+      expect(result.providerStatus).toBe('DECLINED');
+    });
+
+    it('leaves the offer unchanged for a VOIDED/EXPIRED provider status (unhandled edge case, deliberately not mapped)', async () => {
+      prisma.offer.findUnique.mockResolvedValue(outstandingOffer());
+      signatureProviders.get.mockReturnValue({ getStatus: jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-1', status: 'VOIDED' }) });
+
+      const result: any = await service.checkSignatureStatus('off1');
+
+      expect(prisma.offer.update).not.toHaveBeenCalled();
+      expect(result.status).toBe(OfferStatus.SENT);
+      expect(result.providerStatus).toBe('VOIDED');
+    });
+  });
+});
+import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
+import { UpsertAuthSecurityPolicyDto, ChangePasswordDto } from './dto/security-hardening.dto';
+
+/**
+ * Password Policy Engine (Release K). Reuses bcrypt exactly as
+ * AuthService already does (same hash rounds convention) rather than
+ * introducing a second hashing scheme. Only the GLOBAL policy
+ * (entityId = null) is resolved for login-time/change-time validation in
+ * this release â€” per-entity policies can be created via
+ * upsertPolicy({entityId}) for future use, but AuthService has no entity
+ * context at authentication time, so resolving one now would mean
+ * guessing which entity's policy applies. See the release report for
+ * this known limitation.
+ */
+@Injectable()
+export class PasswordPolicyService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getEffectivePolicy(entityId?: string) {
+    if (entityId) {
+      const scoped = await this.prisma.authSecurityPolicy.findUnique({ where: { entityId } });
+      if (scoped && scoped.isActive) return scoped;
+    }
+    const global = await this.prisma.authSecurityPolicy.findFirst({ where: { entityId: null, isActive: true } });
+    return global ?? this.defaultPolicy();
+  }
+
+  /** Used when no AuthSecurityPolicy row exists yet â€” the schema's own
+   *  column defaults, so behavior is identical whether or not an admin
+   *  has explicitly created a policy row. */
+  private defaultPolicy() {
+    return {
+      id: null,
+      entityId: null,
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumber: true,
+      requireSymbol: false,
+      expiryDays: null as number | null,
+      historyCount: 5,
+      maxFailedLoginAttempts: 5,
+      lockoutDurationMinutes: 30,
+      isActive: true,
+    };
+  }
+
+  async upsertPolicy(dto: UpsertAuthSecurityPolicyDto, createdById: string) {
+    const entityId = dto.entityId ?? null;
+    const existing = await this.prisma.authSecurityPolicy.findUnique({ where: { entityId } });
+    const data = {
+      minLength: dto.minLength,
+      requireUppercase: dto.requireUppercase,
+      requireLowercase: dto.requireLowercase,
+      requireNumber: dto.requireNumber,
+      requireSymbol: dto.requireSymbol,
+      expiryDays: dto.expiryDays,
+      historyCount: dto.historyCount,
+      maxFailedLoginAttempts: dto.maxFailedLoginAttempts,
+      lockoutDurationMinutes: dto.lockoutDurationMinutes,
+    };
+    if (existing) {
+      return this.prisma.authSecurityPolicy.update({ where: { id: existing.id }, data });
+    }
+    return this.prisma.authSecurityPolicy.create({ data: { entityId, createdById, ...data } });
+  }
+
+  findPolicies() {
+    return this.prisma.authSecurityPolicy.findMany({ orderBy: { entityId: 'asc' } });
+  }
+
+  /** Throws BadRequestException with a specific reason if the plaintext
+   *  password doesn't satisfy the policy's complexity rules. */
+  validateComplexity(plainPassword: string, policy: { minLength: number; requireUppercase: boolean; requireLowercase: boolean; requireNumber: boolean; requireSymbol: boolean }) {
+    const problems: string[] = [];
+    if (plainPassword.length < policy.minLength) problems.push(`at least ${policy.minLength} characters`);
+    if (policy.requireUppercase && !/[A-Z]/.test(plainPassword)) problems.push('an uppercase letter');
+    if (policy.requireLowercase && !/[a-z]/.test(plainPassword)) problems.push('a lowercase letter');
+    if (policy.requireNumber && !/[0-9]/.test(plainPassword)) problems.push('a number');
+    if (policy.requireSymbol && !/[^A-Za-z0-9]/.test(plainPassword)) problems.push('a symbol');
+    if (problems.length > 0) {
+      throw new BadRequestException(`Password must contain ${problems.join(', ')}`);
+    }
+  }
+
+  /** Checks the new password against the last `historyCount` hashes for
+   *  this user â€” reuse prevention. */
+  async assertNotReused(userId: string, plainPassword: string, historyCount: number) {
+    if (historyCount <= 0) return;
+    const recent = await this.prisma.passwordHistory.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: historyCount,
+    });
+    for (const entry of recent) {
+      if (await bcrypt.compare(plainPassword, entry.passwordHash)) {
+        throw new BadRequestException(`Password must not match any of your last ${historyCount} passwords`);
+      }
+    }
+  }
+
+  isExpired(passwordChangedAt: Date | null, expiryDays: number | null): boolean {
+    if (!expiryDays || !passwordChangedAt) return false;
+    const expiresAt = new Date(passwordChangedAt);
+    expiresAt.setDate(expiresAt.getDate() + expiryDays);
+    return expiresAt < new Date();
+  }
+
+  /** Validates the current password, enforces the effective policy on
+   *  the new one (complexity + reuse), updates User.passwordHash /
+   *  passwordChangedAt, and records the OLD hash into PasswordHistory
+   *  (so the new password itself becomes checkable once it's eventually
+   *  replaced, without ever storing the plaintext). */
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const matches = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!matches) throw new UnauthorizedException('Current password is incorrect');
+
+    const policy = await this.getEffectivePolicy();
+    this.validateComplexity(dto.newPassword, policy);
+    await this.assertNotReused(userId, dto.newPassword, policy.historyCount);
+
+    const newHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.passwordHistory.create({ data: { userId, passwordHash: user.passwordHash } });
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash, passwordChangedAt: new Date() } });
+
+    // Prune history beyond historyCount so this table doesn't grow unbounded.
+    const excess = await this.prisma.passwordHistory.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      skip: policy.historyCount,
+      select: { id: true },
+    });
+    if (excess.length > 0) {
+      await this.prisma.passwordHistory.deleteMany({ where: { id: { in: excess.map((e) => e.id) } } });
+    }
+
+    return { success: true };
+  }
+}

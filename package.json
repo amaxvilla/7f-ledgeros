@@ -1,0 +1,50 @@
+{
+  "name": "7f-ledgeros",
+  "version": "0.1.0",
+  "private": true,
+  "description": "7F LedgerOS - Multi-entity financial operating system for 7Fifteen Capital Ltd",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "pnpm --parallel --filter ./apps/* dev",
+    "build:packages": "pnpm --recursive --filter \"./packages/*\" build",
+    "prebuild": "pnpm run build:packages",
+    "build": "pnpm --recursive --filter ./apps/* build",
+    "lint": "pnpm --recursive lint",
+    "pretest": "pnpm run build:packages",
+    "test": "pnpm --recursive test",
+    "db:generate": "prisma generate --schema=prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "db:migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
+    "db:seed": "ts-node --transpile-only prisma/seed.ts",
+    "db:seed:service-account": "ts-node --transpile-only prisma/seed-service-account.ts",
+    "db:studio": "prisma studio --schema=prisma/schema.prisma",
+    "docker:up": "docker compose -f docker-compose.yml up -d",
+    "docker:down": "docker compose -f docker-compose.yml down",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "dependencies": {
+    "@7f/config": "workspace:*",
+    "@prisma/client": "^5.16.1",
+    "bcrypt": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
+    "@types/node": "^20.14.9",
+    "@typescript-eslint/eslint-plugin": "^7.16.1",
+    "@typescript-eslint/parser": "^7.16.1",
+    "eslint": "^8.57.0",
+    "prettier": "^3.3.2",
+    "prisma": "^5.16.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.3"
+  },
+  "packageManager": "pnpm@9.4.0",
+  "prisma": {
+    "seed": "ts-node --project prisma/tsconfig.json --transpile-only prisma/seed.ts"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
+

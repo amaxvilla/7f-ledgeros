@@ -1,0 +1,14 @@
+{
+  "name": "@7f/utils",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "echo \"(no lint configured for @7f/utils)\""
+  },
+  "devDependencies": {
+    "typescript": "^5.5.3"
+  }
+}

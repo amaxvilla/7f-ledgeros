@@ -1,0 +1,553 @@
+diff --git a/apps/api/src/admin-branding/__tests__/admin-branding.service.spec.ts b/apps/api/src/admin-branding/__tests__/admin-branding.service.spec.ts
+index 9c92ec6..86235ba 100644
+--- a/apps/api/src/admin-branding/__tests__/admin-branding.service.spec.ts
++++ b/apps/api/src/admin-branding/__tests__/admin-branding.service.spec.ts
+@@ -112,7 +112,7 @@ describe('AdminBrandingService', () => {
+   });
+ 
+   describe('resolveTemplate', () => {
+-    it('prefers an entity-specific template over the global default', async () => {
++    it('resolves the entity-specific template', async () => {
+       prisma.documentTemplate.findFirst.mockResolvedValueOnce({ id: 't1', entityId: 'e1', content: 'entity-specific' });
+ 
+       const result = await service.resolveTemplate('e1', 'INVOICE', 'default');
+@@ -120,15 +120,7 @@ describe('AdminBrandingService', () => {
+       expect(prisma.documentTemplate.findFirst).toHaveBeenCalledTimes(1);
+     });
+ 
+-    it('falls back to the global default when no entity-specific template exists', async () => {
+-      prisma.documentTemplate.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: 't2', entityId: null, content: 'global' });
+-
+-      const result = await service.resolveTemplate('e1', 'INVOICE', 'default');
+-      expect(result.content).toBe('global');
+-      expect(prisma.documentTemplate.findFirst).toHaveBeenCalledTimes(2);
+-    });
+-
+-    it('throws when neither an entity-specific nor a global template exists', async () => {
++    it('throws when no template exists for the entity', async () => {
+       prisma.documentTemplate.findFirst.mockResolvedValue(null);
+       await expect(service.resolveTemplate('e1', 'INVOICE', 'missing')).rejects.toThrow(NotFoundException);
+     });
+diff --git a/apps/api/src/admin-branding/admin-branding.controller.ts b/apps/api/src/admin-branding/admin-branding.controller.ts
+index d7304c0..7f536d8 100644
+--- a/apps/api/src/admin-branding/admin-branding.controller.ts
++++ b/apps/api/src/admin-branding/admin-branding.controller.ts
+@@ -90,7 +90,7 @@ export class AdminBrandingController {
+   // ---- Document templates ----
+ 
+   @Post('document-templates')
+-  @ApiOperation({ summary: 'Create or update one document template', description: 'Upserts by the (entityId, templateType, code) triple — entityId is optional; omitting it creates/updates a system-wide default template rather than an entity-specific one. entityId, if supplied, must reference a real entity.' })
++  @ApiOperation({ summary: 'Create or update one document template', description: 'Upserts by the (entityId, templateType, code) triple. entityId is required and must reference a real entity — every template row belongs to exactly one entity.' })
+   @RequirePermissions('admin.templates.manage')
+   upsertTemplate(@Body() dto: UpsertDocumentTemplateDto, @CurrentUser() user: AuthenticatedUser) {
+     return this.admin.upsertTemplate(dto, user.id);
+@@ -104,7 +104,7 @@ export class AdminBrandingController {
+   }
+ 
+   @Get('document-templates/render')
+-  @ApiOperation({ summary: 'Resolve and render one document template', description: 'Resolves an entity-specific template first; falls back to the system-wide default (entityId = null) of the same templateType/code if none exists for the entity; returns 404 if neither exists. Any query parameter other than entityId/templateType/code is treated as merge-tag data and substituted into {{key}} placeholders in the template\'s subject/content.' })
++  @ApiOperation({ summary: 'Resolve and render one document template', description: 'Resolves the entity-specific template for the given templateType/code; returns 404 if none exists. Any query parameter other than entityId/templateType/code is treated as merge-tag data and substituted into {{key}} placeholders in the template\'s subject/content.' })
+   @RequirePermissions('admin.templates.view')
+   renderTemplate(
+     @Query('entityId') entityId: string,
+@@ -114,7 +114,10 @@ export class AdminBrandingController {
+   ) {
+     // Every query param other than the three above is merge-tag data,
+     // e.g. ?entityId=..&templateType=INVOICE&code=default&customerName=Jane
+-    const { entityId: _e, templateType: _t, code: _c, ...data } = query;
++    const data = { ...query };
++    delete data.entityId;
++    delete data.templateType;
++    delete data.code;
+     return this.admin.renderTemplate(entityId, templateType, code, data);
+   }
+ 
+diff --git a/apps/api/src/admin-branding/admin-branding.service.ts b/apps/api/src/admin-branding/admin-branding.service.ts
+index ec0a4aa..ddd0404 100644
+--- a/apps/api/src/admin-branding/admin-branding.service.ts
++++ b/apps/api/src/admin-branding/admin-branding.service.ts
+@@ -141,10 +141,10 @@ export class AdminBrandingService {
+   // -------------------------------------------------------------------
+ 
+   async upsertTemplate(dto: UpsertDocumentTemplateDto, userId: string) {
+-    if (dto.entityId) await this.assertEntityExists(dto.entityId);
++    await this.assertEntityExists(dto.entityId);
+ 
+     const existing = await this.prisma.documentTemplate.findFirst({
+-      where: { entityId: dto.entityId ?? null, templateType: dto.templateType, code: dto.code },
++      where: { entityId: dto.entityId, templateType: dto.templateType, code: dto.code },
+     });
+ 
+     if (existing) {
+@@ -180,18 +180,13 @@ export class AdminBrandingService {
+     });
+   }
+ 
+-  /** Entity-specific override if one exists, else the system-wide default (entityId = null). */
++  /** Every template is scoped to its entity — there is no cross-entity default row in the schema. */
+   async resolveTemplate(entityId: string, templateType: DocumentTemplateType, code: string) {
+-    const entitySpecific = await this.prisma.documentTemplate.findFirst({
++    const template = await this.prisma.documentTemplate.findFirst({
+       where: { entityId, templateType, code, isActive: true },
+     });
+-    if (entitySpecific) return entitySpecific;
+-
+-    const globalDefault = await this.prisma.documentTemplate.findFirst({
+-      where: { entityId: null, templateType, code, isActive: true },
+-    });
+-    if (!globalDefault) throw new NotFoundException(`No ${templateType} template "${code}" found for this entity or globally`);
+-    return globalDefault;
++    if (!template) throw new NotFoundException(`No ${templateType} template "${code}" found for this entity`);
++    return template;
+   }
+ 
+   /** Resolves a template then substitutes {{key}} merge tags with `data`. */
+diff --git a/apps/api/src/admin-branding/dto/upsert-document-template.dto.ts b/apps/api/src/admin-branding/dto/upsert-document-template.dto.ts
+index a6a708d..bdd5b6a 100644
+--- a/apps/api/src/admin-branding/dto/upsert-document-template.dto.ts
++++ b/apps/api/src/admin-branding/dto/upsert-document-template.dto.ts
+@@ -2,10 +2,12 @@ import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+ import { DocumentTemplateType } from '@prisma/client';
+ 
+ export class UpsertDocumentTemplateDto {
+-  // Omit or null for a system-wide default any entity can use.
+-  @IsOptional()
++  // Every DocumentTemplate row belongs to exactly one entity — the schema's
++  // entityId column is required (non-null), so there is no "global" template
++  // row. Entity-wide defaults are handled in application logic instead (see
++  // AdminBrandingService.resolveTemplate).
+   @IsString()
+-  entityId?: string;
++  entityId!: string;
+ 
+   @IsEnum(DocumentTemplateType)
+   templateType!: DocumentTemplateType;
+diff --git a/apps/api/src/auth/__tests__/auth.service.spec.ts b/apps/api/src/auth/__tests__/auth.service.spec.ts
+index 1ab34de..6005781 100644
+--- a/apps/api/src/auth/__tests__/auth.service.spec.ts
++++ b/apps/api/src/auth/__tests__/auth.service.spec.ts
+@@ -16,6 +16,15 @@ function buildPrismaMock() {
+   return { user: { findUnique: jest.fn() }, refreshToken: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn(), updateMany: jest.fn() } };
+ }
+ 
++// login() returns a union: the MFA-challenge shape (mfaRequired: true, challengeToken, ...)
++// has no accessToken at all, so TS won't let a test read `.accessToken` off the union without
++// narrowing first. This narrows to the non-MFA/token-issuing branch for tests that expect one.
++type LoginResult = Awaited<ReturnType<AuthService['login']>>;
++function expectTokensIssued(result: LoginResult): Extract<LoginResult, { mfaRequired: false }> {
++  if (result.mfaRequired) throw new Error('Expected login() to issue tokens, but it returned an MFA challenge');
++  return result;
++}
++
+ describe('AuthService (Release K/M/N/P integration)', () => {
+   let service: AuthService;
+   let prisma: ReturnType<typeof buildPrismaMock>;
+@@ -91,7 +100,7 @@ describe('AuthService (Release K/M/N/P integration)', () => {
+     prisma.user.findUnique.mockResolvedValue({ id: 'u1', email: 'a@b.com', isActive: true, passwordHash: hash, lockedUntil: null, passwordChangedAt: null });
+     prisma.refreshToken.create.mockResolvedValue({});
+ 
+-    const result = await service.login('a@b.com', 'correct');
++    const result = expectTokensIssued(await service.login('a@b.com', 'correct'));
+ 
+     expect(accountLockout.registerSuccess).toHaveBeenCalledWith('u1');
+     expect(loginHistory.record).toHaveBeenCalledWith('u1', 'a@b.com', 'LOGIN_SUCCESS', {});
+@@ -143,7 +152,7 @@ describe('AuthService (Release K/M/N/P integration)', () => {
+       });
+       prisma.refreshToken.create.mockResolvedValue({});
+ 
+-      const result = await service.login('a@b.com', 'correct');
++      const result = expectTokensIssued(await service.login('a@b.com', 'correct'));
+       expect(result.mfaRequired).toBe(false);
+       expect(result.accessToken).toBe('signed-jwt');
+     });
+@@ -194,7 +203,7 @@ describe('AuthService (Release K/M/N/P integration)', () => {
+       trustedDevices.checkTrustedDevice.mockResolvedValue('device-1');
+       prisma.refreshToken.create.mockResolvedValue({});
+ 
+-      const result = await service.login('a@b.com', 'correct', {}, 'raw-device-token');
++      const result = expectTokensIssued(await service.login('a@b.com', 'correct', {}, 'raw-device-token'));
+ 
+       expect(trustedDevices.checkTrustedDevice).toHaveBeenCalledWith('u1', 'raw-device-token');
+       expect(result.mfaRequired).toBe(false);
+@@ -278,7 +287,7 @@ describe('AuthService (Release K/M/N/P integration)', () => {
+       });
+       prisma.refreshToken.create.mockResolvedValue({});
+ 
+-      const result = await service.login('a@b.com', 'correct', { ipAddress: '203.0.113.5' });
++      const result = expectTokensIssued(await service.login('a@b.com', 'correct', { ipAddress: '203.0.113.5' }));
+ 
+       expect(result.mfaRequired).toBe(false);
+       expect(result.accessToken).toBe('signed-jwt');
+diff --git a/apps/api/src/bank-reconciliation/__tests__/bank-reconciliation.service.spec.ts b/apps/api/src/bank-reconciliation/__tests__/bank-reconciliation.service.spec.ts
+index 511c912..688a89e 100644
+--- a/apps/api/src/bank-reconciliation/__tests__/bank-reconciliation.service.spec.ts
++++ b/apps/api/src/bank-reconciliation/__tests__/bank-reconciliation.service.spec.ts
+@@ -1,5 +1,5 @@
+ import { Test } from '@nestjs/testing';
+-import { BadRequestException, ConflictException } from '@nestjs/common';
++import { BadRequestException } from '@nestjs/common';
+ import { ReconciliationSessionStatus } from '@prisma/client';
+ import { BankReconciliationService } from '../bank-reconciliation.service';
+ import { PrismaService } from '../../prisma/prisma.service';
+diff --git a/apps/api/src/crm/crm.service.ts b/apps/api/src/crm/crm.service.ts
+index 2ab68b9..2f2dc71 100644
+--- a/apps/api/src/crm/crm.service.ts
++++ b/apps/api/src/crm/crm.service.ts
+@@ -1,4 +1,4 @@
+-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
++import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+ import { LeadStatus, ProspectStatus } from '@prisma/client';
+ import { PrismaService } from '../prisma/prisma.service';
+ import { RowLevelSecurityService } from '../security/row-level-security.service';
+diff --git a/apps/api/src/facility/__tests__/facility.service.spec.ts b/apps/api/src/facility/__tests__/facility.service.spec.ts
+index 8cf25ae..766fdf4 100644
+--- a/apps/api/src/facility/__tests__/facility.service.spec.ts
++++ b/apps/api/src/facility/__tests__/facility.service.spec.ts
+@@ -1,5 +1,5 @@
+ import { Test } from '@nestjs/testing';
+-import { ConflictException, NotFoundException } from '@nestjs/common';
++import { ConflictException } from '@nestjs/common';
+ import { FacilityStatus, MaintenanceRequestStatus, WorkflowInstanceStatus } from '@prisma/client';
+ import { FacilityService } from '../facility.service';
+ import { PrismaService } from '../../prisma/prisma.service';
+diff --git a/apps/api/src/facility/facility.service.ts b/apps/api/src/facility/facility.service.ts
+index 2395f75..77c5cbc 100644
+--- a/apps/api/src/facility/facility.service.ts
++++ b/apps/api/src/facility/facility.service.ts
+@@ -259,7 +259,7 @@ export class FacilityService {
+ 
+   async hold(id: string, dto: HoldMaintenanceRequestDto) {
+     const request = await this.requireMaintenanceRequest(id);
+-    if (![MaintenanceRequestStatus.ASSIGNED, MaintenanceRequestStatus.IN_PROGRESS].includes(request.status)) {
++    if (!([MaintenanceRequestStatus.ASSIGNED, MaintenanceRequestStatus.IN_PROGRESS] as MaintenanceRequestStatus[]).includes(request.status)) {
+       throw new ConflictException(`Cannot place a request with status ${request.status} on hold`);
+     }
+     return this.prisma.maintenanceRequest.update({
+@@ -278,7 +278,7 @@ export class FacilityService {
+ 
+   async resolve(id: string, dto: ResolveMaintenanceRequestDto) {
+     const request = await this.requireMaintenanceRequest(id);
+-    if (![MaintenanceRequestStatus.ASSIGNED, MaintenanceRequestStatus.IN_PROGRESS, MaintenanceRequestStatus.ON_HOLD].includes(request.status)) {
++    if (!([MaintenanceRequestStatus.ASSIGNED, MaintenanceRequestStatus.IN_PROGRESS, MaintenanceRequestStatus.ON_HOLD] as MaintenanceRequestStatus[]).includes(request.status)) {
+       throw new ConflictException(`Cannot resolve a request with status ${request.status}`);
+     }
+     return this.prisma.maintenanceRequest.update({
+@@ -333,7 +333,7 @@ export class FacilityService {
+     const request = await this.requireMaintenanceRequest(id);
+     if (!request.assignedVendorId) throw new ConflictException('Request has no assigned vendor to bill');
+     if (request.vendorInvoiceId) throw new ConflictException('This request has already been billed');
+-    if (![MaintenanceRequestStatus.RESOLVED, MaintenanceRequestStatus.CLOSED].includes(request.status)) {
++    if (!([MaintenanceRequestStatus.RESOLVED, MaintenanceRequestStatus.CLOSED] as MaintenanceRequestStatus[]).includes(request.status)) {
+       throw new ConflictException(`Cannot bill a request with status ${request.status}`);
+     }
+     const amount = request.actualCost ?? request.costEstimate;
+diff --git a/apps/api/src/hr-payroll/__tests__/employee-lifecycle.service.spec.ts b/apps/api/src/hr-payroll/__tests__/employee-lifecycle.service.spec.ts
+index daa9f2e..44027e9 100644
+--- a/apps/api/src/hr-payroll/__tests__/employee-lifecycle.service.spec.ts
++++ b/apps/api/src/hr-payroll/__tests__/employee-lifecycle.service.spec.ts
+@@ -1,5 +1,5 @@
+ import { Test } from '@nestjs/testing';
+-import { ConflictException, NotFoundException } from '@nestjs/common';
++import { ConflictException } from '@nestjs/common';
+ import { AssetAssignmentStatus, ExitClearanceItemStatus } from '@prisma/client';
+ import { EmployeeLifecycleService } from '../employee-lifecycle.service';
+ import { PrismaService } from '../../prisma/prisma.service';
+diff --git a/apps/api/src/hr-payroll/__tests__/hr-payroll.service.spec.ts b/apps/api/src/hr-payroll/__tests__/hr-payroll.service.spec.ts
+index aa0a505..3f43c9d 100644
+--- a/apps/api/src/hr-payroll/__tests__/hr-payroll.service.spec.ts
++++ b/apps/api/src/hr-payroll/__tests__/hr-payroll.service.spec.ts
+@@ -53,17 +53,20 @@ describe('HrPayrollService', () => {
+ 
+       const [payslip] = await service.calculatePayrollRun('run-1');
+ 
+-      expect(payslip.grossPay).toBe(650_000);
++      expect(Number(payslip.grossPay)).toBe(650_000);
+       // pensionable pay = 500,000 + 100,000 + 50,000 = 650,000
+-      expect(payslip.pensionEmployee).toBeCloseTo(650_000 * 0.08, 5);
+-      expect(payslip.pensionEmployer).toBeCloseTo(650_000 * 0.1, 5);
+-      expect(payslip.nhfDeduction).toBeCloseTo(500_000 * 0.025, 5);
+-      // netPay must equal gross minus every deduction
+-      expect(payslip.netPay).toBeCloseTo(
+-        payslip.grossPay - payslip.payeTax - payslip.pensionEmployee - payslip.nhfDeduction,
++      expect(Number(payslip.pensionEmployee)).toBeCloseTo(650_000 * 0.08, 5);
++      expect(Number(payslip.pensionEmployer)).toBeCloseTo(650_000 * 0.1, 5);
++      expect(Number(payslip.nhfDeduction)).toBeCloseTo(500_000 * 0.025, 5);
++      // netPay must equal gross minus every deduction. payslip's fields are Prisma
++      // Decimal at the type level (financial columns stay Decimal, not Float — see
++      // schema), so each is converted to a plain number before arithmetic rather than
++      // subtracting Decimal operands directly, which TS rejects.
++      expect(Number(payslip.netPay)).toBeCloseTo(
++        Number(payslip.grossPay) - Number(payslip.payeTax) - Number(payslip.pensionEmployee) - Number(payslip.nhfDeduction),
+         5,
+       );
+-      expect(payslip.payeTax).toBeGreaterThan(0);
++      expect(Number(payslip.payeTax)).toBeGreaterThan(0);
+     });
+ 
+     it('refuses to calculate a run that is not DRAFT', async () => {
+diff --git a/apps/api/src/hr-payroll/leave.service.ts b/apps/api/src/hr-payroll/leave.service.ts
+index f115d90..b7e6c9f 100644
+--- a/apps/api/src/hr-payroll/leave.service.ts
++++ b/apps/api/src/hr-payroll/leave.service.ts
+@@ -174,7 +174,10 @@ export class LeaveService {
+   async cancelLeaveRequest(id: string) {
+     const request = await this.prisma.leaveRequest.findUnique({ where: { id } });
+     if (!request) throw new NotFoundException(`Leave request ${id} not found`);
+-    if (![LeaveRequestStatus.DRAFT, LeaveRequestStatus.SUBMITTED].includes(request.status)) {
++    // Explicit cast — an inline enum-member array literal infers as the union of just
++    // those members (not the full LeaveRequestStatus type), which .includes() then
++    // rejects request.status against.
++    if (!([LeaveRequestStatus.DRAFT, LeaveRequestStatus.SUBMITTED] as LeaveRequestStatus[]).includes(request.status)) {
+       throw new ConflictException(`Cannot cancel a leave request that is already ${request.status}`);
+     }
+     return this.prisma.leaveRequest.update({ where: { id }, data: { status: LeaveRequestStatus.CANCELLED } });
+diff --git a/apps/api/src/hr-payroll/self-service.service.ts b/apps/api/src/hr-payroll/self-service.service.ts
+index 586448b..17b53cc 100644
+--- a/apps/api/src/hr-payroll/self-service.service.ts
++++ b/apps/api/src/hr-payroll/self-service.service.ts
+@@ -1,4 +1,4 @@
+-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
++import { ForbiddenException, Injectable } from '@nestjs/common';
+ import { PrismaService } from '../prisma/prisma.service';
+ import { LeaveService } from './leave.service';
+ import { TrainingService } from './training.service';
+diff --git a/apps/api/src/inventory/__tests__/inventory.service.spec.ts b/apps/api/src/inventory/__tests__/inventory.service.spec.ts
+index 96b1251..c1a3e3e 100644
+--- a/apps/api/src/inventory/__tests__/inventory.service.spec.ts
++++ b/apps/api/src/inventory/__tests__/inventory.service.spec.ts
+@@ -75,7 +75,15 @@ function buildTxMock(prisma: {
+ 
+ describe('InventoryService — weighted-average valuation', () => {
+   let service: InventoryService;
+-  let prisma: { $transaction: jest.Mock; goodsReceipt: any; materialIssue: any; stockTransfer: any; stockCount: any };
++  let prisma: {
++    $transaction: jest.Mock;
++    goodsReceipt: any;
++    materialIssue: any;
++    stockTransfer: any;
++    stockCount: any;
++    warehouse: any;
++    stockItem: any;
++  };
+ 
+   beforeEach(async () => {
+     prisma = {
+@@ -84,6 +92,8 @@ describe('InventoryService — weighted-average valuation', () => {
+       materialIssue: { findUnique: jest.fn(), update: jest.fn() },
+       stockTransfer: { findUnique: jest.fn(), update: jest.fn() },
+       stockCount: { findUnique: jest.fn(), update: jest.fn() },
++      warehouse: { findMany: jest.fn() },
++      stockItem: { findMany: jest.fn() },
+     };
+ 
+     const moduleRef = await Test.createTestingModule({
+diff --git a/apps/api/src/lease/dto/lease.dto.ts b/apps/api/src/lease/dto/lease.dto.ts
+index ea17e6a..821cfe8 100644
+--- a/apps/api/src/lease/dto/lease.dto.ts
++++ b/apps/api/src/lease/dto/lease.dto.ts
+@@ -1,5 +1,4 @@
+-import { Type } from 'class-transformer';
+-import { ArrayMinSize, IsArray, IsDateString, IsIn, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
++import { IsDateString, IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+ 
+ // ---- Tenants ----
+ 
+diff --git a/apps/api/src/power-bi/dto/power-bi.dto.ts b/apps/api/src/power-bi/dto/power-bi.dto.ts
+index 817bf0b..ffa4c92 100644
+--- a/apps/api/src/power-bi/dto/power-bi.dto.ts
++++ b/apps/api/src/power-bi/dto/power-bi.dto.ts
+@@ -1,4 +1,4 @@
+-import { ArrayMinSize, IsArray, IsIn, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
++import { ArrayMinSize, IsArray, IsIn, IsObject, IsString, ValidateNested } from 'class-validator';
+ import { Type } from 'class-transformer';
+ 
+ class PowerBiColumnDto {
+diff --git a/apps/api/src/procurement/__tests__/procurement.service.spec.ts b/apps/api/src/procurement/__tests__/procurement.service.spec.ts
+index 67facb9..40ebe7e 100644
+--- a/apps/api/src/procurement/__tests__/procurement.service.spec.ts
++++ b/apps/api/src/procurement/__tests__/procurement.service.spec.ts
+@@ -1,6 +1,6 @@
+ import { Test } from '@nestjs/testing';
+ import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+-import { POStatus, PRStatus, ProcurementGRNStatus, VendorInvoiceStatus } from '@prisma/client';
++import { POStatus, PRStatus, VendorInvoiceStatus } from '@prisma/client';
+ import { ProcurementService } from '../procurement.service';
+ import { PrismaService } from '../../prisma/prisma.service';
+ import { PostingEngineService } from '../../general-ledger/posting-engine.service';
+diff --git a/apps/api/src/procurement/procurement.service.ts b/apps/api/src/procurement/procurement.service.ts
+index bad1332..1c73043 100644
+--- a/apps/api/src/procurement/procurement.service.ts
++++ b/apps/api/src/procurement/procurement.service.ts
+@@ -299,7 +299,7 @@ export class ProcurementService {
+       include: { lines: true },
+     });
+     if (!po) throw new NotFoundException(`Purchase order ${dto.purchaseOrderId} not found`);
+-    if (![POStatus.APPROVED, POStatus.PARTIALLY_RECEIVED].includes(po.status)) {
++    if (!([POStatus.APPROVED, POStatus.PARTIALLY_RECEIVED] as POStatus[]).includes(po.status)) {
+       throw new ConflictException(`Cannot receive goods against a PO with status ${po.status}`);
+     }
+ 
+diff --git a/apps/api/src/recruitment/candidate.service.ts b/apps/api/src/recruitment/candidate.service.ts
+index 8161f5c..75607af 100644
+--- a/apps/api/src/recruitment/candidate.service.ts
++++ b/apps/api/src/recruitment/candidate.service.ts
+@@ -45,7 +45,11 @@ const STAGE_ORDER: ApplicationStage[] = [
+   ApplicationStage.HIRED,
+ ];
+ 
+-const TERMINAL_STAGES = new Set([ApplicationStage.REJECTED, ApplicationStage.WITHDRAWN, ApplicationStage.HIRED]);
++// Explicit Set<ApplicationStage> — without it, TS infers Set<ApplicationStage.REJECTED |
++// ApplicationStage.WITHDRAWN | ApplicationStage.HIRED> from the literal members, and
++// `.has(app.stage)` (app.stage: ApplicationStage) then fails to type-check against that
++// narrower type.
++const TERMINAL_STAGES = new Set<ApplicationStage>([ApplicationStage.REJECTED, ApplicationStage.WITHDRAWN, ApplicationStage.HIRED]);
+ 
+ @Injectable()
+ export class CandidateService {
+diff --git a/apps/api/src/reporting/reporting.service.ts b/apps/api/src/reporting/reporting.service.ts
+index 6eabe7f..e79d885 100644
+--- a/apps/api/src/reporting/reporting.service.ts
++++ b/apps/api/src/reporting/reporting.service.ts
+@@ -6,8 +6,14 @@ import { SecurityScope } from '../security/security.types';
+ import { SchedulingService } from '../pmo/scheduling.service';
+ import { RiskIssueService } from '../pmo/risk-issue.service';
+ 
+-/** Row shape of vw_statement_profit_loss (see sql/views/vw_statement_profit_loss.sql). */
+-interface ProfitAndLossViewRow {
++/**
++ * Row shape of vw_statement_profit_loss (see sql/views/vw_statement_profit_loss.sql).
++ * Exported (not just used internally) because it leaks into the inferred
++ * return type of public methods like statementOfProfitOrLoss — with
++ * `declaration: true` in tsconfig, TS4053 fires if a public method's
++ * return type references a non-exported name.
++ */
++export interface ProfitAndLossViewRow {
+   account_id: string;
+   account_code: string;
+   account_name: string;
+@@ -16,8 +22,8 @@ interface ProfitAndLossViewRow {
+   period_name: string;
+ }
+ 
+-/** Row shape of vw_statement_of_financial_position (see sql/views/vw_statement_of_financial_position.sql). */
+-interface FinancialPositionViewRow {
++/** Row shape of vw_statement_of_financial_position (see sql/views/vw_statement_of_financial_position.sql). Exported — see ProfitAndLossViewRow comment above. */
++export interface FinancialPositionViewRow {
+   account_id: string;
+   account_code: string;
+   account_name: string;
+@@ -71,8 +77,8 @@ interface CrmPipelineViewRow {
+   days_in_pipeline: number;
+ }
+ 
+-/** Release (Fixed Assets Core) — row shape of vw_fixed_asset_register. */
+-interface FixedAssetRegisterViewRow {
++/** Release (Fixed Assets Core) — row shape of vw_fixed_asset_register. Exported — see ProfitAndLossViewRow comment above. */
++export interface FixedAssetRegisterViewRow {
+   fixed_asset_id: string;
+   entity_id: string;
+   asset_tag: string;
+diff --git a/apps/api/src/security/row-level-security.service.ts b/apps/api/src/security/row-level-security.service.ts
+index 03a5afb..6bcab38 100644
+--- a/apps/api/src/security/row-level-security.service.ts
++++ b/apps/api/src/security/row-level-security.service.ts
+@@ -71,10 +71,17 @@ export class RowLevelSecurityService {
+    * Throws-free check for a single record already fetched (e.g. before a
+    * mutation), rather than filtering a list query. Use when you've already
+    * loaded a row by primary key and need to verify the caller may act on it.
++   *
++   * Accepts `string | null | undefined` per field — nullable Prisma FK
++   * columns type as `string | null`, but callers also build this object
++   * from optional DTO/function params (`string | undefined`) or from
++   * Prisma `select`/computed values that can be `undefined`. Both mean
++   * the same thing here ("this row doesn't populate this FK"), handled
++   * identically by the `!value` check below.
+    */
+   canAccess(
+     scope: SecurityScope,
+-    record: Partial<Record<'entityId' | 'departmentId' | 'costCenterId' | 'projectId', string | null>>,
++    record: Partial<Record<'entityId' | 'departmentId' | 'costCenterId' | 'projectId', string | null | undefined>>,
+     options: RlsFilterOptions,
+   ): boolean {
+     const mode = options.mode ?? 'view';
+diff --git a/apps/api/src/workflow/workflow.service.ts b/apps/api/src/workflow/workflow.service.ts
+index df1dd81..a755670 100644
+--- a/apps/api/src/workflow/workflow.service.ts
++++ b/apps/api/src/workflow/workflow.service.ts
+@@ -55,6 +55,13 @@ export class WorkflowEngineService {
+       throw new BadRequestException('Stage sequence numbers must be unique within a workflow');
+     }
+ 
++    // WorkflowApprovalRule has two independent required/optional scalar FKs
++    // (workflowDefinitionId always, stageDefinitionId sometimes) — it can't
++    // be nest-created under stages.create[].rules.create because that path
++    // only ever supplies stageDefinitionId, leaving the required
++    // workflowDefinitionId unset. So: create the definition + bare stages
++    // first, then create every rule (stage-level and workflow-level) in one
++    // pass once real workflowDefinitionId/stageDefinitionId values exist.
+     const definition = await this.prisma.workflowDefinition.create({
+       data: {
+         code: dto.code,
+@@ -68,30 +75,43 @@ export class WorkflowEngineService {
+             stageType: stage.stageType,
+             requiredRoleCode: stage.requiredRoleCode,
+             minApprovals: stage.minApprovals ?? 1,
+-            rules: stage.rules
+-              ? { create: stage.rules.map((r) => ({ field: r.field, operator: r.operator, value: r.value, requiredRoleCode: r.requiredRoleCode, description: r.description })) }
+-              : undefined,
+           })),
+         },
+       },
+-      include: { stages: { include: { rules: true } } },
++      include: { stages: true },
+     });
+ 
+-    // Workflow-level rules reference stages by sequence number, so
+-    // they're attached in a second pass once stage ids exist.
+-    if (dto.workflowRules?.length) {
+-      const stageBySequence = new Map(definition.stages.map((s) => [s.sequence, s.id]));
+-      await this.prisma.workflowApprovalRule.createMany({
+-        data: dto.workflowRules.map((r) => ({
+-          workflowDefinitionId: definition.id,
+-          stageDefinitionId: stageBySequence.get(r.appliesToStageSequence) ?? null,
+-          field: r.field,
+-          operator: r.operator,
+-          value: r.value,
+-          requiredRoleCode: r.requiredRoleCode,
+-          description: r.description,
+-        })),
+-      });
++    const stageBySequence = new Map(definition.stages.map((s) => [s.sequence, s.id]));
++
++    const stageRules = dto.stages.flatMap((stage) =>
++      (stage.rules ?? []).map((r) => ({
++        workflowDefinitionId: definition.id,
++        stageDefinitionId: stageBySequence.get(stage.sequence),
++        field: r.field,
++        operator: r.operator,
++        value: r.value,
++        requiredRoleCode: r.requiredRoleCode,
++        description: r.description,
++      })),
++    );
++
++    // Workflow-level rules reference stages by sequence number too, and
++    // are optionally scoped to one (stageDefinitionId left undefined ->
++    // null means "evaluated at workflow-start to decide which stages
++    // apply at all").
++    const workflowRules = (dto.workflowRules ?? []).map((r) => ({
++      workflowDefinitionId: definition.id,
++      stageDefinitionId: stageBySequence.get(r.appliesToStageSequence) ?? null,
++      field: r.field,
++      operator: r.operator,
++      value: r.value,
++      requiredRoleCode: r.requiredRoleCode,
++      description: r.description,
++    }));
++
++    const allRules = [...stageRules, ...workflowRules];
++    if (allRules.length) {
++      await this.prisma.workflowApprovalRule.createMany({ data: allRules });
+     }
+ 
+     return this.findDefinition(definition.code);

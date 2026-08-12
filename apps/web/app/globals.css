@@ -1,0 +1,62 @@
+/*
+ * FE-1.6 — Theme (light/dark toggle). Dark is the default and exactly
+ * matches every literal hex value `tokens.ts` used to hard-code (no
+ * visual change for anyone who never toggles). `[data-theme="light"]`
+ * on <html> (set by `ThemeToggle.tsx`) overrides the same variable
+ * names with a light palette that keeps each token's own role (accent
+ * stays the brass tone, positive/negative/warning keep the same hue
+ * family, just re-balanced for a light surface) rather than inventing
+ * a different palette identity — same "grounded in the product itself"
+ * intent `tokens.ts`'s own top comment already states for the dark
+ * palette.
+ */
+:root {
+  color-scheme: dark;
+
+  --ledgeros-bg: #0f1b2d;
+  --ledgeros-surface: #16273d;
+  --ledgeros-surface-raised: #1d3049;
+  --ledgeros-border: #2a3f5c;
+  --ledgeros-text-primary: #f5f3ee;
+  --ledgeros-text-muted: #8a96ac;
+  --ledgeros-accent: #c9a227;
+  --ledgeros-accent-muted: #8f7620;
+  --ledgeros-positive: #3fa66b;
+  --ledgeros-negative: #c24d4d;
+  --ledgeros-warning: #d9944a;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --ledgeros-bg: #f5f3ee;
+  --ledgeros-surface: #ffffff;
+  --ledgeros-surface-raised: #f0ede4;
+  --ledgeros-border: #d8d2c2;
+  --ledgeros-text-primary: #16273d;
+  --ledgeros-text-muted: #5c6577;
+  --ledgeros-accent: #8f7620;
+  --ledgeros-accent-muted: #c9a227;
+  --ledgeros-positive: #2f7d51;
+  --ledgeros-negative: #a63d3d;
+  --ledgeros-warning: #a86a2c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--ledgeros-bg);
+  color: var(--ledgeros-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(201, 162, 39, 0.35);
+}

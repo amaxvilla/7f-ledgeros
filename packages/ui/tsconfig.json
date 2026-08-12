@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "lib": ["ES2022", "dom", "dom.iterable"]
+  },
+  "include": ["src"],
+  "exclude": ["src/**/__tests__/**", "src/test/**"]
+}

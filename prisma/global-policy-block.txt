@@ -1,0 +1,41 @@
+﻿const existingGlobalPolicy = await prisma.authSecurityPolicy.findFirst({
+  where: { entityId: null },
+});
+
+if (existingGlobalPolicy) {
+  await prisma.authSecurityPolicy.update({
+    where: { id: existingGlobalPolicy.id },
+    data: {
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumber: true,
+      requireSymbol: false,
+      expiryDays: null,
+      historyCount: 5,
+      maxFailedLoginAttempts: 5,
+      lockoutDurationMinutes: 30,
+      isActive: true,
+      createdById: admin.id,
+    },
+  });
+} else {
+  await prisma.authSecurityPolicy.create({
+    data: {
+      entityId: null,
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireNumber: true,
+      requireSymbol: false,
+      expiryDays: null,
+      historyCount: 5,
+      maxFailedLoginAttempts: 5,
+      lockoutDurationMinutes: 30,
+      isActive: true,
+      createdById: admin.id,
+    },
+  });
+}
+
+console.log('  ✓ default global auth security policy (password + lockout)');

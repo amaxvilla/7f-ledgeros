@@ -26,7 +26,7 @@ import { CreateMeetingDto, CancelMeetingDto } from './dto/teams.dto';
 export class TeamsService {
   constructor(private readonly registry: TeamsProviderRegistry) {}
 
-  createMeeting(dto: CreateMeetingDto) {
+  async createMeeting(dto: CreateMeetingDto) {
     const { providerCode, startTime, endTime, ...rest } = dto;
     return this.registry.get(providerCode).createMeeting({
       ...rest,

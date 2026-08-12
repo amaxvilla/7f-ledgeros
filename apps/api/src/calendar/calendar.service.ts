@@ -21,7 +21,7 @@ import { CreateCalendarEventDto, UpdateCalendarEventDto, CancelCalendarEventDto 
 export class CalendarService {
   constructor(private readonly registry: CalendarProviderRegistry) {}
 
-  createEvent(dto: CreateCalendarEventDto) {
+  async createEvent(dto: CreateCalendarEventDto) {
     const { providerCode, startTime, endTime, ...rest } = dto;
     return this.registry.get(providerCode).createEvent({
       ...rest,

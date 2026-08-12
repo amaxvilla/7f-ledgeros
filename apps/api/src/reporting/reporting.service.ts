@@ -136,7 +136,15 @@ type EquityRow = Record<EquityComponent, number> & { total: number };
  */
 function nameMatches(row: { ifrs_mapping: string | null; account_name: string }, ...needles: string[]): boolean {
   const haystack = `${row.ifrs_mapping ?? ''} ${row.account_name}`.toLowerCase();
-  return needles.some((needle) => haystack.includes(needle));
+  // Left-word-boundary match rather than plain substring: a bare
+  // abbreviation like 'ppe' must not match inside an unrelated word (e.g.
+  // "unmaPPEd"). Only the left edge is boundary-checked (not the right)
+  // so intentional stem matches like 'inventor' -> "Inventory"/"Inventories"
+  // still work.
+  return needles.some((needle) => {
+    const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`\\b${escaped}`).test(haystack);
+  });
 }
 
 @Injectable()
@@ -154,7 +162,7 @@ export class ReportingService {
     }
   }
 
-  budgetVsActual(scope: SecurityScope, entityId: string, fiscalYear?: number) {
+  async budgetVsActual(scope: SecurityScope, entityId: string, fiscalYear?: number) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`
@@ -166,42 +174,42 @@ export class ReportingService {
     );
   }
 
-  projectProfitability(scope: SecurityScope, entityId: string) {
+  async projectProfitability(scope: SecurityScope, entityId: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`SELECT * FROM vw_project_profitability WHERE entity_id = ${entityId} ORDER BY profit_amount DESC`,
     );
   }
 
-  vendorAging(scope: SecurityScope, entityId: string) {
+  async vendorAging(scope: SecurityScope, entityId: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`SELECT * FROM vw_vendor_aging WHERE entity_id = ${entityId} ORDER BY days_past_due DESC`,
     );
   }
 
-  customerAging(scope: SecurityScope, entityId: string) {
+  async customerAging(scope: SecurityScope, entityId: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`SELECT * FROM vw_customer_aging WHERE entity_id = ${entityId} ORDER BY days_past_due DESC`,
     );
   }
 
-  cashForecast(scope: SecurityScope, entityId: string) {
+  async cashForecast(scope: SecurityScope, entityId: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`SELECT * FROM vw_cash_forecast WHERE entity_id = ${entityId} ORDER BY horizon_days`,
     );
   }
 
-  bankReconciliationSummary(scope: SecurityScope, entityId: string) {
+  async bankReconciliationSummary(scope: SecurityScope, entityId: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`SELECT * FROM vw_bank_reconciliation_summary WHERE entity_id = ${entityId}`,
     );
   }
 
-  consolidatedTrialBalance(scope: SecurityScope, entityId: string) {
+  async consolidatedTrialBalance(scope: SecurityScope, entityId: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`SELECT * FROM vw_consolidated_trial_balance WHERE entity_id = ${entityId} ORDER BY account_code`,
@@ -219,7 +227,7 @@ export class ReportingService {
    * fiscalPeriodId returns every period on record for the entity, which
    * is what multi-period / comparative reporting reads from.
    */
-  trialBalance(scope: SecurityScope, entityId: string, fiscalPeriodId?: string) {
+  async trialBalance(scope: SecurityScope, entityId: string, fiscalPeriodId?: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`
@@ -237,7 +245,7 @@ export class ReportingService {
    * date range. Backs both the "General Ledger Report" (all accounts) and
    * "Account Ledger" (accountId supplied) deliverables from the same view.
    */
-  generalLedger(
+  async generalLedger(
     scope: SecurityScope,
     entityId: string,
     filters: { accountId?: string; fiscalPeriodId?: string; dateFrom?: string; dateTo?: string } = {},
@@ -550,7 +558,7 @@ export class ReportingService {
    * recover Inventory/Receivables/Payables/Debt/D&A from account_category,
    * which has no finer tag for those — ratios here inherit that caveat.
    */
-  financialRatios(scope: SecurityScope, entityId: string, fiscalPeriodId?: string) {
+  async financialRatios(scope: SecurityScope, entityId: string, fiscalPeriodId?: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`
@@ -568,7 +576,7 @@ export class ReportingService {
    * segmentType to narrow to one dimension (e.g. 'PROJECT'); omitting it
    * returns all six, distinguished by the segment_type column.
    */
-  segmentReporting(
+  async segmentReporting(
     scope: SecurityScope,
     entityId: string,
     fiscalPeriodId: string,
@@ -1278,7 +1286,7 @@ export class ReportingService {
   // check or query style.
   // -------------------------------------------------------------------
 
-  salesVelocity(scope: SecurityScope, entityId: string, projectId?: string) {
+  async salesVelocity(scope: SecurityScope, entityId: string, projectId?: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`
@@ -1290,7 +1298,7 @@ export class ReportingService {
     );
   }
 
-  inventoryAgeing(scope: SecurityScope, entityId: string, projectId?: string) {
+  async inventoryAgeing(scope: SecurityScope, entityId: string, projectId?: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`
@@ -1302,7 +1310,7 @@ export class ReportingService {
     );
   }
 
-  absorptionRate(scope: SecurityScope, entityId: string, projectId?: string) {
+  async absorptionRate(scope: SecurityScope, entityId: string, projectId?: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`
@@ -1314,7 +1322,7 @@ export class ReportingService {
     );
   }
 
-  unsoldUnitsDashboard(scope: SecurityScope, entityId: string) {
+  async unsoldUnitsDashboard(scope: SecurityScope, entityId: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`SELECT * FROM vw_unsold_units_dashboard WHERE entity_id = ${entityId} ORDER BY total_unsold_value DESC NULLS LAST`,
@@ -1497,7 +1505,7 @@ export class ReportingService {
   /** Release IE.1, Checkpoint H — Payment Framework Reporting Integration.
    * Per-transaction detail with refunds netted out, complementing
    * PaymentsService.getOverview's per-status dashboard summary (Checkpoint G). */
-  paymentTransactionsRegister(scope: SecurityScope, entityId: string, status?: string) {
+  async paymentTransactionsRegister(scope: SecurityScope, entityId: string, status?: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`
@@ -1514,7 +1522,7 @@ export class ReportingService {
    * ACTIVE/REQUIRES_REAUTH), complementing
    * MonoLinkedAccountService.getOverview's dashboard summary (Checkpoint I) —
    * same Dashboard/Reporting split as paymentTransactionsRegister above. */
-  monoLinkedAccountsRegister(scope: SecurityScope, entityId: string, status?: string) {
+  async monoLinkedAccountsRegister(scope: SecurityScope, entityId: string, status?: string) {
     this.assertEntityAccess(scope, entityId);
     return this.prisma.$queryRaw(
       Prisma.sql`

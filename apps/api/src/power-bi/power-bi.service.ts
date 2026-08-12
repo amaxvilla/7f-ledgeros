@@ -20,7 +20,7 @@ import { PublishDatasetDto, PushRowsDto, TriggerRefreshDto } from './dto/power-b
 export class PowerBiService {
   constructor(private readonly registry: PowerBiProviderRegistry) {}
 
-  publishDataset(dto: PublishDatasetDto) {
+  async publishDataset(dto: PublishDatasetDto) {
     const { providerCode, ...params } = dto;
     return this.registry.get(providerCode).publishDataset(params);
   }

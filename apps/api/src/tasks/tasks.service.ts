@@ -27,7 +27,7 @@ import { CreateTaskDto, UpdateTaskDto, DeleteTaskDto } from './dto/task.dto';
 export class TasksService {
   constructor(private readonly registry: TasksProviderRegistry) {}
 
-  createTask(dto: CreateTaskDto) {
+  async createTask(dto: CreateTaskDto) {
     const { providerCode, dueDateTime, ...rest } = dto;
     return this.registry.get(providerCode).createTask({
       ...rest,

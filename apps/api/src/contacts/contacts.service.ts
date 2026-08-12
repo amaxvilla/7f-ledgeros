@@ -20,7 +20,7 @@ import { CreateContactDto, UpdateContactDto, DeleteContactDto } from './dto/cont
 export class ContactsService {
   constructor(private readonly registry: ContactsProviderRegistry) {}
 
-  createContact(dto: CreateContactDto) {
+  async createContact(dto: CreateContactDto) {
     const { providerCode, ...params } = dto;
     return this.registry.get(providerCode).createContact(params);
   }

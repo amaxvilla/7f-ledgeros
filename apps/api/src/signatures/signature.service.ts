@@ -41,7 +41,7 @@ export class SignatureService {
     return this.registry.get(providerCode).sendForSignature(params);
   }
 
-  getStatus(providerEnvelopeId: string, providerCode: string) {
+  async getStatus(providerEnvelopeId: string, providerCode: string) {
     return this.registry.get(providerCode).getStatus(providerEnvelopeId);
   }
 

@@ -27,7 +27,7 @@ import { PresenceProviderRegistry } from './presence-provider.registry';
 export class PresenceService {
   constructor(private readonly registry: PresenceProviderRegistry) {}
 
-  getPresence(providerCode: string, userIdentifier: string) {
+  async getPresence(providerCode: string, userIdentifier: string) {
     return this.registry.get(providerCode).getPresence(userIdentifier);
   }
 }

@@ -18,7 +18,7 @@ import { CreateDirectoryUserDto, SuspendDirectoryUserDto, DeleteDirectoryUserDto
 export class WorkspaceAdminService {
   constructor(private readonly registry: WorkspaceAdminProviderRegistry) {}
 
-  createUser(dto: CreateDirectoryUserDto) {
+  async createUser(dto: CreateDirectoryUserDto) {
     const { providerCode, ...params } = dto;
     return this.registry.get(providerCode).createUser(params);
   }

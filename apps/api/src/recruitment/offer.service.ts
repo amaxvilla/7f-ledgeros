@@ -167,12 +167,18 @@ export class OfferService {
     // DocuSign API failure must never lose the offer state already
     // persisted above (the candidate still needs their offer letter,
     // signature-tracking or not).
+    //
+    // Uses `offer.signatureProviderCode` (from the findOne() read above),
+    // not `updated.signatureProviderCode` — the update() call just above
+    // only sets status/sentAt, so it never touches this column; sourcing
+    // it from the row we already have avoids depending on the update
+    // call's return value echoing back a field it didn't write.
     const synced = await this.trySendForSignature(
       updated.id,
       letterText,
       candidate.email,
       candidateName,
-      updated.signatureProviderCode,
+      offer.signatureProviderCode,
     );
 
     return { ...(synced ?? updated), letterText };

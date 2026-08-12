@@ -170,9 +170,12 @@ export class WorkflowEngineService {
         startedById: userId,
         stageInstances: {
           create: applicableStages.map((stage, i) => {
-            const stageRoleOverride = stage.rules.find((r) =>
-              this.evaluateRule(r.field, r.operator, r.value, context),
-            )?.requiredRoleCode;
+            // Same workflow-level rules used to decide whether this stage
+            // applies (see `skipRules` above) — a rule here also carries an
+            // optional role override for the stage it targets.
+            const stageRoleOverride = definition.rules
+              .filter((r) => r.stageDefinitionId === stage.id)
+              .find((r) => this.evaluateRule(r.field, r.operator, r.value, context))?.requiredRoleCode;
             return {
               stageDefinitionId: stage.id,
               sequence: stage.sequence,

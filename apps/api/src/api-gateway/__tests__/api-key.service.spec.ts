@@ -4,10 +4,24 @@ import { ApiKeyStatus } from '@prisma/client';
 import { ApiKeyService } from '../api-key.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RowLevelSecurityService } from '../../security/row-level-security.service';
+import { SecurityScope } from '../../security/security.types';
 
 function buildPrismaMock() {
   return {
     apiKey: { create: jest.fn(), findMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  };
+}
+
+function buildUnrestrictedScope(): SecurityScope {
+  const unrestricted = { unrestricted: true, viewableIds: [], postableIds: [] };
+  return {
+    userId: 'u1',
+    isSystemAdmin: true,
+    entity: unrestricted,
+    department: unrestricted,
+    costCenter: unrestricted,
+    project: unrestricted,
+    businessUnit: unrestricted,
   };
 }
 
@@ -69,7 +83,7 @@ describe('ApiKeyService', () => {
   describe('findKeys', () => {
     it('never selects keyHash', async () => {
       prisma.apiKey.findMany.mockResolvedValue([]);
-      await service.findKeys({ userId: 'u1', isSystemAdmin: true } as any, 'e1');
+      await service.findKeys(buildUnrestrictedScope(), 'e1');
       const selectArg = prisma.apiKey.findMany.mock.calls[0][0].select;
       expect(selectArg.keyHash).toBeUndefined();
     });

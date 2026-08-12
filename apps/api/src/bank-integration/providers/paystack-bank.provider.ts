@@ -96,13 +96,13 @@ export class PaystackBankProvider implements BankProvider, OnModuleInit {
     return { valid: true, accountName: json.data?.account_name };
   }
 
-  fetchStatement(_params: FetchStatementParams): Promise<BankStatementLine[]> {
+  async fetchStatement(_params: FetchStatementParams): Promise<BankStatementLine[]> {
     throw new Error(
       'PaystackBankProvider does not support fetchStatement — Paystack has no bank-statement/account-aggregation API. Use MonoProvider (providerCode "MONO") for statement access.',
     );
   }
 
-  fetchBalance(_params: FetchBalanceParams): Promise<FetchBalanceResult> {
+  async fetchBalance(_params: FetchBalanceParams): Promise<FetchBalanceResult> {
     throw new Error(
       'PaystackBankProvider does not support fetchBalance — Paystack has no bank-balance API. Use MonoProvider (providerCode "MONO") for balance access.',
     );

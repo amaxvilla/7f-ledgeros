@@ -1,4 +1,4 @@
-﻿import { Test } from '@nestjs/testing';
+import { Test } from '@nestjs/testing';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { ReportingService } from '../reporting.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -22,7 +22,7 @@ function buildUnrestrictedScope(): SecurityScope {
 
 /**
  * NOTE: this module had zero test coverage before Phase 2. This file only
- * covers the RLS gating added in this slice â€” each report method now calls
+ * covers the RLS gating added in this slice — each report method now calls
  * assertEntityAccess() before running its $queryRaw, since the underlying
  * views can't be filtered with RowLevelSecurityService's Prisma `where`
  * output the way a normal model query can.
@@ -110,7 +110,7 @@ describe('ReportingService', () => {
       await expect(service.generalLedger(scope, 'any-entity')).resolves.toEqual([{ ok: true }]);
     });
 
-    // Phase 5A â€” Real Estate Analytics (additive)
+    // Phase 5A — Real Estate Analytics (additive)
     it('rejects salesVelocity for an entity outside the caller\'s scope', async () => {
       await expect(service.salesVelocity(restrictedScope, 'ent-2')).rejects.toThrow(ForbiddenException);
       expect(prisma.$queryRaw).not.toHaveBeenCalled();
@@ -128,13 +128,13 @@ describe('ReportingService', () => {
       await expect(service.unsoldUnitsDashboard(restrictedScope, 'ent-2')).rejects.toThrow(ForbiddenException);
     });
 
-    // Release â€” CRM Reporting Integration (additive)
+    // Release — CRM Reporting Integration (additive)
     it('rejects crmPipeline for an entity outside the caller\'s scope', async () => {
       await expect(service.crmPipeline(restrictedScope, 'ent-2')).rejects.toThrow(ForbiddenException);
       expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 
-    // Release K â€” PMO Reporting Integration (additive)
+    // Release K — PMO Reporting Integration (additive)
     it('rejects pmoProjectPerformance for an entity outside the caller\'s scope, without calling SchedulingService', async () => {
       await expect(service.pmoProjectPerformance(restrictedScope, 'ent-2', 'proj-1')).rejects.toThrow(ForbiddenException);
       expect(scheduling.getGanttData).not.toHaveBeenCalled();
@@ -152,7 +152,7 @@ describe('ReportingService', () => {
       expect(prisma.$queryRaw).toHaveBeenCalled();
     });
 
-    // Release IF.1, Checkpoint J â€” Bank Integration Framework Reporting Integration
+    // Release IF.1, Checkpoint J — Bank Integration Framework Reporting Integration
     it('rejects monoLinkedAccountsRegister for an entity outside the caller\'s scope', async () => {
       await expect(service.monoLinkedAccountsRegister(restrictedScope, 'ent-2')).rejects.toThrow(ForbiddenException);
       expect(prisma.$queryRaw).not.toHaveBeenCalled();
@@ -166,7 +166,7 @@ describe('ReportingService', () => {
   });
 
   /**
-   * Phase 3A â€” Statutory Trial Balance and General Ledger report methods.
+   * Phase 3A — Statutory Trial Balance and General Ledger report methods.
    * These cover the query construction (which optional filters get applied)
    * on top of the RLS gating already covered above.
    */
@@ -245,13 +245,13 @@ describe('ReportingService', () => {
   });
 
   /**
-   * Phase 3A â€” Statement of Profit or Loss and Statement of Financial
+   * Phase 3A — Statement of Profit or Loss and Statement of Financial
    * Position. Unlike the other reports, these compute section subtotals
    * in TypeScript on top of the raw view rows, so coverage here focuses on
    * that arithmetic rather than just RLS gating.
    */
   /**
-   * Phase 3A â€” Statement of Cash Flows. Uses one realistic seeded set of
+   * Phase 3A — Statement of Cash Flows. Uses one realistic seeded set of
    * account movements for both assertions: that INDIRECT computes the
    * right operating/investing/financing/net-change figures, and that
    * DIRECT reconstructs the exact same operating total from the same
@@ -518,7 +518,7 @@ describe('ReportingService', () => {
       it('plugs unexplained movements (share issuance, other reserves) into otherMovements, and foots the grid exactly', async () => {
         const { current } = await service.statementOfChangesInEquity(scope, 'ent-1', 'fp-1');
 
-        expect(current.otherMovements.sharePremium).toBe(200); // share issuance â€” no P&L/OCI/dividend driver
+        expect(current.otherMovements.sharePremium).toBe(200); // share issuance — no P&L/OCI/dividend driver
         expect(current.otherMovements.otherReserves).toBe(5); // unclassified movement, reported not hidden
         expect(current.otherMovements.retainedEarnings).toBe(0); // fully explained by profit + dividends
         expect(current.otherMovements.revaluationReserve).toBe(0); // fully explained by OCI
@@ -598,7 +598,7 @@ describe('ReportingService', () => {
       it('does not double-count net profit as its own buildProfitOrLoss call inside buildChangesInEquity', async () => {
         await service.statementOfComprehensiveIncome(scope, 'ent-1', 'fp-1');
         // Exactly 3 queries: P&L, changes-in-equity, and the balance-sheet
-        // reconciliation check â€” NOT 4, which is what an extra internal
+        // reconciliation check — NOT 4, which is what an extra internal
         // buildProfitOrLoss call inside buildChangesInEquity would cost.
         expect(prisma.$queryRaw).toHaveBeenCalledTimes(3);
       });
@@ -624,7 +624,7 @@ describe('ReportingService', () => {
     });
   });
 
-  describe('Phase 3C â€” IFRS Notes to the Financial Statements', () => {
+  describe('Phase 3C — IFRS Notes to the Financial Statements', () => {
     const scope = buildUnrestrictedScope();
 
     /** One row per note-key covered, deliberately including at least one
@@ -634,7 +634,7 @@ describe('ReportingService', () => {
      *  (exercises the otherCurrentAssets residual bucket) plus one
      *  NON_CURRENT_ASSET row with no matching keyword (exercises the
      *  genuinely-unclassified bucket, since there is no residual note for
-     *  non-current assets â€” see classifySofpRow's doc comment). */
+     *  non-current assets — see classifySofpRow's doc comment). */
     const sofpRows = [
       // PPE rollforward: cost + accumulated depreciation contra pair
       { account_id: 'a-ppe-cost', account_code: '1500', account_name: 'Property, Plant & Equipment - Cost', account_category: 'NON_CURRENT_ASSET', ifrs_mapping: 'IAS 16', statement_section: 'ASSETS_NON_CURRENT', opening_balance: 1000, closing_balance: 1400, period_name: '2026-01' },
@@ -665,7 +665,7 @@ describe('ReportingService', () => {
 
     /** Queues exactly the query sequence ifrsNotes() issues for ONE period:
      *  fetchSofpRows, fetchPlRows, then fetchSofpRows again (re-run inside
-     *  buildFinancialPosition for the reconciliation cross-check) â€” see
+     *  buildFinancialPosition for the reconciliation cross-check) — see
      *  buildIfrsNotesForPeriod. Call twice (current + comparative) for a
      *  comparative-period test. */
     function queuePeriodQueries(mockFn: jest.Mock, sofp = sofpRows, pl = plRows) {
@@ -821,7 +821,7 @@ describe('ReportingService', () => {
       });
     });
 
-    describe('consolidated reporting (deliberately out of scope â€” see reporting.service.ts header comment)', () => {
+    describe('consolidated reporting (deliberately out of scope — see reporting.service.ts header comment)', () => {
       it('ifrsNotesForEntities returns each entity\'s own unconsolidated figures, not an eliminated group total', async () => {
         // Two entities with intercompany-style balances that would net to
         // zero under a real consolidation; ifrsNotesForEntities does NOT
@@ -937,7 +937,7 @@ describe('ReportingService', () => {
   });
 });
 
-describe('ReportingService.crmPipeline (Release â€” CRM Reporting Integration)', () => {
+describe('ReportingService.crmPipeline (Release — CRM Reporting Integration)', () => {
   let service: ReportingService;
   let prisma: any;
 
@@ -994,7 +994,7 @@ describe('ReportingService.crmPipeline (Release â€” CRM Reporting Integrati
   });
 });
 
-describe('ReportingService PMO methods (Release K â€” PMO Reporting Integration)', () => {
+describe('ReportingService PMO methods (Release K — PMO Reporting Integration)', () => {
   let service: ReportingService;
   let prisma: any;
   let scheduling: any;
@@ -1011,7 +1011,7 @@ describe('ReportingService PMO methods (Release K â€” PMO Reporting Integra
   };
 
   beforeEach(async () => {
-    prisma = { $queryRaw: jest.fn() };
+    prisma = { $queryRaw: jest.fn().mockResolvedValue([{ ok: true }]) };
     scheduling = { getGanttData: jest.fn(), computeEarnedValue: jest.fn() };
     riskIssue = { getRiskIssueSummary: jest.fn() };
 
@@ -1058,7 +1058,7 @@ describe('ReportingService PMO methods (Release K â€” PMO Reporting Integra
     expect(result.entityId).toBe('ent-1');
   });
 
-  // Release IE.1, Checkpoint H â€” Payment Framework Reporting Integration
+  // Release IE.1, Checkpoint H — Payment Framework Reporting Integration
   it('paymentTransactionsRegister enforces RLS before querying the view', async () => {
     const restrictedScope: SecurityScope = {
       userId: 'user-2',

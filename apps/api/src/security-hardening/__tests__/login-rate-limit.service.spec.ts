@@ -2,7 +2,7 @@ import { LoginRateLimitService } from '../login-rate-limit.service';
 
 /**
  * Same private-field substitution approach as
- * `api-gateway/__tests__/rate-limit.service.spec.ts` — `LoginRateLimitService`
+ * `api-gateway/__tests__/rate-limit.service.spec.ts` â€” `LoginRateLimitService`
  * constructs its own ioredis connection in its constructor with no DI
  * seam, so tests replace `redis` directly after construction rather than
  * injecting a mock.
@@ -30,9 +30,8 @@ describe('LoginRateLimitService', () => {
   let fakeRedis: ReturnType<typeof buildFakeRedis>;
 
   beforeEach(() => {
-    service = new LoginRateLimitService();
     fakeRedis = buildFakeRedis();
-    (service as any).redis = fakeRedis;
+    service = new LoginRateLimitService(fakeRedis as any);
   });
 
   it('allows a request when the count is within the limit', async () => {

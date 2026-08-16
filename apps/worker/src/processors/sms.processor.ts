@@ -56,9 +56,14 @@ export class SmsProcessor extends WorkerHost {
       this.logger.error(`SMS send failed to ${job.data.to}: ${error.message}`);
 
       if (job.data.notificationId) {
-        await this.prisma.notification
-          .update({ where: { id: job.data.notificationId }, data: { status: NotificationStatus.FAILED } })
-          .catch(() => undefined);
+        try {
+          await this.prisma.notification.update({
+            where: { id: job.data.notificationId },
+            data: { status: NotificationStatus.FAILED },
+          });
+        } catch {
+          // Notification status persistence must not mask the original send error.
+        }
       }
 
       await this.jobRunLog.recordFailure({ jobId: String(job.id), error, attemptsMade: job.attemptsMade + 1 });

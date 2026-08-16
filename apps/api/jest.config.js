@@ -1,18 +1,32 @@
-module.exports = {
+﻿module.exports = {
+  rootDir: '.',
+
   moduleFileExtensions: ['js', 'json', 'ts'],
-  rootDir: 'src',
+
   testRegex: '.*\\.spec\\.ts$',
+
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.(t|j)s$': require.resolve('ts-jest'),
   },
-  // otplib v13 (see security-hardening/mfa.service.ts) ships ESM-only
-  // internals (@otplib/*, @scure/base, @noble/hashes) that Jest's default
-  // "ignore all of node_modules" transform setting can't run — without
-  // this, any test that imports otplib fails at load time with a raw
-  // SyntaxError on the first `export` statement inside that chain, not a
-  // real assertion failure.
-  transformIgnorePatterns: ['/node_modules/\\.pnpm/(?!(?:@otplib\\+|@scure\\+|@noble\\+|otplib@))'],
-  collectCoverageFrom: ['**/*.(t|j)s'],
-  coverageDirectory: '../coverage',
+
+  transformIgnorePatterns: [
+    '/node_modules/\\.pnpm/(?!(?:@otplib\\+|@scure\\+|@noble\\+|otplib@))',
+  ],
+
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/src-backup-before-ts-fix/',
+  ],
+
+  modulePathIgnorePatterns: [
+    '/src-backup-before-ts-fix/',
+  ],
+
+  collectCoverageFrom: [
+    'src/**/*.(t|j)s',
+  ],
+
+  coverageDirectory: './coverage',
+
   testEnvironment: 'node',
 };

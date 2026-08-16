@@ -1,21 +1,18 @@
-// =====================================================================
-// 7F LedgerOS — Prisma Schema
-// Single-database, multi-entity, dimension-based accounting engine
-// =====================================================================
 //
 // DELETION POLICY (enforced per-relation below):
-// This is a financial ERP — financial and operational history must never
+// This is a financial ERP Ã¢â‚¬â€ financial and operational history must never
 // be deleted automatically via a cascading foreign key. Every relation
 // in this schema uses `onDelete: Restrict` unless it is explicitly
 // justified otherwise in an inline comment directly above it.
 // `onDelete: Cascade` is reserved for records with zero independent or
-// historical meaning of their own (pure join/config/session rows) — see
+// historical meaning of their own (pure join/config/session rows) Ã¢â‚¬â€ see
 // the justification comment above each of the ~12 relations that use it.
 // Do not add a new Cascade relation without the same kind of comment.
 // =====================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -97,7 +94,7 @@ enum UnitStatus {
 }
 
 // =====================================================================
-// PHASE 5A — LAND BANK (Land Acquisition / Titles / Survey / Plots)
+// PHASE 5A Ã¢â‚¬â€ LAND BANK (Land Acquisition / Titles / Survey / Plots)
 // =====================================================================
 
 enum LandParcelStatus {
@@ -184,7 +181,7 @@ model User {
   passwordHash String
   firstName    String
   lastName     String
-  // Release ID — SMS Integration (Twilio). Optional — SMS notifications for
+  // Release ID Ã¢â‚¬â€ SMS Integration (Twilio). Optional Ã¢â‚¬â€ SMS notifications for
   // a user with no phone set are logged and marked FAILED with a clear
   // reason rather than silently dropped or blocking the notification queue.
   phone        String?
@@ -192,14 +189,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  // Release J — Security Hardening Part 1 (additive)
+  // Release J Ã¢â‚¬â€ Security Hardening Part 1 (additive)
   passwordChangedAt   DateTime?
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
 
-  // Release M — MFA / TOTP (additive). mfaSecret is the base32 TOTP
+  // Release M Ã¢â‚¬â€ MFA / TOTP (additive). mfaSecret is the base32 TOTP
   // seed. KNOWN LIMITATION: stored as plain text, not encrypted at
-  // rest — this repo has no KMS/envelope-encryption utility yet for
+  // rest Ã¢â‚¬â€ this repo has no KMS/envelope-encryption utility yet for
   // application-level secrets (distinct from passwordHash, which is a
   // one-way bcrypt hash and doesn't need one). Flagged explicitly in
   // the release report rather than silently accepted.
@@ -229,7 +226,7 @@ model User {
   backgroundChecksInitiated BackgroundCheck[]
   assignedCorrectiveActions CorrectiveAction[]
 
-  // Phase 4 — Property Sales completion (additive)
+  // Phase 4 Ã¢â‚¬â€ Property Sales completion (additive)
   reservationsCreated    UnitReservation[]     @relation("ReservationCreatedBy")
   reservationsCancelled  UnitReservation[]     @relation("ReservationCancelledBy")
   allocationsCancelled   UnitSaleAllocation[]  @relation("AllocationCancelledBy")
@@ -275,14 +272,14 @@ model User {
   preference               UserPreference?
   notifications            Notification[]
 
-  // Phase 5A — CRM / Lead Management (additive)
+  // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
   leadsAssigned         Lead[]        @relation("LeadAssignedTo")
   leadsCreated          Lead[]        @relation("LeadCreatedBy")
   prospectsAssigned     Prospect[]    @relation("ProspectAssignedTo")
   prospectsCreated      Prospect[]    @relation("ProspectCreatedBy")
   crmActivitiesCreated  CrmActivity[] @relation("CrmActivityCreatedBy")
 
-  // Phase 5A — Mortgage Management / Handover Workflow / Snag Lists (additive)
+  // Phase 5A Ã¢â‚¬â€ Mortgage Management / Handover Workflow / Snag Lists (additive)
   mortgageApplicationsCreated MortgageApplication[] @relation("MortgageCreatedBy")
   handoverRecordsCreated      HandoverRecord[]     @relation("HandoverCreatedBy")
   handoverRecordsHandedOver   HandoverRecord[]     @relation("HandoverHandedOverBy")
@@ -290,11 +287,11 @@ model User {
   snagsAssigned                SnagItem[]           @relation("SnagAssignedTo")
   snagsVerified                SnagItem[]           @relation("SnagVerifiedBy")
 
-  // Phase 5A — Tenant / Lease Management (additive)
+  // Phase 5A Ã¢â‚¬â€ Tenant / Lease Management (additive)
   tenantsCreated   Tenant[] @relation("TenantCreatedBy")
   leasesCreated    Lease[]  @relation("LeaseCreatedBy")
 
-  // Phase 5A — Facility Management / Maintenance Requests (additive)
+  // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
   facilitiesCreated           Facility[]            @relation("FacilityCreatedBy")
   maintenanceRequestsReported MaintenanceRequest[]   @relation("MaintenanceReportedBy")
 
@@ -372,10 +369,10 @@ model RefreshToken {
   revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  // Release N — Session Management (additive). Each RefreshToken row IS
+  // Release N Ã¢â‚¬â€ Session Management (additive). Each RefreshToken row IS
   // a session: it rotates on every /auth/refresh (old row revoked, new
   // row issued), so "list my active sessions" = "list my non-revoked,
-  // non-expired RefreshToken rows" — a documented simplification, same
+  // non-expired RefreshToken rows" Ã¢â‚¬â€ a documented simplification, same
   // spirit as EVM's linear time-phasing: no separate Session model,
   // reusing what already 1:1 tracks a logged-in device.
   ipAddress  String?
@@ -394,12 +391,12 @@ model RefreshToken {
 }
 
 // =====================================================================
-// RELEASE N — TRUSTED DEVICES (additive)
+// RELEASE N Ã¢â‚¬â€ TRUSTED DEVICES (additive)
 // =====================================================================
 // A device a user has explicitly chosen to remember at the moment they
 // complete an MFA challenge (VerifyMfaDto.rememberDevice = true). Its
 // raw token is generated once, returned to the client to store (e.g. a
-// long-lived cookie), and only its hash persisted — identical convention
+// long-lived cookie), and only its hash persisted Ã¢â‚¬â€ identical convention
 // to RefreshToken.tokenHash and MfaRecoveryCode.codeHash. A subsequent
 // login presenting a valid, unexpired, unrevoked trusted-device token
 // skips the MFA challenge (AuthService.login), the same way "remember
@@ -417,7 +414,7 @@ model TrustedDevice {
   revoked     Boolean   @default(false)
 
   // CASCADE justified: identical reasoning to RefreshToken/MfaRecoveryCode
-  // — a trusted-device record has no value once its owning user is gone.
+  // Ã¢â‚¬â€ a trusted-device record has no value once its owning user is gone.
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessions RefreshToken[]
 
@@ -426,10 +423,10 @@ model TrustedDevice {
 }
 
 // =====================================================================
-// RELEASE P — IP RESTRICTIONS (additive)
+// RELEASE P Ã¢â‚¬â€ IP RESTRICTIONS (additive)
 // =====================================================================
 // Two scopes only: GLOBAL (applies to every user) and USER (applies to
-// one specific account). An ENTITY scope was deliberately left out —
+// one specific account). An ENTITY scope was deliberately left out Ã¢â‚¬â€
 // User has no single entityId (access is granted via UserEntityAccess
 // and resolved into a multi-id SecurityScope by SecurityContextService),
 // and IpRestrictionGuard runs on every authenticated request, so it
@@ -437,10 +434,10 @@ model TrustedDevice {
 // rules. GLOBAL + USER covers the two real cases (an office/VPN
 // allowlist for the whole org, and locking one sensitive account to
 // known IPs) without that cost. Flagged as a scoping decision, not
-// silently omitted — an ENTITY scope can be added later the same way
+// silently omitted Ã¢â‚¬â€ an ENTITY scope can be added later the same way
 // RLS's own 'businessUnit' dimension was layered onto 'entity'.
 //
-// Fail-open-until-configured, fail-closed-once-configured — the same
+// Fail-open-until-configured, fail-closed-once-configured Ã¢â‚¬â€ the same
 // posture RowLevelSecurityService uses: a user/global with ZERO active
 // rules is unrestricted; the moment at least one active rule applies,
 // the request IP must match one of them.
@@ -536,10 +533,10 @@ model UserEntityAccess {
   @@map("user_entity_access")
 }
 
-/// Phase 2 — Row Level Security (additive).
+/// Phase 2 Ã¢â‚¬â€ Row Level Security (additive).
 /// Restricts which departments a user may see/post to. Absence of any row
 /// for a user is interpreted by SecurityContextService per its
-/// `unrestrictedIfNoGrants` policy (see security module docs) — by default,
+/// `unrestrictedIfNoGrants` policy (see security module docs) Ã¢â‚¬â€ by default,
 /// a user with zero rows here is treated as having full department access
 /// within the entities they can already see (mirrors legacy pre-Phase-2
 /// behavior). Once a user has at least one explicit grant, access is
@@ -559,7 +556,7 @@ model UserDepartmentAccess {
   @@map("user_department_access")
 }
 
-/// Phase 2 — Row Level Security (additive). Same semantics as
+/// Phase 2 Ã¢â‚¬â€ Row Level Security (additive). Same semantics as
 /// UserDepartmentAccess, scoped to Cost Centres.
 model UserCostCenterAccess {
   userId       String
@@ -576,7 +573,7 @@ model UserCostCenterAccess {
   @@map("user_cost_center_access")
 }
 
-/// Phase 2 — Row Level Security (additive). Same semantics as
+/// Phase 2 Ã¢â‚¬â€ Row Level Security (additive). Same semantics as
 /// UserDepartmentAccess, scoped to Projects. Covers Budget, PMO,
 /// Procurement, Inventory, Real Estate and Reporting access as required.
 model UserProjectAccess {
@@ -594,7 +591,7 @@ model UserProjectAccess {
   @@map("user_project_access")
 }
 
-/// Phase 2 — Row Level Security (additive). Groups Entities under a
+/// Phase 2 Ã¢â‚¬â€ Row Level Security (additive). Groups Entities under a
 /// Business Unit for a fifth, coarser-grained RLS dimension (section 5).
 /// `businessUnitId` on Entity is nullable so existing entities are
 /// unaffected until an admin assigns them; unassigned entities are simply
@@ -616,11 +613,11 @@ model BusinessUnit {
   @@map("business_units")
 }
 
-/// Phase 2 — Row Level Security (additive). Same semantics as
+/// Phase 2 Ã¢â‚¬â€ Row Level Security (additive). Same semantics as
 /// UserDepartmentAccess/UserCostCenterAccess/UserProjectAccess, scoped to
 /// Business Units. Resolved by SecurityContextService into the set of
 /// Entity ids under the granted Business Units, then intersected into the
-/// existing `entity` DimensionScope — no new Prisma field is added to
+/// existing `entity` DimensionScope Ã¢â‚¬â€ no new Prisma field is added to
 /// transactional tables, so RowLevelSecurityService.buildWhere() keeps
 /// working unchanged for every model that already declares the `entity`
 /// dimension.
@@ -655,7 +652,7 @@ model Entity {
   isActive        Boolean  @default(true)
   isConsolidationParent Boolean @default(false)
 
-  // Phase 2 — Row Level Security (additive, nullable): optional grouping
+  // Phase 2 Ã¢â‚¬â€ Row Level Security (additive, nullable): optional grouping
   // under a Business Unit. See BusinessUnit doc comment.
   businessUnitId  String?
   businessUnit    BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
@@ -672,17 +669,17 @@ model Entity {
   landParcels          LandParcel[]
   unitReservations     UnitReservation[]
   projects            Project[]
-  // Phase 5A — CRM / Lead Management (additive)
+  // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
   crmLeads             Lead[]
   crmProspects         Prospect[]
-  // Phase 5A — Mortgage Management (additive)
+  // Phase 5A Ã¢â‚¬â€ Mortgage Management (additive)
   mortgageApplications MortgageApplication[]
-  // Phase 5A — Handover Workflow (additive)
+  // Phase 5A Ã¢â‚¬â€ Handover Workflow (additive)
   handoverRecords      HandoverRecord[]
-  // Phase 5A — Tenant / Lease Management (additive)
+  // Phase 5A Ã¢â‚¬â€ Tenant / Lease Management (additive)
   tenants              Tenant[]
   leases               Lease[]
-  // Phase 5A — Facility Management / Maintenance Requests (additive)
+  // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
   facilities           Facility[]
   maintenanceRequests  MaintenanceRequest[]
   // Release H (PMO Scheduling Core, additive)
@@ -755,7 +752,7 @@ model Entity {
   // Release (Fixed Assets Core, additive)
   fixedAssets       FixedAsset[]
 
-  // Release IA — Core Integration Framework (additive)
+  // Release IA Ã¢â‚¬â€ Core Integration Framework (additive)
   integrationProviders IntegrationProvider[]
   // Release IE.1 Checkpoint C (additive)
   paymentTransactions  PaymentTransaction[]
@@ -834,7 +831,7 @@ model Account {
   // Release (Tax Center Core, additive)
   taxCodesAsAuthorityAccount TaxCode[] @relation("TaxCodeAuthorityAccount")
 
-  // Release L — Output VAT on AR Invoices (additive)
+  // Release L Ã¢â‚¬â€ Output VAT on AR Invoices (additive)
   arInvoiceLinesAsVatAuthority ARInvoiceLine[] @relation("ARInvoiceLineVatAuthority")
 
   // Agent & Commission Management, RE-COMM.2 (additive)
@@ -881,7 +878,7 @@ model Estate {
   entity   Entity    @relation(fields: [entityId], references: [id], onDelete: Restrict)
   projects Project[]
   masterPlans EstateMasterPlan[]
-  // Phase 5A — CRM / Lead Management (additive)
+  // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
   crmLeads     Lead[]
   crmProspects Prospect[]
   // Agent & Commission Management, RE-COMM.1 (additive)
@@ -920,10 +917,10 @@ model Project {
   userAccess            UserProjectAccess[]
   unitReservations      UnitReservation[]
   plotReleases          PlotProjectRelease[]
-  // Phase 5A — CRM / Lead Management (additive)
+  // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
   crmLeads              Lead[]
   crmProspects          Prospect[]
-  // Phase 5A — Facility Management (additive): common-area facilities
+  // Phase 5A Ã¢â‚¬â€ Facility Management (additive): common-area facilities
   // (generator, lifts, security systems, etc.) serving this project/estate.
   facilities            Facility[]
 
@@ -1011,15 +1008,15 @@ model Unit {
   saleAllocations      UnitSaleAllocation[]
   reservations         UnitReservation[]
   allocationEvents     UnitAllocationEvent[]
-  // Phase 5A — CRM / Lead Management (additive)
+  // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
   prospectInterests    Prospect[]
-  // Phase 5A — Handover Workflow / Snag Lists / Defect Tracking (additive)
+  // Phase 5A Ã¢â‚¬â€ Handover Workflow / Snag Lists / Defect Tracking (additive)
   handoverRecords      HandoverRecord[]
   snagItems            SnagItem[]
-  // Phase 5A — Tenant / Lease Management (additive)
+  // Phase 5A Ã¢â‚¬â€ Tenant / Lease Management (additive)
   tenants              Tenant[]
   leases               Lease[]
-  // Phase 5A — Facility Management / Maintenance Requests (additive)
+  // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
   facilities           Facility[]
   maintenanceRequests  MaintenanceRequest[]
   // Agent & Commission Management, RE-AGENT.2 (additive)
@@ -1037,7 +1034,7 @@ model Unit {
 /// A raw land holding, pre-development. Parcels move through
 /// acquisition -> titling -> survey -> subdivision into Plots. A Plot may
 /// later be released into an Estate/Project for construction (that link
-/// is deliberately loose — Estate Master Planning, deferred to a later
+/// is deliberately loose Ã¢â‚¬â€ Estate Master Planning, deferred to a later
 /// slice, is what formally binds a Plot to a Project).
 model LandParcel {
   id                    String           @id @default(uuid())
@@ -1164,7 +1161,7 @@ model Plot {
 }
 
 /// A versioned master plan for an Estate. Only one plan per estate should
-/// be APPROVED at a time — approving a new version automatically
+/// be APPROVED at a time Ã¢â‚¬â€ approving a new version automatically
 /// supersedes the previously-approved one (history is kept, not deleted).
 model EstateMasterPlan {
   id                String            @id @default(uuid())
@@ -1204,7 +1201,7 @@ model MasterPlanZone {
 }
 
 /// The formal hand-off of a Plot (Land Bank) into a Project (Real Estate
-/// build pipeline) for development. One active release per plot — the
+/// build pipeline) for development. One active release per plot Ã¢â‚¬â€ the
 /// unique constraint on plotId enforces that a plot can't be released
 /// twice while a release is still active; cancelling a release frees the
 /// plot to be released again.
@@ -1312,7 +1309,7 @@ model Vendor {
   vendorLedgerEntries VendorLedger[]
   paymentVouchers PaymentVoucher[]
 
-  // Phase 5A — Facility Management / Maintenance Requests (additive)
+  // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
   facilitiesServiced   Facility[]
   maintenanceRequests  MaintenanceRequest[] @relation("MaintenanceAssignedVendor")
 
@@ -1337,12 +1334,12 @@ model Customer {
   reservations          UnitReservation[]
   allocationEventsFrom  UnitAllocationEvent[] @relation("AllocationEventFromCustomer")
   allocationEventsTo    UnitAllocationEvent[] @relation("AllocationEventToCustomer")
-  // Phase 5A — CRM / Lead Management (additive): this customer record was
+  // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive): this customer record was
   // created when a Prospect converted (see Prospect.convertedCustomerId).
   convertedFromProspects Prospect[]
-  // Phase 5A — Handover Workflow (additive)
+  // Phase 5A Ã¢â‚¬â€ Handover Workflow (additive)
   handoverRecords        HandoverRecord[]
-  // Phase 5A — Tenant Management (additive)
+  // Phase 5A Ã¢â‚¬â€ Tenant Management (additive)
   tenancies              Tenant[]
 
   @@map("customers")
@@ -1492,17 +1489,17 @@ model JournalLine {
 // AUDIT TRAIL
 // =====================================================================
 
-/// Phase 3C — IFRS narrative note disclosures. Seven of the twenty-five
+/// Phase 3C Ã¢â‚¬â€ IFRS narrative note disclosures. Seven of the twenty-five
 /// notes requested (Reporting Entity Info, Basis of Preparation,
 /// Significant Accounting Policies, Related Party Transactions,
 /// Commitments, Contingent Liabilities, Subsequent Events) are not
-/// mechanically derivable from journal postings — a contingent liability,
+/// mechanically derivable from journal postings Ã¢â‚¬â€ a contingent liability,
 /// by definition, has NOT been recognized in the ledger, so there is no
 /// account balance to summarize. IFRS requires these as preparer-entered
 /// narrative disclosures. This model stores exactly that: one row per
 /// (entity, fiscal period, note type), editable by whoever has
 /// gl.journal.post authority (reusing that permission rather than adding a
-/// new one — see ReportingController), surfaced by ifrsNotes() alongside
+/// new one Ã¢â‚¬â€ see ReportingController), surfaced by ifrsNotes() alongside
 /// the eighteen GL-derived notes so the API returns one coherent document.
 model IfrsNoteDisclosure {
   id             String              @id @default(uuid())
@@ -1630,7 +1627,7 @@ model ConsolidationOwnership {
 }
 
 // =====================================================================
-// REAL ESTATE — SALES / REVENUE RECOGNITION
+// REAL ESTATE Ã¢â‚¬â€ SALES / REVENUE RECOGNITION
 // =====================================================================
 
 model UnitSaleAllocation {
@@ -1641,7 +1638,7 @@ model UnitSaleAllocation {
   allocationDate DateTime
   status     UnitStatus @default(RESERVED)
 
-  // Phase 4 — Property Sales completion (additive). The existing `status`
+  // Phase 4 Ã¢â‚¬â€ Property Sales completion (additive). The existing `status`
   // field tracks physical unit lifecycle (RESERVED/ALLOCATED/.../SOLD) and
   // is left untouched; cancellation is modeled separately here rather than
   // overloading `status`, since UnitStatus has no CANCELLED value and this
@@ -1665,7 +1662,7 @@ model UnitSaleAllocation {
   arInvoices          ARInvoice[]
   sourceReservation   UnitReservation?      @relation("ReservationConvertedAllocation")
   events              UnitAllocationEvent[]
-  // Phase 5A — Mortgage Management / Handover Workflow (additive)
+  // Phase 5A Ã¢â‚¬â€ Mortgage Management / Handover Workflow (additive)
   mortgageApplications MortgageApplication[]
   handoverRecord       HandoverRecord?
   // Agent & Commission Management, RE-AGENT.2 (additive)
@@ -1679,7 +1676,7 @@ model UnitSaleAllocation {
 }
 
 // =====================================================================
-// PHASE 4 — REAL ESTATE: PROPERTY SALES COMPLETION (additive)
+// PHASE 4 Ã¢â‚¬â€ REAL ESTATE: PROPERTY SALES COMPLETION (additive)
 // =====================================================================
 
 enum ReservationStatus {
@@ -1703,7 +1700,7 @@ enum AllocationEventType {
 /// A hold on a unit before a confirmed sale. Separate from
 /// UnitSaleAllocation (which represents the confirmed sale/installment
 /// plan) so an expired or cancelled reservation never needs to touch
-/// financial records — nothing is posted to GL until conversion.
+/// financial records Ã¢â‚¬â€ nothing is posted to GL until conversion.
 model UnitReservation {
   id             String            @id @default(uuid())
   unitId         String
@@ -1741,7 +1738,7 @@ model UnitReservation {
 }
 
 /// Append-only audit trail for everything that happens to a unit's
-/// sale/reservation lifecycle — Restrict, matching the schema's audit-log
+/// sale/reservation lifecycle Ã¢â‚¬â€ Restrict, matching the schema's audit-log
 /// deletion policy, so this history can never be silently lost as a side
 /// effect of deleting something else.
 model UnitAllocationEvent {
@@ -1798,7 +1795,7 @@ model InstallmentLine {
 }
 
 // =====================================================================
-// PHASE 5A — REAL ESTATE: CRM / LEAD MANAGEMENT / PROSPECTS (additive)
+// PHASE 5A Ã¢â‚¬â€ REAL ESTATE: CRM / LEAD MANAGEMENT / PROSPECTS (additive)
 // =====================================================================
 // Pipeline is Lead -> (qualify) -> Prospect -> (reserve) -> UnitReservation
 // (Phase 4, unchanged) -> UnitSaleAllocation (Phase 4, unchanged). This
@@ -1848,7 +1845,7 @@ enum CrmActivityType {
 }
 
 /// A raw enquiry, before it's been qualified as a genuine buyer. Leads are
-/// intentionally lightweight and carry no financial data — nothing here
+/// intentionally lightweight and carry no financial data Ã¢â‚¬â€ nothing here
 /// posts to GL. Converts 1:1 into a Prospect (see Prospect.leadId).
 model Lead {
   id                 String     @id @default(uuid())
@@ -1888,7 +1885,7 @@ model Lead {
 /// A qualified buyer being actively worked toward a reservation. May
 /// originate from a converted Lead (leadId set) or be opened directly
 /// (e.g. a repeat buyer who already has a Customer record). Reserving a
-/// unit for a Prospect reuses RealEstateService.reserveUnit() as-is —
+/// unit for a Prospect reuses RealEstateService.reserveUnit() as-is Ã¢â‚¬â€
 /// this model only tracks the CRM side (assignment, site visits,
 /// negotiation) up to the point a Customer/UnitReservation exists.
 model Prospect {
@@ -1930,7 +1927,7 @@ model Prospect {
 }
 
 /// Append-only interaction log shared by Lead and Prospect (exactly one
-/// of leadId/prospectId is set) — one activity model rather than two
+/// of leadId/prospectId is set) Ã¢â‚¬â€ one activity model rather than two
 /// near-identical ones, per the "never duplicate logic" rule.
 model CrmActivity {
   id           String          @id @default(uuid())
@@ -1954,12 +1951,12 @@ model CrmActivity {
 }
 
 // =====================================================================
-// PHASE 5A — REAL ESTATE: MORTGAGE MANAGEMENT (additive)
+// PHASE 5A Ã¢â‚¬â€ REAL ESTATE: MORTGAGE MANAGEMENT (additive)
 // =====================================================================
 // Tracks a buyer's external bank/mortgage financing for a unit purchase.
 // Disbursement is recorded as an ordinary customer payment via the
 // existing RevenueRecognitionService.recordCustomerPayment() (Phase 4,
-// unchanged) — the lender's funds are economically just another source
+// unchanged) Ã¢â‚¬â€ the lender's funds are economically just another source
 // of cash against the same installment schedule, so no separate posting
 // logic is created here.
 
@@ -2002,15 +1999,15 @@ model MortgageApplication {
 }
 
 // =====================================================================
-// PHASE 5A — REAL ESTATE: HANDOVER WORKFLOW / SNAG LISTS / DEFECT TRACKING
+// PHASE 5A Ã¢â‚¬â€ REAL ESTATE: HANDOVER WORKFLOW / SNAG LISTS / DEFECT TRACKING
 // (additive)
 // =====================================================================
 // The operational walkthrough-and-keys process around a sale, separate
 // from (and calling into) the existing RevenueRecognitionService, which
 // already owns the GL entry + Unit/Allocation status flip to HANDED_OVER.
 // One SnagItem model covers both the handover-day punch list and any
-// defect reported later during the defects-liability period — same
-// shape, only `source` differs — rather than two near-identical tables.
+// defect reported later during the defects-liability period Ã¢â‚¬â€ same
+// shape, only `source` differs Ã¢â‚¬â€ rather than two near-identical tables.
 
 enum HandoverStatus {
   SCHEDULED
@@ -2101,9 +2098,9 @@ model SnagItem {
 }
 
 // =====================================================================
-// PHASE 5A — REAL ESTATE: TENANT / LEASE MANAGEMENT (additive)
+// PHASE 5A Ã¢â‚¬â€ REAL ESTATE: TENANT / LEASE MANAGEMENT (additive)
 // =====================================================================
-// A Tenant is an existing Customer occupying a Unit — it does not
+// A Tenant is an existing Customer occupying a Unit Ã¢â‚¬â€ it does not
 // duplicate person/company data, only the occupancy fact. A Lease is the
 // contract governing one Tenant/Unit pairing; only one ACTIVE lease (and
 // one ACTIVE tenancy) is allowed per unit at a time, enforced in
@@ -2111,8 +2108,8 @@ model SnagItem {
 // constraint here). Rent billing does not invent posting logic: each
 // LeaseRentInvoice is backed 1:1 by an ARInvoice created and posted
 // through the existing AccountsReceivableService (createInvoice /
-// postInvoice) — the same service ARInvoice/Receipt already uses for
-// unit sales — with allocationId simply left null, since ARInvoice
+// postInvoice) Ã¢â‚¬â€ the same service ARInvoice/Receipt already uses for
+// unit sales Ã¢â‚¬â€ with allocationId simply left null, since ARInvoice
 // already supports non-sale invoices for exactly this reason.
 
 enum TenantStatus {
@@ -2152,7 +2149,7 @@ model Tenant {
   createdBy User     @relation("TenantCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
   leases Lease[]
-  // Phase 5A — Facility Management / Maintenance Requests (additive)
+  // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
   maintenanceRequests MaintenanceRequest[]
 
   @@index([entityId, status])
@@ -2195,7 +2192,7 @@ model Lease {
 }
 
 /// Links one periodic rent billing to the ARInvoice that actually carries
-/// the financial record — this table is a thin pointer, not a duplicate
+/// the financial record Ã¢â‚¬â€ this table is a thin pointer, not a duplicate
 /// ledger.
 model LeaseRentInvoice {
   id           String   @id @default(uuid())
@@ -2213,19 +2210,19 @@ model LeaseRentInvoice {
 }
 
 // =====================================================================
-// PHASE 5A — REAL ESTATE: FACILITY MANAGEMENT / MAINTENANCE REQUESTS
-// (additive) — Release D
+// PHASE 5A Ã¢â‚¬â€ REAL ESTATE: FACILITY MANAGEMENT / MAINTENANCE REQUESTS
+// (additive) Ã¢â‚¬â€ Release D
 // =====================================================================
-// A Facility is a physical asset/amenity to be maintained — either a
+// A Facility is a physical asset/amenity to be maintained Ã¢â‚¬â€ either a
 // common-area asset (projectId set, e.g. a generator or lift serving a
 // whole estate) or an in-unit fixture (unitId set). A MaintenanceRequest
 // is the work-order raised against a Facility (or, for a general
 // tenant-reported issue with no tracked asset yet, against a bare unit).
 // Both share FacilityCategory rather than each inventing their own
 // category list. Billing does not invent AP posting logic: closing a
-// request with a cost reuses AccountsPayableService.createInvoice() —
+// request with a cost reuses AccountsPayableService.createInvoice() Ã¢â‚¬â€
 // the same VendorInvoice/PostingEngine path Procurement and ad-hoc AP
-// bills already use — rather than posting a journal entry here.
+// bills already use Ã¢â‚¬â€ rather than posting a journal entry here.
 // Decommissioning a safety-relevant Facility goes through the existing
 // Workflow Engine, the same integration shape MortgageService and
 // HandoverService already use.
@@ -2346,17 +2343,17 @@ model MaintenanceRequest {
 }
 
 // =====================================================================
-// RELEASE J — SECURITY HARDENING PART 1 (additive)
+// RELEASE J Ã¢â‚¬â€ SECURITY HARDENING PART 1 (additive)
 // Password Policy Engine, Login History, Account Lockout.
 // =====================================================================
 // Extends the existing auth.service.ts (bcrypt + JWT + RefreshToken)
-// rather than replacing it — see AuthService.validateCredentials()/
+// rather than replacing it Ã¢â‚¬â€ see AuthService.validateCredentials()/
 // login(), which now call into PasswordPolicyService/LoginHistoryService/
 // AccountLockoutService instead of reimplementing password hashing or
 // token issuance. entityId is nullable on AuthSecurityPolicy so exactly
 // one GLOBAL policy (entityId = null) can exist alongside optional
 // per-entity overrides (Postgres unique indexes allow multiple NULLs);
-// this release's login flow only resolves the GLOBAL policy — see the
+// this release's login flow only resolves the GLOBAL policy Ã¢â‚¬â€ see the
 // "Known limitation" note in the release report for why per-entity
 // resolution is deferred rather than guessed at here.
 
@@ -2384,7 +2381,7 @@ model AuthSecurityPolicy {
   @@map("auth_security_policies")
 }
 
-/// Prior password hashes for reuse-prevention. CASCADE on user deletion —
+/// Prior password hashes for reuse-prevention. CASCADE on user deletion Ã¢â‚¬â€
 /// same reasoning as RefreshToken: no independent value once the owning
 /// user is gone, and it isn't itself a compliance record (LoginHistory
 /// below is, and uses SetNull instead).
@@ -2410,7 +2407,7 @@ enum LoginEventType {
 
 /// userId is nullable (a failed attempt against an email that matches no
 /// user must still be recorded for security monitoring) and onDelete is
-/// SetNull rather than Cascade — unlike PasswordHistory/RefreshToken,
+/// SetNull rather than Cascade Ã¢â‚¬â€ unlike PasswordHistory/RefreshToken,
 /// this IS a security compliance record and should outlive the user row.
 model LoginHistory {
   id             String         @id @default(uuid())
@@ -2458,7 +2455,7 @@ model BankAccount {
 }
 
 // =====================================================================
-// Release IF.1, Checkpoint C — MONO CONNECT ACCOUNT LINKING (additive)
+// Release IF.1, Checkpoint C Ã¢â‚¬â€ MONO CONNECT ACCOUNT LINKING (additive)
 // =====================================================================
 // The linked-account model MonoProvider's Checkpoint B doc comment
 // flagged as the prerequisite for its stub methods: Mono is an
@@ -2466,7 +2463,7 @@ model BankAccount {
 // lookup), so every real data call needs a Mono `accountId` obtained
 // once via the Mono Connect widget + a server-side code exchange, not an
 // arbitrary accountNumber+bankCode a caller can supply per-request. This
-// table is that mapping. Deliberately NOT a 1:1 with BankAccount — a row
+// table is that mapping. Deliberately NOT a 1:1 with BankAccount Ã¢â‚¬â€ a row
 // is kept (status REVOKED) rather than deleted when unlinked, preserving
 // which Mono accountId a given historical statement import/balance
 // check actually came from.
@@ -2474,13 +2471,13 @@ model BankAccount {
 enum MonoLinkStatus {
   ACTIVE
   REVOKED
-  /// Release IF.1, Checkpoint G — set by MonoWebhookHandler on a
+  /// Release IF.1, Checkpoint G Ã¢â‚¬â€ set by MonoWebhookHandler on a
   /// mono.events.reauthorisation_required callback (e.g. the linked
   /// institution enabled MFA, or the consent otherwise lapsed). Cleared
   /// back to ACTIVE on the matching mono.events.account_reauthorized
   /// callback. fetchStatement/fetchBalance/validateAccount all key off
   /// ACTIVE already (resolveActiveLinkedAccount), so a REQUIRES_REAUTH
-  /// row is automatically excluded from them with no further change —
+  /// row is automatically excluded from them with no further change Ã¢â‚¬â€
   /// this checkpoint only had to teach something to SET the status.
   REQUIRES_REAUTH
 }
@@ -2488,7 +2485,7 @@ enum MonoLinkStatus {
 model MonoLinkedAccount {
   id                  String         @id @default(uuid())
   bankAccountId       String
-  /// Mono's own account id — globally unique per Mono, obtained from the
+  /// Mono's own account id Ã¢â‚¬â€ globally unique per Mono, obtained from the
   /// POST /v2/account/auth code-exchange response.
   monoAccountId       String         @unique
   institutionName     String?
@@ -2498,13 +2495,13 @@ model MonoLinkedAccount {
   linkedById          String
   linkedAt            DateTime       @default(now())
   revokedAt           DateTime?
-  /// Release IF.1, Checkpoint G — when this row most recently entered
+  /// Release IF.1, Checkpoint G Ã¢â‚¬â€ when this row most recently entered
   /// REQUIRES_REAUTH, cleared (set back to null) on reauthorisation.
   reauthRequiredAt    DateTime?
-  /// Release IF.1, Checkpoint H — the end of the last window
+  /// Release IF.1, Checkpoint H Ã¢â‚¬â€ the end of the last window
   /// MonoStatementSyncProcessor successfully imported through. Null means
   /// never synced by the scheduled job (a manual import via
-  /// POST .../import-statement does NOT update this — see that
+  /// POST .../import-statement does NOT update this Ã¢â‚¬â€ see that
   /// processor's own doc comment for why the two are deliberately
   /// independent watermarks).
   lastSyncedAt        DateTime?
@@ -2520,18 +2517,18 @@ model MonoLinkedAccount {
 }
 
 // =====================================================================
-// TRANSFER APIS — Checkpoint B (additive)
+// TRANSFER APIS Ã¢â‚¬â€ Checkpoint B (additive)
 // =====================================================================
 // Persistence for the TransferProvider abstraction
 // (transfers/transfer-provider.interface.ts, Checkpoint A). No approval
-// gate, no limit field — explicitly confirmed scope, see that file's
+// gate, no limit field Ã¢â‚¬â€ explicitly confirmed scope, see that file's
 // "SCOPE DECISION" note. workflowInstanceId is nullable/unused by
 // default: available for a future optional policy layer to populate if
 // an admin ever turns approval on, not required by this model itself.
 //
 // `reference` carries the UNIQUE constraint that makes idempotency a
 // database-enforced guarantee, not just a documented contract on the
-// interface — a retried initiateTransfer() call with the same reference
+// interface Ã¢â‚¬â€ a retried initiateTransfer() call with the same reference
 // cannot create a second row no matter what a provider implementation
 // does or doesn't check on its own side.
 
@@ -2571,25 +2568,25 @@ model BankTransfer {
 }
 
 // =====================================================================
-// API GATEWAY — Checkpoint A: API Keys (additive)
+// API GATEWAY Ã¢â‚¬â€ Checkpoint A: API Keys (additive)
 // =====================================================================
 // The inbound counterpart to this codebase's many outbound
 // *ProviderRegistry abstractions (Payment/Bank/Contacts/...): those let
 // 7F LedgerOS call OUT to external services; ApiKey is how an external
 // partner calls INTO 7F LedgerOS without a user JWT session. keyHash
 // uses the exact same crypto.createHash('sha256') convention
-// AuthService.hashToken() already established for RefreshToken — never
+// AuthService.hashToken() already established for RefreshToken Ã¢â‚¬â€ never
 // bcrypt here, deliberately: bcrypt's slowness is a FEATURE for
 // passwords (checked once at login) and a LIABILITY for API keys
 // (checked on every single request an integration makes).
 //
 // The plaintext key is generated once, returned once, and never
-// retrievable again — only keyPrefix (safe to display in a UI list) and
+// retrievable again Ã¢â‚¬â€ only keyPrefix (safe to display in a UI list) and
 // keyHash (useless without the plaintext) are ever persisted.
 //
 // scopes is free-form string[], checked dynamically the same way
 // permission strings already are elsewhere in this codebase (see
-// RequirePermissions's own doc comment) — no fixed enum/catalog to keep
+// RequirePermissions's own doc comment) Ã¢â‚¬â€ no fixed enum/catalog to keep
 // in sync.
 
 enum ApiKeyStatus {
@@ -2612,9 +2609,9 @@ model ApiKey {
   createdById String
   createdAt   DateTime     @default(now())
 
-  // API Gateway, Checkpoint B — Rate Limiting (additive). Nullable,
+  // API Gateway, Checkpoint B Ã¢â‚¬â€ Rate Limiting (additive). Nullable,
   // same "absence means the gate doesn't apply" convention expiresAt
-  // already uses on this model — null means unlimited (Checkpoint A's
+  // already uses on this model Ã¢â‚¬â€ null means unlimited (Checkpoint A's
   // existing keys all read as unlimited after this migration, not
   // zero-requests-allowed).
   rateLimitPerMinute Int?
@@ -2721,7 +2718,7 @@ model StockBalance {
   @@map("stock_balances")
 }
 
-/// Append-only ledger of every quantity/value change — the audit trail
+/// Append-only ledger of every quantity/value change Ã¢â‚¬â€ the audit trail
 /// behind StockBalance's running weighted-average figures.
 model StockMovement {
   id            String            @id @default(uuid())
@@ -2904,7 +2901,7 @@ model Employee {
   isActive          Boolean  @default(true)
   createdAt         DateTime @default(now())
 
-  // Master-data fields (HRMS expansion — additive, defaults keep existing
+  // Master-data fields (HRMS expansion Ã¢â‚¬â€ additive, defaults keep existing
   // payroll-only records valid without a backfill).
   photoUrl            String?
   gender              Gender?
@@ -2931,7 +2928,7 @@ model Employee {
   taxId               String?
   userId              String? @unique // links this employee to a portal login (ESS)
 
-  // Release IH, Checkpoint I — Google Workspace directory-account sync
+  // Release IH, Checkpoint I Ã¢â‚¬â€ Google Workspace directory-account sync
   // (best-effort, same shape as Interview's calendarProviderCode/
   // calendarEventId/calendarSyncFailedAt trio and Candidate's
   // contactProviderCode/providerContactId/contactSyncFailedAt trio).
@@ -3137,10 +3134,10 @@ model CorrectiveAction {
   createdById      String
   createdAt        DateTime                @default(now())
 
-  // Release IG.1, Checkpoint M — Microsoft To Do sync (additive). Same
+  // Release IG.1, Checkpoint M Ã¢â‚¬â€ Microsoft To Do sync (additive). Same
   // three-field shape Candidate uses for its own Contacts sync
   // (contactProviderCode/providerContactId/contactSyncFailedAt) and
-  // Interview uses for Calendar sync — see HseService.trySyncCreate's
+  // Interview uses for Calendar sync Ã¢â‚¬â€ see HseService.trySyncCreate's
   // own doc comment for why a corrective action's due date + completion
   // state maps onto TasksProvider more directly than either of those.
   taskProviderCode String?
@@ -3508,7 +3505,7 @@ enum BudgetTransferStatus {
   REJECTED
 }
 
-/// Append-only log of every workflow action taken against a Budget —
+/// Append-only log of every workflow action taken against a Budget Ã¢â‚¬â€
 /// the audit trail backing the approval workflow (mirrors how AuditLog
 /// backs the GL kernel, but scoped and queryable per-budget).
 enum BudgetApprovalAction {
@@ -3570,7 +3567,7 @@ model Budget {
   @@map("budgets")
 }
 
-/// The atomic budget cell: one account × one dimension combination × one
+/// The atomic budget cell: one account Ãƒâ€” one dimension combination Ãƒâ€” one
 /// month. `originalAmount` never changes after approval; `revisedAmount`
 /// is the amount BudgetRevision/BudgetTransfer actions maintain and is
 /// what variance/availability calculations use going forward.
@@ -3659,7 +3656,7 @@ model BudgetRevisionLine {
 }
 
 /// Moves revisedAmount between two BudgetLines of the same Budget
-/// without changing the budget's total — e.g. reallocating cost-center
+/// without changing the budget's total Ã¢â‚¬â€ e.g. reallocating cost-center
 /// spend within an approved envelope.
 model BudgetTransfer {
   id       String                @id @default(uuid())
@@ -3703,7 +3700,7 @@ model BudgetApproval {
   @@map("budget_approvals")
 }
 
-/// Reserves budget against a BudgetLine ahead of actual spend — created
+/// Reserves budget against a BudgetLine ahead of actual spend Ã¢â‚¬â€ created
 /// when a purchase order is approved (Procurement phase) and released
 /// (partially or fully) as goods/invoices are posted. `sourceId` is a
 /// loose reference (not an FK) so this model has no dependency on the
@@ -3733,11 +3730,11 @@ model BudgetCommitment {
 }
 
 // =====================================================================
-// PROCUREMENT (Phase — Procurement, AP/AR, Bank Recon & Dashboard update)
+// PROCUREMENT (Phase Ã¢â‚¬â€ Procurement, AP/AR, Bank Recon & Dashboard update)
 // Workflow: PR -> Approval -> PO -> GRN -> Vendor Invoice -> 3-Way Match
 //           -> AP Voucher. Integrates with Budgeting (BudgetCommitment,
 //           already defined above) and Inventory (StockMovement /
-//           StockBalance, via InventoryService — not duplicated here).
+//           StockBalance, via InventoryService Ã¢â‚¬â€ not duplicated here).
 // =====================================================================
 
 enum PRStatus {
@@ -3785,7 +3782,7 @@ enum ThreeWayMatchStatus {
 }
 
 /// A department/site request to buy something. Carries no GL/budget
-/// commitment itself — that only happens once it becomes an approved PO.
+/// commitment itself Ã¢â‚¬â€ that only happens once it becomes an approved PO.
 model PurchaseRequisition {
   id             String    @id @default(uuid())
   entityId       String
@@ -4024,7 +4021,7 @@ model VendorInvoice {
   lines           VendorInvoiceLine[]
   threeWayMatches ThreeWayMatch[]
   paymentAllocations PaymentVoucherAllocation[]
-  // Phase 5A — Facility Management / Maintenance Requests (additive):
+  // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive):
   // set when this bill was raised via MaintenanceService billing a
   // vendor for repair work (see MaintenanceRequest.vendorInvoiceId).
   maintenanceRequest MaintenanceRequest?
@@ -4056,7 +4053,7 @@ model VendorInvoiceLine {
 
 /// Result of matching a PO against its GRN(s) and Vendor Invoice on
 /// quantity and price. Completing a match with no variance (or a
-/// variance within tolerance) is what triggers the AP voucher —
+/// variance within tolerance) is what triggers the AP voucher Ã¢â‚¬â€
 /// implemented in Phase B as a call from ProcurementService into the
 /// (then-existing) APService, keeping this model's `status` as the
 /// single source of truth for "is this invoice safe to pay".
@@ -4089,7 +4086,7 @@ model ThreeWayMatch {
 // =====================================================================
 // ACCOUNTS PAYABLE (Phase B)
 // Builds on Procurement's VendorInvoice/VendorInvoiceLine (Phase A) as
-// the single AP invoice record — deliberately NOT duplicated as a
+// the single AP invoice record Ã¢â‚¬â€ deliberately NOT duplicated as a
 // separate APInvoice/APInvoiceLine pair, for the same reason Phase C's
 // AR installments reuse Real Estate's InstallmentSchedule rather than
 // forking it. VendorInvoice.purchaseOrderId is already optional, so
@@ -4144,8 +4141,8 @@ model VendorLedger {
   credit          Decimal               @db.Decimal(18, 2) @default(0)
   description     String?
 
-  // Loose reference (not an FK) to the originating document — a
-  // VendorInvoice or PaymentVoucher id — mirroring the same pattern
+  // Loose reference (not an FK) to the originating document Ã¢â‚¬â€ a
+  // VendorInvoice or PaymentVoucher id Ã¢â‚¬â€ mirroring the same pattern
   // already used by BudgetCommitment.sourceId.
   referenceType String
   referenceId   String
@@ -4244,7 +4241,7 @@ model PaymentVoucherAllocation {
 
 /// Withholding tax deducted from a specific invoice allocation at
 /// payment time. The withheld amount reduces cash paid to the vendor
-/// but still fully settles that portion of the vendor's payable — it
+/// but still fully settles that portion of the vendor's payable Ã¢â‚¬â€ it
 /// becomes a separate liability owed to the tax authority instead.
 model WHTDeduction {
   id                         String               @id @default(uuid())
@@ -4292,7 +4289,7 @@ model VATDeduction {
 // ACCOUNTS RECEIVABLE (Phase C)
 // Installment plans deliberately reuse Real Estate's existing
 // InstallmentSchedule/InstallmentLine models rather than a parallel
-// ARInstallmentPlan/InstallmentLine pair (confirmed choice — same
+// ARInstallmentPlan/InstallmentLine pair (confirmed choice Ã¢â‚¬â€ same
 // customer-installment concept, and a second InstallmentLine model
 // would collide by name in this schema anyway).
 // =====================================================================
@@ -4344,7 +4341,7 @@ model ARInvoice {
 
   lines               ARInvoiceLine[]
   receiptAllocations  ReceiptAllocation[]
-  // Phase 5A — Lease Management (additive): set when this invoice was
+  // Phase 5A Ã¢â‚¬â€ Lease Management (additive): set when this invoice was
   // generated as a periodic rent billing rather than a unit-sale invoice.
   leaseRentInvoice    LeaseRentInvoice?
 
@@ -4369,13 +4366,13 @@ model ARInvoiceLine {
 
   createdAt DateTime @default(now())
 
-  // Release L — Output VAT on AR Invoices (additive). Resolved from a
-  // TaxCode at createInvoice time and snapshotted here — same pattern as
+  // Release L Ã¢â‚¬â€ Output VAT on AR Invoices (additive). Resolved from a
+  // TaxCode at createInvoice time and snapshotted here Ã¢â‚¬â€ same pattern as
   // AP's whtTaxCodeId/vatTaxCodeId resolution (Tax Code Integration
   // release): the rate is captured at the moment of use, not looked up
   // live from TaxCode on every read, so a later rate change doesn't
   // retroactively alter an already-issued invoice. All three fields are
-  // null for a line with no vatTaxCodeId — existing invoices/lines are
+  // null for a line with no vatTaxCodeId Ã¢â‚¬â€ existing invoices/lines are
   // completely unaffected.
   vatRate              Decimal? @db.Decimal(6, 4)
   vatAmount            Decimal? @db.Decimal(18, 2)
@@ -4416,7 +4413,7 @@ model Receipt {
   @@map("receipts")
 }
 
-/// One row per AR invoice a Receipt settles (fully or partially) —
+/// One row per AR invoice a Receipt settles (fully or partially) Ã¢â‚¬â€
 /// mirrors PaymentVoucherAllocation on the AP side.
 model ReceiptAllocation {
   id              String  @id @default(uuid())
@@ -4468,7 +4465,7 @@ model CustomerLedger {
 // Links to Treasury's existing BankAccount. Reconciliation itself
 // compares BankStatementLine rows (the bank's version of events)
 // against JournalLine rows already posted to that account's GL account
-// (the book's version) — no separate "book transaction" model is
+// (the book's version) Ã¢â‚¬â€ no separate "book transaction" model is
 // introduced, since JournalLine already is that.
 // =====================================================================
 
@@ -4514,7 +4511,7 @@ model BankStatementLine {
   description     String
   reference       String?
   // Signed: positive = credit/deposit into the account, negative =
-  // debit/withdrawal — matching how bank statements are usually
+  // debit/withdrawal Ã¢â‚¬â€ matching how bank statements are usually
   // exported, rather than separate debit/credit columns.
   amount          Decimal  @db.Decimal(18, 2)
   isMatched       Boolean  @default(false)
@@ -4533,7 +4530,7 @@ model ReconciliationSession {
   entityId       String
   bankAccountId  String
   statementId    String
-  // GL account this bank account posts to — supplied explicitly since
+  // GL account this bank account posts to Ã¢â‚¬â€ supplied explicitly since
   // BankAccount itself carries no GL account reference (same pattern
   // used for AP/AR cash accounts).
   bankGlAccountId String
@@ -4564,7 +4561,7 @@ model ReconciliationMatch {
   sessionId           String
   bankStatementLineId String
   // Loose reference (not an FK, same pattern as BudgetCommitment.sourceId)
-  // to the JournalLine this statement line was matched against — or, for
+  // to the JournalLine this statement line was matched against Ã¢â‚¬â€ or, for
   // bank charges / interest income raised during reconciliation, to the
   // JournalLine of the adjustment entry created for that purpose.
   journalLineId       String?
@@ -4585,11 +4582,11 @@ model ReconciliationMatch {
 }
 
 // =====================================================================
-// WORKFLOW ENGINE (Enterprise Platform Upgrade — Phase D)
+// WORKFLOW ENGINE (Enterprise Platform Upgrade Ã¢â‚¬â€ Phase D)
 // A single reusable approval/state-machine engine, so future work can
 // stop hand-rolling maker-checker logic per module the way Procurement,
 // AP, and Budgeting currently do. Deliberately additive and NOT wired
-// into those existing modules yet — they keep working exactly as they
+// into those existing modules yet Ã¢â‚¬â€ they keep working exactly as they
 // do today. Migrating them onto this engine is a separate, explicit
 // follow-up so nothing working today silently changes behavior.
 // =====================================================================
@@ -4653,11 +4650,11 @@ enum WorkflowRuleOperator {
   IN
 }
 
-/// A reusable pipeline template — e.g. "Standard Purchase Approval",
-/// "High-Value Payment Approval" — identified by `code`, not tied to
+/// A reusable pipeline template Ã¢â‚¬â€ e.g. "Standard Purchase Approval",
+/// "High-Value Payment Approval" Ã¢â‚¬â€ identified by `code`, not tied to
 /// any one domain model. `entityType` is a free-text label (e.g.
 /// "PurchaseOrder", "PaymentVoucher") describing what it's meant for,
-/// purely for admin-UI filtering — the engine itself doesn't care.
+/// purely for admin-UI filtering Ã¢â‚¬â€ the engine itself doesn't care.
 model WorkflowDefinition {
   id          String   @id @default(uuid())
   code        String   @unique
@@ -4714,9 +4711,9 @@ model WorkflowApprovalRule {
   stageDefinitionId    String?
   field                WorkflowRuleField
   operator             WorkflowRuleOperator
-  // JSON-encoded comparison value — a number for AMOUNT, a string for
+  // JSON-encoded comparison value Ã¢â‚¬â€ a number for AMOUNT, a string for
   // DEPARTMENT/PROJECT/ENTITY/ROLE/RISK_LEVEL, a boolean for
-  // BUDGET_AVAILABILITY — since the value type varies by field.
+  // BUDGET_AVAILABILITY Ã¢â‚¬â€ since the value type varies by field.
   value                String
   requiredRoleCode     String?
   description          String?
@@ -4734,8 +4731,8 @@ model WorkflowApprovalRule {
 
 /// One running (or completed) approval process for a specific domain
 /// record. `entityType`/`entityId` are a loose reference (same pattern
-/// as BudgetCommitment.sourceId) — e.g. entityType="PurchaseOrder",
-/// entityId=PurchaseOrder.id — so this engine never needs a migration
+/// as BudgetCommitment.sourceId) Ã¢â‚¬â€ e.g. entityType="PurchaseOrder",
+/// entityId=PurchaseOrder.id Ã¢â‚¬â€ so this engine never needs a migration
 /// to support a new consuming module.
 model WorkflowInstance {
   id                   String                 @id @default(uuid())
@@ -4743,10 +4740,10 @@ model WorkflowInstance {
   entityType           String
   entityId             String
   status               WorkflowInstanceStatus @default(IN_PROGRESS)
-  // Snapshot of the fields rules are evaluated against — amount,
+  // Snapshot of the fields rules are evaluated against Ã¢â‚¬â€ amount,
   // departmentId, projectId, entityId (the accounting Entity, not to
   // be confused with entityType/entityId above), role, riskLevel,
-  // budgetAvailable — captured once at start so later edits to the
+  // budgetAvailable Ã¢â‚¬â€ captured once at start so later edits to the
   // underlying record can't retroactively change which approvals were
   // required for it.
   context              Json
@@ -4807,10 +4804,10 @@ model WorkflowAction {
 }
 
 // =====================================================================
-// ADMIN & BRANDING PLATFORM (Enterprise Platform Upgrade — Phase A)
+// ADMIN & BRANDING PLATFORM (Enterprise Platform Upgrade Ã¢â‚¬â€ Phase A)
 // Per-entity branding, document templates, and locale/format settings.
 // Deliberately does NOT duplicate Entity.baseCurrency or
-// Entity.fiscalYearStartMonth, which already exist — this only adds
+// Entity.fiscalYearStartMonth, which already exist Ã¢â‚¬â€ this only adds
 // what Entity doesn't already carry (theme, assets, templates, locale
 // display formatting). File assets (logos, letterheads, watermarks,
 // signatures, stamps) store a storage key + URL from the pluggable
@@ -4845,7 +4842,7 @@ enum CurrencySymbolPosition {
 
 /// One row per entity: theme, locale, and format preferences. Doesn't
 /// duplicate Entity.baseCurrency / Entity.fiscalYearStartMonth, which
-/// already exist on Entity — this is purely the display/branding layer
+/// already exist on Entity Ã¢â‚¬â€ this is purely the display/branding layer
 /// on top of those.
 model EntityBrandingProfile {
   id       String @id @default(uuid())
@@ -4925,7 +4922,7 @@ model DocumentTemplate {
 
 /// Company-profile fields for a legal entity that don't belong on the
 /// Financial Kernel's Entity model (contact details, address, a short
-/// description) — extends Entity 1:1 without modifying it.
+/// description) Ã¢â‚¬â€ extends Entity 1:1 without modifying it.
 model EntityProfile {
   id           String  @id @default(uuid())
   entityId     String  @unique
@@ -4949,7 +4946,7 @@ model EntityProfile {
 }
 
 /// Per-user overrides layered on top of an entity's branding defaults
-/// (EntityBrandingProfile) — dark mode and language are personal
+/// (EntityBrandingProfile) Ã¢â‚¬â€ dark mode and language are personal
 /// preferences, not just a company-wide setting. Reuses ThemeMode
 /// rather than a second theme enum.
 model UserPreference {
@@ -4968,7 +4965,7 @@ model UserPreference {
 }
 
 /// Minimal admin-manageable i18n store: (locale, namespace, key) ->
-/// value. Deliberately not a full translation-management product —
+/// value. Deliberately not a full translation-management product Ã¢â‚¬â€
 /// just enough for "Multi-language" to be a real, queryable capability
 /// rather than a single hardcoded `language` string with no content
 /// behind it.
@@ -4988,12 +4985,12 @@ model TranslationEntry {
 }
 
 // =====================================================================
-// HRMS — EMPLOYEE LIFECYCLE (Phase A: master data, onboarding, leave,
+// HRMS Ã¢â‚¬â€ EMPLOYEE LIFECYCLE (Phase A: master data, onboarding, leave,
 // attendance/shift, biometric abstraction, disciplinary, asset
 // assignment, exit & clearance)
 //
 // Actor references on these models (raisedById, clearedById, etc.) are
-// deliberately plain string columns, not FK relations to User — at this
+// deliberately plain string columns, not FK relations to User Ã¢â‚¬â€ at this
 // schema size adding a named relation + User back-relation for every
 // such field would balloon the User model for little benefit, since the
 // global AuditLog already captures who-did-what. employeeId references
@@ -5388,7 +5385,7 @@ model ExitClearanceItem {
 }
 
 // ===========================================================================
-// RECRUITMENT & APPLICANT TRACKING (ATS) — HR Phase B, module 1
+// RECRUITMENT & APPLICANT TRACKING (ATS) Ã¢â‚¬â€ HR Phase B, module 1
 // ===========================================================================
 
 enum RequisitionStatus {
@@ -5514,7 +5511,7 @@ model Candidate {
   portalUserId String?   @unique
   createdAt    DateTime  @default(now())
 
-  // Release IG.1, Checkpoint G — Outlook contact sync (best-effort, same
+  // Release IG.1, Checkpoint G Ã¢â‚¬â€ Outlook contact sync (best-effort, same
   // shape as Interview's calendarProviderCode/calendarEventId/
   // calendarSyncFailedAt trio from Checkpoints C/D). Null until the first
   // successful ContactsProvider.createContact() call; never required for
@@ -5577,45 +5574,45 @@ model Interview {
   location        String? // physical or "video-call"
   status          InterviewStatus  @default(SCHEDULED)
   createdAt       DateTime         @default(now())
-  // Release IG.1, Checkpoint C — calendar sync. Both null until the first
+  // Release IG.1, Checkpoint C Ã¢â‚¬â€ calendar sync. Both null until the first
   // successful CalendarProvider.createEvent() call (best-effort; scheduling
-  // an interview must never fail because a Graph API call failed — see
+  // an interview must never fail because a Graph API call failed Ã¢â‚¬â€ see
   // InterviewService.schedule()'s own comment). providerCode is stored
   // alongside the id (not assumed to always be MS_GRAPH) so a future
   // IG.2 Google Workspace provider can update/cancel an event it created
   // without InterviewService having to guess which provider owns it.
   calendarProviderCode String?
   calendarEventId      String?
-  // Release IG.1, Checkpoint D — visibility for calendar-sync failures.
+  // Release IG.1, Checkpoint D Ã¢â‚¬â€ visibility for calendar-sync failures.
   // Set whenever a best-effort create/update/cancel call to the calendar
   // provider throws (see InterviewService's own comments on each call
   // site); cleared back to null on the next successful create/update
-  // sync. Deliberately NOT cleared by a successful cancel — if a prior
+  // sync. Deliberately NOT cleared by a successful cancel Ã¢â‚¬â€ if a prior
   // cancelEvent failed, the flag should stay set until a human confirms
   // the stale calendar entry was dealt with, not silently disappear the
   // next time someone cancels an already-cancelled interview.
   calendarSyncFailedAt DateTime?
-  // Release IG.1, Checkpoint S — Teams online-meeting sync for
+  // Release IG.1, Checkpoint S Ã¢â‚¬â€ Teams online-meeting sync for
   // location === "video-call" interviews only (the exact string the
   // location field's own comment above names). Same shape as the
   // calendar fields above: providerCode stored alongside the id so a
   // future IH Google Meet provider can address a meeting it created
   // without guessing; both null when the interview isn't a video call,
   // when no TeamsProvider is registered, or when the best-effort create
-  // failed (see InterviewService.trySyncTeamsMeeting's own comment —
+  // failed (see InterviewService.trySyncTeamsMeeting's own comment Ã¢â‚¬â€
   // deliberately no separate teamsSyncFailedAt flag yet, unlike
   // calendarSyncFailedAt; a warning is logged instead. That visibility
   // gap plus a retry endpoint are left for a later checkpoint).
   teamsProviderCode String?
   teamsMeetingId    String?
   teamsJoinUrl      String?
-  // Release IG.1, Checkpoint T — visibility for Teams-sync failures,
+  // Release IG.1, Checkpoint T Ã¢â‚¬â€ visibility for Teams-sync failures,
   // closing the gap Checkpoint S's own comment above named. Same shape
   // as calendarSyncFailedAt: set whenever a best-effort createMeeting/
   // cancelMeeting call to the Teams provider throws (see
   // InterviewService.trySyncTeamsMeeting/cancel's own comments), cleared
   // back to null on the next successful create/retry. Deliberately NOT
-  // an update-failure case — TeamsProvider has no updateMeeting method
+  // an update-failure case Ã¢â‚¬â€ TeamsProvider has no updateMeeting method
   // (see teams-provider.interface.ts), so reschedule() never touches
   // Teams at all and can't set this flag.
   teamsSyncFailedAt DateTime?
@@ -5675,14 +5672,14 @@ model Offer {
   createdById       String
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
-  // Digital Signature Providers — first real caller. signatureProviderEnvelopeId
+  // Digital Signature Providers Ã¢â‚¬â€ first real caller. signatureProviderEnvelopeId
   // stays null until the first successful SignatureProvider.sendForSignature()
   // call (best-effort; sending an offer must never fail because the
-  // DocuSign API call failed — see OfferService.send()'s own comment).
+  // DocuSign API call failed Ã¢â‚¬â€ see OfferService.send()'s own comment).
   // signatureProviderCode itself is set earlier, at offer creation
-  // (OfferService.create(), Checkpoint M) — caller-chosen via
+  // (OfferService.create(), Checkpoint M) Ã¢â‚¬â€ caller-chosen via
   // CreateOfferDto.signatureProviderCode, or DOCUSIGN_PROVIDER_CODE by
-  // default — so OfferService.send()/retrySignatureSync() both know
+  // default Ã¢â‚¬â€ so OfferService.send()/retrySignatureSync() both know
   // which provider to target without a dto at that later call site, the
   // same "recorded up front, not only on success" shift
   // ApiKey.rateLimitPerMinute's own null-means-unlimited convention
@@ -5695,7 +5692,7 @@ model Offer {
   // Interview.calendarSyncFailedAt / Candidate.contactsSyncFailedAt: set
   // whenever a best-effort sendForSignature call throws, cleared back to
   // null on the next successful send. There is no "update" concept to
-  // clear it on later (see SignatureProvider's own doc comment — no
+  // clear it on later (see SignatureProvider's own doc comment Ã¢â‚¬â€ no
   // updateEnvelope exists), only future successful sends of a NEW offer.
   signatureSyncFailedAt DateTime?
 
@@ -5705,11 +5702,11 @@ model Offer {
   @@map("offers")
 }
 
-// Digital Signature Providers, Checkpoint H — backing store for
+// Digital Signature Providers, Checkpoint H Ã¢â‚¬â€ backing store for
 // GenericSignatureProvider (signatures/providers/generic-signature.provider.ts).
 // Unlike DocuSign/Adobe Sign, this provider has no external vendor to be
 // the system of record for envelope state, so it needs to be one
-// itself — see that provider's own doc comment for the full reasoning.
+// itself Ã¢â‚¬â€ see that provider's own doc comment for the full reasoning.
 // status mirrors the SignatureStatus TS union exactly (signature-provider.interface.ts).
 model ManualSignatureEnvelope {
   id                  String                @id @default(uuid())
@@ -5722,10 +5719,10 @@ model ManualSignatureEnvelope {
   message             String?
   status              ManualSignatureStatus @default(SENT)
   voidReason          String?
-  // Digital Signature Providers, Checkpoint J — set only via
+  // Digital Signature Providers, Checkpoint J Ã¢â‚¬â€ set only via
   // ManualSignatureService.recordDecline. Deliberately separate from
   // voidReason: a decline is the signer's own act (they refused to
-  // sign), a void is an HR/ops act (the offer was withdrawn) — same
+  // sign), a void is an HR/ops act (the offer was withdrawn) Ã¢â‚¬â€ same
   // distinction SignatureStatus itself already draws between DECLINED
   // and VOIDED as two different terminal states, not one.
   declineReason       String?
@@ -5910,7 +5907,7 @@ enum ReviewStatus {
 }
 
 /// One review per employee per cycle. Self/manager/peer commentary and
-/// the calibrated final rating all live on this single row — simpler to
+/// the calibrated final rating all live on this single row Ã¢â‚¬â€ simpler to
 /// query than a normalized multi-reviewer table, and 360 feedback is
 /// still representable via peerComments (free text, multiple reviewers'
 /// input consolidated by whoever runs calibration).
@@ -6092,7 +6089,7 @@ enum NotificationChannel {
   IN_APP
   EMAIL
   SMS
-  // Release ID.2 Part 1 — WhatsApp Cloud API (additive)
+  // Release ID.2 Part 1 Ã¢â‚¬â€ WhatsApp Cloud API (additive)
   WHATSAPP
 }
 
@@ -6101,8 +6098,8 @@ enum NotificationStatus {
   SENT
   FAILED
   READ
-  // Release ID — SMS Integration (Delivery Receipts). Distinct from SENT
-  // (handed to the provider) — set only once Twilio's status-callback
+  // Release ID Ã¢â‚¬â€ SMS Integration (Delivery Receipts). Distinct from SENT
+  // (handed to the provider) Ã¢â‚¬â€ set only once Twilio's status-callback
   // webhook confirms actual device delivery. EMAIL/IN_APP notifications
   // never reach this status in this release (no delivery-receipt webhook
   // exists for those channels yet).
@@ -6120,7 +6117,7 @@ model Notification {
   title     String
   body      String
   // Release IC.4 (Email Template Engine, additive). Populated only when the
-  // notification was created from an EmailTemplate with an htmlTemplate —
+  // notification was created from an EmailTemplate with an htmlTemplate Ã¢â‚¬â€
   // every existing call site that doesn't pass a template leaves this null,
   // and NotificationProcessor's IN_APP path never reads it (the web app's
   // notification list still renders `body` as plain text, unchanged).
@@ -6128,9 +6125,9 @@ model Notification {
   metadata  Json?
   readAt    DateTime?
   sentAt    DateTime?
-  // Release ID — SMS Integration (Delivery Receipts). providerMessageId is
+  // Release ID Ã¢â‚¬â€ SMS Integration (Delivery Receipts). providerMessageId is
   // Twilio's message SID, set by SmsProcessor right after a successful
-  // send — SmsWebhookController looks a notification up by this field to
+  // send Ã¢â‚¬â€ SmsWebhookController looks a notification up by this field to
   // apply an incoming status-callback to the right row. Both null for
   // every non-SMS notification and for any SMS send that failed before a
   // SID was ever issued.
@@ -6148,8 +6145,8 @@ model Notification {
   @@map("notifications")
 }
 
-/// Release IC.4 — Email Template Engine (additive). `{{variableName}}`
-/// placeholders only (no logic/loops/partials) — deliberately not a full
+/// Release IC.4 Ã¢â‚¬â€ Email Template Engine (additive). `{{variableName}}`
+/// placeholders only (no logic/loops/partials) Ã¢â‚¬â€ deliberately not a full
 /// templating engine like Handlebars: every value substituted into
 /// htmlTemplate is HTML-escaped by EmailTemplateService, so there is no
 /// script-injection surface to reason about, and no new npm dependency is
@@ -6159,16 +6156,16 @@ model Notification {
 /// MailComposer instead of a MIME library).
 model EmailTemplate {
   id              String   @id @default(uuid())
-  /// e.g. "WELCOME_EMAIL", "PASSWORD_RESET", "INVOICE_OVERDUE" — what callers pass to EmailTemplateService.render().
+  /// e.g. "WELCOME_EMAIL", "PASSWORD_RESET", "INVOICE_OVERDUE" Ã¢â‚¬â€ what callers pass to EmailTemplateService.render().
   code            String   @unique
   name            String
   description     String?
   subjectTemplate String
-  /// Null for a text-only template — NotificationsService then leaves Notification.bodyHtml unset and the email sends as plain text only, same as every notification before this release.
+  /// Null for a text-only template Ã¢â‚¬â€ NotificationsService then leaves Notification.bodyHtml unset and the email sends as plain text only, same as every notification before this release.
   htmlTemplate    String?
   textTemplate    String
   /// Documents which {{variable}} placeholders this template expects.
-  /// Informational only (not enforced by a JSON-schema validator) — same
+  /// Informational only (not enforced by a JSON-schema validator) Ã¢â‚¬â€ same
   /// treatment IntegrationProvider.config gets, consistent with this
   /// schema's existing convention of leaving free-form Json? columns
   /// unvalidated at the database layer.
@@ -6176,7 +6173,7 @@ model EmailTemplate {
   isActive        Boolean  @default(true)
   /// Incremented by EmailTemplateService on every update. Full before/after
   /// history of every change is already captured by the global
-  /// AuditInterceptor (audit_logs) — this column is just "which version am
+  /// AuditInterceptor (audit_logs) Ã¢â‚¬â€ this column is just "which version am
   /// I looking at", not a duplicate history mechanism.
   version         Int      @default(1)
   createdById     String
@@ -6215,7 +6212,7 @@ enum JobRunStatus {
 // Execution history for background jobs, written by the worker for every
 // queue processor run. This is observability data (queue dashboard,
 // /health readiness signal, audit trail for "why didn't my payroll run
-// calculate") — not a replacement for BullMQ's own Redis-backed job state.
+// calculate") Ã¢â‚¬â€ not a replacement for BullMQ's own Redis-backed job state.
 model JobRunLog {
   id          String       @id @default(uuid())
   queueName   String
@@ -6237,17 +6234,17 @@ model JobRunLog {
 }
 
 // =====================================================================
-// Release IA — CORE INTEGRATION FRAMEWORK (additive)
+// Release IA Ã¢â‚¬â€ CORE INTEGRATION FRAMEWORK (additive)
 // =====================================================================
 // The foundation the rest of the Enterprise Integrations roadmap (cloud
 // storage, email, SMS/WhatsApp, payment gateways, banking, Microsoft
-// Graph, Google Workspace, digital signatures, Power BI, API gateway —
+// Graph, Google Workspace, digital signatures, Power BI, API gateway Ã¢â‚¬â€
 // Releases IB onward) builds on: one registry table for every configured
 // third-party provider, credentials encrypted at rest (never returned by
-// the API once written — see IntegrationsService), a per-provider retry
+// the API once written Ã¢â‚¬â€ see IntegrationsService), a per-provider retry
 // policy the queue producer/worker can read instead of hardcoding one,
 // and a health-check result cached on the row itself (no separate log
-// table needed yet — reconsider if per-check history is needed later).
+// table needed yet Ã¢â‚¬â€ reconsider if per-check history is needed later).
 // Concrete provider drivers (AWS S3, Twilio, Paystack, ...) are NOT part
 // of this release; IntegrationProviderDriver in
 // apps/api/src/integrations/integration-provider-driver.interface.ts is
@@ -6276,7 +6273,7 @@ enum IntegrationStatus {
   ERROR
 }
 
-/// One row per configured third-party integration. entityId is nullable —
+/// One row per configured third-party integration. entityId is nullable Ã¢â‚¬â€
 /// most integrations (e.g. a single company-wide S3 bucket or SMTP relay)
 /// are configured once for the whole system, but a provider can be scoped
 /// to one entity when that's how the vendor relationship actually works
@@ -6285,12 +6282,12 @@ model IntegrationProvider {
   id                    String               @id @default(uuid())
   entityId              String?
   category              IntegrationCategory
-  providerCode          String               // e.g. "AWS_S3", "SMTP", "TWILIO", "PAYSTACK" — free text by design, see IntegrationProviderDriver
+  providerCode          String               // e.g. "AWS_S3", "SMTP", "TWILIO", "PAYSTACK" Ã¢â‚¬â€ free text by design, see IntegrationProviderDriver
   name                  String
   status                IntegrationStatus    @default(INACTIVE)
   isActive              Boolean              @default(true)
   config                Json?                // non-secret settings (bucket name, region, sender address, ...)
-  encryptedCredentials  String?              // AES-256-GCM ciphertext of a JSON secret blob — see IntegrationEncryptionService
+  encryptedCredentials  String?              // AES-256-GCM ciphertext of a JSON secret blob Ã¢â‚¬â€ see IntegrationEncryptionService
   retryMaxAttempts      Int                  @default(3)
   retryBackoffMs        Int                  @default(2000)
   lastHealthCheckAt     DateTime?
@@ -6316,7 +6313,7 @@ model IntegrationProvider {
 // existing PostingEngineService.postSystemEntry (same pattern as
 // Revenue Recognition / Payroll), plus disposal accounting. Reducing-
 // balance and other methods are represented in the enum for forward
-// compatibility but are not implemented by the service in this release —
+// compatibility but are not implemented by the service in this release Ã¢â‚¬â€
 // see DepreciationMethod doc comment.
 
 enum FixedAssetStatus {
@@ -6460,7 +6457,7 @@ model AssetDisposal {
 // Reference-data layer for the WHT/VAT withholding mechanics that
 // already exist inside Accounts Payable (WHTDeduction / VATDeduction,
 // see the Financial Core section above). TaxCode does NOT replace or
-// change how AP creates those deductions — CreatePaymentVoucherDto still
+// change how AP creates those deductions Ã¢â‚¬â€ CreatePaymentVoucherDto still
 // takes an explicit rate/authority per allocation, unchanged, per the
 // "never modify existing implementations" rule. TaxCode exists so a
 // future release can look values up from here instead; today it backs
@@ -6494,7 +6491,7 @@ model TaxCode {
 // =====================================================================
 // Deliberately separate from the existing contract-admin "pmo" concerns
 // (Boq/WorkPackage/ProgressValuation/Certificate/VariationOrder/
-// RetentionRelease) — those model contractor payment administration;
+// RetentionRelease) Ã¢â‚¬â€ those model contractor payment administration;
 // this models project scheduling (WBS, dependencies, critical path,
 // earned value). Both live under the same PMO permission codes
 // (pmo.manage/pmo.view/pmo.approve), reused as-is, no new permissions.
@@ -6517,7 +6514,7 @@ enum TaskDependencyType {
 /// A WBS node. Self-referencing parentTaskId gives the work-breakdown
 /// hierarchy; TaskDependency gives the network logic used for critical
 /// path. budgetedCost/actualCost are simple flat fields here rather than
-/// pulled live from Budgeting/AP — reusing those would require a
+/// pulled live from Budgeting/AP Ã¢â‚¬â€ reusing those would require a
 /// materially larger, riskier cost-rollup integration than this release's
 /// scope; a follow-up release can wire that in additively.
 model ProjectTask {
@@ -6537,7 +6534,7 @@ model ProjectTask {
   status          ProjectTaskStatus @default(NOT_STARTED)
   budgetedCost    Decimal?          @db.Decimal(18, 2)
   actualCost      Decimal?          @db.Decimal(18, 2)
-  // Populated by SchedulingService.computeCriticalPath() — not
+  // Populated by SchedulingService.computeCriticalPath() Ã¢â‚¬â€ not
   // hand-edited; treat as derived/cached output of that calculation.
   isCritical      Boolean           @default(false)
   totalFloatDays  Int?
@@ -6580,7 +6577,7 @@ model TaskDependency {
 // =====================================================================
 // PMO RISK & ISSUE MANAGEMENT (Release I, additive)
 // =====================================================================
-// A Risk that occurs converts into an Issue via convertRiskToIssue() —
+// A Risk that occurs converts into an Issue via convertRiskToIssue() Ã¢â‚¬â€
 // modeled as a link (Issue.riskId), not a status-only field, so a risk's
 // full lifecycle (identified -> assessed -> mitigated -> occurred) stays
 // intact even after the resulting issue is independently tracked and
@@ -6616,7 +6613,7 @@ model ProjectRisk {
   category        String?
   probability     RiskProbability @default(MEDIUM)
   impact          RiskImpact      @default(MEDIUM)
-  // 1-9, probability x impact on a 1/2/3 scale each — simple, standard
+  // 1-9, probability x impact on a 1/2/3 scale each Ã¢â‚¬â€ simple, standard
   // risk-matrix scoring rather than a full quantitative model.
   riskScore       Int
   status          RiskStatus      @default(IDENTIFIED)
@@ -6688,10 +6685,10 @@ model ProjectIssue {
 // PMO RESOURCE & EQUIPMENT/LABOUR ALLOCATION (Release J, additive)
 // =====================================================================
 // One ResourceAllocation model serves both "Equipment Allocation" and
-// "Labour Allocation" — the distinction is purely ProjectResource.type,
+// "Labour Allocation" Ã¢â‚¬â€ the distinction is purely ProjectResource.type,
 // not two near-identical tables. Deliberately does not integrate with
 // Budgeting/AP costing yet (same documented scope limitation as
-// ProjectTask.budgetedCost in Release H) — a follow-up release can wire
+// ProjectTask.budgetedCost in Release H) Ã¢â‚¬â€ a follow-up release can wire
 // resource cost roll-ups in additively.
 
 enum ResourceType {
@@ -6709,7 +6706,7 @@ model ProjectResource {
   unitOfMeasure  String?
   unitCost       Decimal?     @db.Decimal(18, 2)
   // Total concurrent capacity this resource can support (e.g. crew
-  // headcount, or number of identical equipment units) — used by
+  // headcount, or number of identical equipment units) Ã¢â‚¬â€ used by
   // ResourceService.allocateResource() to reject over-booking.
   capacity       Int?
   isActive       Boolean      @default(true)
@@ -6763,12 +6760,12 @@ model ResourceAllocation {
 }
 
 // =====================================================================
-// RELEASE M — MFA (TOTP), QR Enrollment, Recovery Codes (additive)
+// RELEASE M Ã¢â‚¬â€ MFA (TOTP), QR Enrollment, Recovery Codes (additive)
 // =====================================================================
 
 /// One-time-use recovery codes issued when a user completes MFA
 /// enrollment. Hashed with the same SHA-256 convention RefreshToken uses
-/// for its tokenHash — these are single-use bearer secrets, not
+/// for its tokenHash Ã¢â‚¬â€ these are single-use bearer secrets, not
 /// passwords, so bcrypt's slow-hash design isn't needed and a fast hash
 /// keeps verification cheap during a login flow that already did one
 /// bcrypt compare for the password step.
@@ -6779,7 +6776,7 @@ model MfaRecoveryCode {
   usedAt    DateTime?
   createdAt DateTime  @default(now())
 
-  // CASCADE justified: identical reasoning to RefreshToken — a recovery
+  // CASCADE justified: identical reasoning to RefreshToken Ã¢â‚¬â€ a recovery
   // code has no value once its owning user is gone.
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -6788,18 +6785,18 @@ model MfaRecoveryCode {
 }
 
 // =====================================================================
-// PAYMENT GATEWAY — TRANSACTION MODEL (Release IE.1, Checkpoint C)
+// PAYMENT GATEWAY Ã¢â‚¬â€ TRANSACTION MODEL (Release IE.1, Checkpoint C)
 // =====================================================================
 // Deliberately additive-only, matching Checkpoint A/B: still no worker,
 // queue, webhook handler, or controller wired to this yet (Checkpoints
 // D-I). providerCode is a plain string (e.g. "PAYSTACK"), matching
-// PaymentProviderRegistry's lookup key from Checkpoint B — NOT a foreign
+// PaymentProviderRegistry's lookup key from Checkpoint B Ã¢â‚¬â€ NOT a foreign
 // key to a specific IntegrationProvider row, since the abstraction layer
 // doesn't address a specific provider *account*, just a provider *type*.
 // If multi-account-per-provider support is ever needed, that's a
 // separate additive column, not a redesign of this one.
 //
-// amount is always the currency's minor unit (integer) — see
+// amount is always the currency's minor unit (integer) Ã¢â‚¬â€ see
 // payment-provider.interface.ts's design notes; PaymentTransactionStatus
 // mirrors that file's PaymentStatus string union value-for-value on
 // purpose, so nothing downstream has to translate between two
@@ -6814,7 +6811,7 @@ enum PaymentTransactionStatus {
 
 model PaymentTransaction {
   id                String                   @id @default(uuid())
-  /// Caller-supplied, must be idempotent (see payment-provider.interface.ts) — enforced here with @unique.
+  /// Caller-supplied, must be idempotent (see payment-provider.interface.ts) Ã¢â‚¬â€ enforced here with @unique.
   reference         String                   @unique
   entityId          String
   providerCode      String
@@ -6827,7 +6824,7 @@ model PaymentTransaction {
   providerReference String?
   metadata          Json?
   paidAt            DateTime?
-  /// The provider's full raw verification response — audit trail, never parsed by callers. Same treatment IntegrationProvider.config gets: an unvalidated free-form Json? column.
+  /// The provider's full raw verification response Ã¢â‚¬â€ audit trail, never parsed by callers. Same treatment IntegrationProvider.config gets: an unvalidated free-form Json? column.
   rawVerification   Json?
   createdById       String
   createdAt         DateTime                 @default(now())
@@ -6851,7 +6848,7 @@ enum PaymentRefundStatus {
 model PaymentRefund {
   id                   String              @id @default(uuid())
   paymentTransactionId String
-  /// Caller/provider-supplied, must be idempotent — same reasoning as PaymentTransaction.reference.
+  /// Caller/provider-supplied, must be idempotent Ã¢â‚¬â€ same reasoning as PaymentTransaction.reference.
   refundReference      String              @unique
   amount               Int
   status               PaymentRefundStatus @default(PENDING)
@@ -6878,7 +6875,7 @@ model PaymentRefund {
 // Deliberately has NO relation to User other than the audit-trail
 // createdBy/reviewedBy columns every other master record in this
 // codebase already carries (see ApiKey.createdBy for the same pattern)
-// — an Agent is never itself a login, and a User is never repurposed
+// Ã¢â‚¬â€ an Agent is never itself a login, and a User is never repurposed
 // to represent one, per this checkpoint's own scope: agent-to-sale/
 // unit/project assignment and commission plans/calculation are
 // deliberately separate, later checkpoints (RE-AGENT.2, RE-COMM.1-6)
@@ -6888,7 +6885,7 @@ model PaymentRefund {
 // Customer.code's existing convention elsewhere in this schema (no
 // auto-generation service to keep in sync).
 //
-// entityId scopes the agent to the legal entity that engaged them —
+// entityId scopes the agent to the legal entity that engaged them Ã¢â‚¬â€
 // reuses the existing Entity dimension (see RowLevelSecurityService)
 // rather than introducing a new one, same as every other entity-scoped
 // master record in this file.
@@ -6902,7 +6899,7 @@ enum AgentType {
 /// PENDING_APPROVAL -> ACTIVE -> SUSPENDED -> ACTIVE (reactivation) is
 /// the only cycle; TERMINATED is terminal from any of the other three.
 /// Enforced by AgentService's own guarded transition methods, never by
-/// a direct `status` field update via the general update endpoint — see
+/// a direct `status` field update via the general update endpoint Ã¢â‚¬â€ see
 /// UpdateAgentDto's own doc comment for why `status` is deliberately
 /// absent from it.
 enum AgentStatus {
@@ -6923,7 +6920,7 @@ model Agent {
   // company/brokerage's registered name for COMPANY/BROKER);
   // contactPersonName is the human to reach at a COMPANY/BROKER agent
   // and is deliberately nullable for INDIVIDUAL, where displayName
-  // already names that same person — not enforced at the database
+  // already names that same person Ã¢â‚¬â€ not enforced at the database
   // level (no CHECK constraint) since that pairing is a data-entry
   // convention AgentService's own validation applies, not a structural
   // guarantee.
@@ -6944,13 +6941,13 @@ model Agent {
   licenseExpiryDate    DateTime?
   registrationNumber   String?
 
-  // Entity relationship — which 7F LedgerOS legal entity this agent is
+  // Entity relationship Ã¢â‚¬â€ which 7F LedgerOS legal entity this agent is
   // engaged under. See this section's own top comment for why this
   // reuses the existing Entity dimension rather than a new one.
   entityId String
   entity   Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
 
-  // Bank/payment information — same shape as Vendor's own
+  // Bank/payment information Ã¢â‚¬â€ same shape as Vendor's own
   // bankName/bankAccountNumber columns, extended with an account-name
   // and an optional SWIFT/routing code since agent commission payouts
   // are wired transfers, same as vendor payments.
@@ -6962,7 +6959,7 @@ model Agent {
   // Tax information.
   taxIdentificationNumber String?
   /// True when this agent is exempt from withholding tax on commission
-  /// payouts — read by the (later, RE-COMM.2) commission-calculation
+  /// payouts Ã¢â‚¬â€ read by the (later, RE-COMM.2) commission-calculation
   /// checkpoint; stored here since it's a property of the agent, not of
   /// any one commission transaction.
   withholdingTaxExempt Boolean @default(false)
@@ -6972,7 +6969,7 @@ model Agent {
   agreementStartDate DateTime?
   agreementEndDate   DateTime?
 
-  // Status lifecycle detail — see AgentStatus's own doc comment for the
+  // Status lifecycle detail Ã¢â‚¬â€ see AgentStatus's own doc comment for the
   // allowed transitions. Populated only by the corresponding
   // AgentService method, never directly.
   approvedById   String?
@@ -7008,11 +7005,11 @@ model Agent {
 }
 
 // =====================================================================
-// AGENT & COMMISSION MANAGEMENT — RE-AGENT.2: Agent Assignment (additive)
+// AGENT & COMMISSION MANAGEMENT Ã¢â‚¬â€ RE-AGENT.2: Agent Assignment (additive)
 // =====================================================================
 
 /// Which kind of target this assignment attaches to. Exactly one of
-/// AgentAssignment.projectId/unitId/allocationId is populated to match —
+/// AgentAssignment.projectId/unitId/allocationId is populated to match Ã¢â‚¬â€
 /// enforced by AgentAssignmentService.validateTarget(), not a DB CHECK
 /// constraint (no precedent for hand-written CHECK constraints elsewhere
 /// in this schema's own migrations, so this stays consistent with how
@@ -7025,11 +7022,11 @@ enum AgentAssignmentScope {
   SALE
 }
 
-/// PRIMARY: at most one ACTIVE PRIMARY per (scope, target) pair — a
+/// PRIMARY: at most one ACTIVE PRIMARY per (scope, target) pair Ã¢â‚¬â€ a
 /// second PRIMARY is rejected with a 409 by AgentAssignmentService,
 /// never silently swaps the existing one out (matching AgentService's
 /// own "reject, don't silently ignore" convention for an invalid state
-/// change). CO_AGENT/REFERRAL have no such limit — several may be
+/// change). CO_AGENT/REFERRAL have no such limit Ã¢â‚¬â€ several may be
 /// simultaneously active on the same target.
 enum AgentAssignmentRole {
   PRIMARY
@@ -7043,7 +7040,7 @@ model AgentAssignment {
   scope   AgentAssignmentScope
   role    AgentAssignmentRole
 
-  // The target this assignment is for — exactly one of these three is
+  // The target this assignment is for Ã¢â‚¬â€ exactly one of these three is
   // set, matching `scope`. SALE means "this confirmed sale transaction"
   // (UnitSaleAllocation already links a specific unit + customer, which
   // is why the master prompt's own "customer/sale" pairing collapses to
@@ -7055,12 +7052,12 @@ model AgentAssignment {
   // Denormalized for RLS/reporting, same "don't derive via a multi-hop
   // join on every query" rationale as UnitReservation.entityId/projectId.
   // entityId is caller-supplied on create (enabling @RlsBodyCheck on the
-  // route, before the handler runs — same convention as
+  // route, before the handler runs Ã¢â‚¬â€ same convention as
   // CreateAgentDto.entityId/UnitReservation.entityId) but
   // AgentAssignmentService cross-validates it against the target's own
   // real structural entity (Project.entityId directly, or via
   // Unit/UnitSaleAllocation -> Floor -> Block -> Phase -> Project) and
-  // rejects a mismatch with a 400 rather than trusting it blindly — a
+  // rejects a mismatch with a 400 rather than trusting it blindly Ã¢â‚¬â€ a
   // deliberate strengthening beyond UnitReservation's own precedent,
   // since a wrong entityId here would misfile RLS-scoped assignment
   // history. projectId is always resolved server-side the same way,
@@ -7098,10 +7095,10 @@ model AgentAssignment {
 }
 
 // =====================================================================
-// AGENT & COMMISSION MANAGEMENT — RE-COMM.1: Commission Plans (additive)
+// AGENT & COMMISSION MANAGEMENT Ã¢â‚¬â€ RE-COMM.1: Commission Plans (additive)
 // =====================================================================
 // A configurable commission-structure master. Deliberately does NOT
-// compute or post anything — that is RE-COMM.2 (Commission Calculation)
+// compute or post anything Ã¢â‚¬â€ that is RE-COMM.2 (Commission Calculation)
 // and RE-COMM.4 (Financial Integration via the existing
 // PostingEngineService). This checkpoint only defines *what rate/amount
 // applies*, not *when* or *how it gets paid*.
@@ -7111,13 +7108,13 @@ model AgentAssignment {
 // "exactly one target column, enforced by the service not a DB CHECK"
 // convention (see AgentAssignmentScope's own doc comment for why no
 // hand-written CHECK constraint is used anywhere in this schema).
-// GLOBAL leaves all four null — the fallback plan for an
+// GLOBAL leaves all four null Ã¢â‚¬â€ the fallback plan for an
 // entity when nothing more specific matches.
 //
 // Plan resolution precedence (most-specific wins), enforced by
 // CommissionPlanService, not stored on the row itself:
 // UNIT > PROJECT > ESTATE > AGENT > GLOBAL. Multiple active plans can
-// legally coexist (e.g. a GLOBAL default plus a PROJECT override) —
+// legally coexist (e.g. a GLOBAL default plus a PROJECT override) Ã¢â‚¬â€
 // resolution is a lookup concern for the (later) calculation
 // checkpoint, not a uniqueness constraint here, since e.g. an
 // AGENT-scoped plan and a PROJECT-scoped plan may both legitimately be
@@ -7138,11 +7135,11 @@ enum CommissionPlanScope {
 }
 
 /// ACTIVE plans are eligible to be resolved against a sale. INACTIVE is
-/// a soft-disable (deactivate), never a delete — commission plans may
+/// a soft-disable (deactivate), never a delete Ã¢â‚¬â€ commission plans may
 /// already be referenced by historical commission calculations (once
 /// RE-COMM.2 exists) and must remain inspectable. Enforced only by
 /// CommissionPlanService.deactivate(); there is no reactivation
-/// endpoint in this checkpoint's own scope — create a new plan instead,
+/// endpoint in this checkpoint's own scope Ã¢â‚¬â€ create a new plan instead,
 /// the same "don't silently resurrect a superseded rate" discipline
 /// AgentStatus.TERMINATED's own doc comment applies to agents.
 enum CommissionPlanStatus {
@@ -7158,13 +7155,13 @@ model CommissionPlan {
   scope  CommissionPlanScope
   status CommissionPlanStatus  @default(ACTIVE)
 
-  // Entity relationship — which 7F LedgerOS legal entity this plan
+  // Entity relationship Ã¢â‚¬â€ which 7F LedgerOS legal entity this plan
   // applies under (same dimension every other master record in this
   // file reuses, see Agent.entityId's own doc comment).
   entityId String
   entity   Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
 
-  // Scope target — exactly one of these four is populated to match
+  // Scope target Ã¢â‚¬â€ exactly one of these four is populated to match
   // `scope`; all four null means GLOBAL. Validated by
   // CommissionPlanService.validateScopeTarget(), not a DB CHECK
   // constraint (see this section's own top comment).
@@ -7178,23 +7175,23 @@ model CommissionPlan {
   unit    Unit?    @relation(fields: [unitId], references: [id], onDelete: Restrict)
   agent   Agent?   @relation(fields: [agentId], references: [id], onDelete: Restrict)
 
-  // Flat rate/amount — required (and the only rate source) when
+  // Flat rate/amount Ã¢â‚¬â€ required (and the only rate source) when
   // isTiered is false. When isTiered is true, both are null and
-  // `tiers` supplies the schedule instead — enforced by
+  // `tiers` supplies the schedule instead Ã¢â‚¬â€ enforced by
   // CommissionPlanService, not a DB CHECK.
   rate        Decimal? @db.Decimal(9, 4)  // percentage, e.g. 2.5000 = 2.5%, used when type=PERCENTAGE
   fixedAmount Decimal? @db.Decimal(18, 2) // used when type=FIXED
 
-  // Referral commission — a distinct, typically-lower rate paid to a
+  // Referral commission Ã¢â‚¬â€ a distinct, typically-lower rate paid to a
   // referring agent rather than the primary/co-agent. Modeled as a
   // flag on the same plan shape (not a separate model) since a
-  // referral plan is structurally identical to any other — same
+  // referral plan is structurally identical to any other Ã¢â‚¬â€ same
   // type/scope/rate/tier machinery, just resolved for
   // AgentAssignmentRole.REFERRAL assignments instead of PRIMARY/CO_AGENT
   // (a RE-COMM.2 concern; this checkpoint only stores the flag).
   isReferral Boolean @default(false)
 
-  // Tiered commission — when true, `tiers` (ordered, gapless,
+  // Tiered commission Ã¢â‚¬â€ when true, `tiers` (ordered, gapless,
   // non-overlapping bands over the commission basis amount) supplies
   // the schedule instead of the flat rate/fixedAmount above. Validated
   // by CommissionPlanService.validateTiers() at create/update time.
@@ -7234,7 +7231,7 @@ model CommissionPlan {
 /// `tierOrder` (1-based) and must be gapless/non-overlapping over the
 /// commission basis amount: tier N's minAmount equals tier N-1's
 /// maxAmount, and only the final tier may have a null maxAmount (open
-/// upper end) — enforced by CommissionPlanService.validateTiers(), not
+/// upper end) Ã¢â‚¬â€ enforced by CommissionPlanService.validateTiers(), not
 /// a DB CHECK constraint (see the parent model's own top comment for
 /// why this schema has no precedent for hand-written CHECK
 /// constraints). Exactly one of rate/fixedAmount is populated per tier,
@@ -7255,14 +7252,14 @@ model CommissionPlanTier {
 }
 
 // =====================================================================
-// AGENT & COMMISSION MANAGEMENT — RE-COMM.2: Commission Calculation (additive)
+// AGENT & COMMISSION MANAGEMENT Ã¢â‚¬â€ RE-COMM.2: Commission Calculation (additive)
 // =====================================================================
 // Computes and stores a single commission amount for one AgentAssignment
-// against the confirmed sale (UnitSaleAllocation) it was made on — the
+// against the confirmed sale (UnitSaleAllocation) it was made on Ã¢â‚¬â€ the
 // master prompt's own explicit "traceable back to the underlying
 // property transaction" requirement. Deliberately does NOT introduce an
 // approval/payment workflow (CALCULATED -> PENDING -> APPROVED ->
-// PAYABLE -> PAID) — that full state machine is RE-COMM.3 (Commission
+// PAYABLE -> PAID) Ã¢â‚¬â€ that full state machine is RE-COMM.3 (Commission
 // Lifecycle), a separate checkpoint. This model's own `status` only
 // distinguishes a live calculation from one that has been reversed or
 // cancelled, since a sale/assignment can be cancelled or reversed after
@@ -7271,7 +7268,7 @@ model CommissionPlanTier {
 //
 // Every numeric input this calculation used is snapshotted onto the row
 // itself (sale value, discount, the specific plan/rate/tier applied, the
-// WHT rate/authority) rather than only stored as live FK references —
+// WHT rate/authority) rather than only stored as live FK references Ã¢â‚¬â€
 // the same discipline CommissionPlan's own scope-target fields already
 // establish for "resolve once, don't re-derive live on every read": a
 // later edit to the CommissionPlan this calculation used, or a later
@@ -7287,9 +7284,9 @@ enum CommissionBasisType {
 /// this basis). COLLECTED: prorates the basis to the percentage of the
 /// underlying InstallmentSchedule actually paid-to-date at calculation
 /// time (sum of InstallmentLine.amountPaid / InstallmentSchedule.
-/// totalAmount) — the master prompt's own "partial-payment rules"
+/// totalAmount) Ã¢â‚¬â€ the master prompt's own "partial-payment rules"
 /// requirement. A sale with no InstallmentSchedule (cash sale) can only
-/// use FULL — enforced by CommissionCalculationService, not a DB CHECK
+/// use FULL Ã¢â‚¬â€ enforced by CommissionCalculationService, not a DB CHECK
 /// constraint (see CommissionPlan's own top-of-section comment for why
 /// this schema has no precedent for hand-written CHECK constraints).
 enum CommissionCollectionBasis {
@@ -7300,26 +7297,26 @@ enum CommissionCollectionBasis {
 /// CALCULATED is the only state a fresh calculation starts in.
 /// Forward lifecycle (RE-COMM.3): CALCULATED -[submit]-> PENDING
 /// -[approve]-> APPROVED -[markPayable]-> PAYABLE -[markPaid]-> PAID.
-/// PENDING can also be -[reject]-> REJECTED (terminal — a distinct
+/// PENDING can also be -[reject]-> REJECTED (terminal Ã¢â‚¬â€ a distinct
 /// outcome from CANCELLED: rejection means someone with approval
 /// authority reviewed and declined it; a rejected calculation is
 /// corrected via `adjust`, same as any other non-terminal state, not
 /// resurrected). CANCELLED is used when a CALCULATED or PENDING row is
 /// voided before ever being approved (e.g. duplicate calculation, wrong
-/// plan resolved) — CommissionCalculationService's own `cancel` no
+/// plan resolved) Ã¢â‚¬â€ CommissionCalculationService's own `cancel` no
 /// longer accepts APPROVED/PAYABLE/PAID; `reverse` is the only path out
 /// of those. REVERSED is used at any non-terminal state (including
-/// PAID — a clawback of an already-paid commission is a real business
+/// PAID Ã¢â‚¬â€ a clawback of an already-paid commission is a real business
 /// need `reverse` deliberately still allows) when the calculation
 /// itself was wrong or the underlying sale was reversed/cancelled after
-/// the fact — the row is kept, never deleted, for audit trail, matching
+/// the fact Ã¢â‚¬â€ the row is kept, never deleted, for audit trail, matching
 /// AgentAssignment's own "ended, not deleted" convention. REJECTED,
-/// CANCELLED, and REVERSED are all terminal — enforced by
+/// CANCELLED, and REVERSED are all terminal Ã¢â‚¬â€ enforced by
 /// CommissionCalculationService's own guarded transition methods, never
 /// a direct `status` field update, the same "reject, don't silently
 /// ignore" discipline AgentService's own lifecycle methods already
 /// established. `adjust` (RE-COMM.3's own "Adjustment" requirement) is
-/// not a status of its own — it atomically reverses an existing
+/// not a status of its own Ã¢â‚¬â€ it atomically reverses an existing
 /// non-terminal row and creates a fresh one linked via
 /// `supersedesCalculationId`, the same "new row, not an in-place edit"
 /// discipline `calculate`'s own recalculation-after-terminal path
@@ -7347,7 +7344,7 @@ model CommissionCalculation {
   // re-read live, since an assignment's role never changes after create
   // (AgentAssignmentService only ever ends an assignment, never edits
   // its role) but snapshotting keeps this row self-describing without a
-  // join. agentAssignment.scope must be SALE (allocationId populated) —
+  // join. agentAssignment.scope must be SALE (allocationId populated) Ã¢â‚¬â€
   // a PROJECT- or UNIT-scoped assignment has no specific sale yet to
   // calculate a commission against; enforced by
   // CommissionCalculationService, not a DB CHECK.
@@ -7358,9 +7355,9 @@ model CommissionCalculation {
   agentAssignment   AgentAssignment     @relation(fields: [agentAssignmentId], references: [id], onDelete: Restrict)
   role              AgentAssignmentRole
 
-  // The underlying property transaction — the master prompt's own
+  // The underlying property transaction Ã¢â‚¬â€ the master prompt's own
   // explicit traceability requirement. Always agentAssignment's own
-  // allocationId, re-validated (not just trusted) at calculation time —
+  // allocationId, re-validated (not just trusted) at calculation time Ã¢â‚¬â€
   // same "resolve server-side, never take the caller's word for it"
   // discipline AgentAssignment.entityId's own doc comment already
   // established.
@@ -7369,7 +7366,7 @@ model CommissionCalculation {
 
   // The plan resolved via CommissionPlanService.resolvePlan() at
   // calculation time (UNIT > PROJECT > ESTATE > AGENT > GLOBAL,
-  // filtered to isReferral matching `role === REFERRAL`) — kept as a
+  // filtered to isReferral matching `role === REFERRAL`) Ã¢â‚¬â€ kept as a
   // live FK for traceability/reporting joins, but every number the plan
   // supplied is separately snapshotted below so a later edit to the
   // plan itself never changes this row's own amounts.
@@ -7386,7 +7383,7 @@ model CommissionCalculation {
   grossSaleValue Decimal @db.Decimal(18, 2) // snapshot of allocation.salePrice
   discountAmount Decimal @db.Decimal(18, 2) @default(0)
   netSaleValue   Decimal @db.Decimal(18, 2) // grossSaleValue - discountAmount
-  // Whichever of grossSaleValue/netSaleValue basisType selects — the
+  // Whichever of grossSaleValue/netSaleValue basisType selects Ã¢â‚¬â€ the
   // amount a flat-rate plan's `rate`/`fixedAmount` (or a tiered plan's
   // tier lookup) is actually applied against, before any collection
   // proration below.
@@ -7397,18 +7394,18 @@ model CommissionCalculation {
   collectedAmount      Decimal? @db.Decimal(18, 2)
   collectedPercent     Decimal? @db.Decimal(7, 4) // 0..1, e.g. 0.4500 = 45% collected
   // commissionBasisAmount unchanged if FULL; commissionBasisAmount *
-  // collectedPercent if COLLECTED — this is the amount the rate/tier
+  // collectedPercent if COLLECTED Ã¢â‚¬â€ this is the amount the rate/tier
   // lookup and the resulting grossCommission are actually computed
   // from.
   proratedBasisAmount Decimal @db.Decimal(18, 2)
 
   grossCommission Decimal @db.Decimal(18, 2)
 
-  // Tax/WHT deductions where applicable — reads Agent.
+  // Tax/WHT deductions where applicable Ã¢â‚¬â€ reads Agent.
   // withholdingTaxExempt first; if not exempt, the caller supplies a
   // TaxCode id (looked up and snapshotted here, same
   // resolve-once-then-snapshot pattern AccountsPayableService already
-  // uses for whtTaxCodeId/vatTaxCodeId — see this section's own top
+  // uses for whtTaxCodeId/vatTaxCodeId Ã¢â‚¬â€ see this section's own top
   // comment). All four fields stay null/false/0 when exempt or when no
   // taxCodeId was supplied.
   whtApplied            Boolean  @default(false)
@@ -7419,7 +7416,7 @@ model CommissionCalculation {
 
   // grossCommission - whtAmount. The amount that will eventually be
   // payable to the agent once RE-COMM.3's own lifecycle/RE-COMM.4's own
-  // PostingEngineService integration exist — this checkpoint computes
+  // PostingEngineService integration exist Ã¢â‚¬â€ this checkpoint computes
   // and stores the number only, does not post or pay it.
   netCommission Decimal @db.Decimal(18, 2)
 
@@ -7429,7 +7426,7 @@ model CommissionCalculation {
   calculatedAt   DateTime @default(now())
   calculatedBy   User     @relation("CommissionCalculationCalculatedBy", fields: [calculatedById], references: [id], onDelete: Restrict)
 
-  // Cancellation/reversal handling — see CommissionCalculationStatus's
+  // Cancellation/reversal handling Ã¢â‚¬â€ see CommissionCalculationStatus's
   // own doc comment for the distinction between the two.
   reversedById  String?
   reversedAt    DateTime?
@@ -7441,7 +7438,7 @@ model CommissionCalculation {
   cancelReason   String?
   cancelledBy    User?     @relation("CommissionCalculationCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
 
-  // Forward approval/payment lifecycle (RE-COMM.3) — see
+  // Forward approval/payment lifecycle (RE-COMM.3) Ã¢â‚¬â€ see
   // CommissionCalculationStatus's own doc comment for the full
   // transition graph. Each column pair is populated only by its own
   // CommissionCalculationService method, never directly.
@@ -7462,20 +7459,20 @@ model CommissionCalculation {
   markedPayableAt   DateTime?
   markedPayableBy   User?     @relation("CommissionCalculationMarkedPayableBy", fields: [markedPayableById], references: [id], onDelete: Restrict)
 
-  // RE-COMM.4 — Financial Integration. Posted through the existing
+  // RE-COMM.4 Ã¢â‚¬â€ Financial Integration. Posted through the existing
   // PostingEngineService.postSystemEntry (see AccountsPayableService.
   // postInvoice's own accrual/clearing pair for the analogue this
-  // reuses) — no separate accounting engine. `payableAccountId` is
+  // reuses) Ã¢â‚¬â€ no separate accounting engine. `payableAccountId` is
   // captured here at markPayable() time from the caller-supplied DTO
   // and reused, not re-asked, at markPaid() time, so the clearing leg
   // can never book against a different payable account than the
   // accrual leg credited. `journalEntryId` traces each of the two
-  // postings back to its own JournalEntry — the calculation itself was
+  // postings back to its own JournalEntry Ã¢â‚¬â€ the calculation itself was
   // already traceable to the underlying sale via `allocationId`
   // (RE-COMM.2); this adds the other side of that trail, from the
   // commission out to the ledger. WHT (`whtAuthorityAccountId`,
   // already stored from RE-COMM.2) is credited in the SAME accrual
-  // entry markPayable() posts — a real WHTDeduction/remittance
+  // entry markPayable() posts Ã¢â‚¬â€ a real WHTDeduction/remittance
   // workflow integration is a further, separate future step, not
   // required for the entry itself to be correct and balanced today.
   payableAccountId      String?
@@ -7485,7 +7482,7 @@ model CommissionCalculation {
   paymentJournalEntryId String?
   paymentJournalEntry   JournalEntry? @relation("CommissionCalculationPaymentJournalEntry", fields: [paymentJournalEntryId], references: [id], onDelete: Restrict)
 
-  /// Free-text bank transfer/cheque/payment-run reference — reconciliation
+  /// Free-text bank transfer/cheque/payment-run reference Ã¢â‚¬â€ reconciliation
   /// detail only, independent of `paymentJournalEntryId` above (which is
   /// this system's own posted JournalEntry, not an external bank record).
   paymentReference String?

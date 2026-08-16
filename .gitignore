@@ -18,3 +18,9 @@ apps/api/src-backup-before-ts-fix/
 .DS_Store
 .vscode/
 .idea/
+
+# Temporary Prisma repair artifacts
+prisma/migration-backups/
+prisma/20260810000000_init_clean_FAILED_BACKUP/
+prisma/_db_to_schema_diff.sql
+prisma/_schema_expected.sql

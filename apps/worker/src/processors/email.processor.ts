@@ -52,9 +52,14 @@ export class EmailProcessor extends WorkerHost {
       this.logger.error(`Email send failed to ${job.data.to.join(',')}: ${error.message}`);
 
       if (job.data.notificationId) {
-        await this.prisma.notification
-          .update({ where: { id: job.data.notificationId }, data: { status: NotificationStatus.FAILED } })
-          .catch(() => undefined);
+        try {
+          await this.prisma.notification.update({
+            where: { id: job.data.notificationId },
+            data: { status: NotificationStatus.FAILED },
+          });
+        } catch {
+          // Notification status persistence must not mask the original send error.
+        }
       }
 
       await this.jobRunLog.recordFailure({ jobId: String(job.id), error, attemptsMade: job.attemptsMade + 1 });

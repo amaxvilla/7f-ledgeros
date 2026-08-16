@@ -1,11 +1,12 @@
 # ---- Base ----
 FROM node:20-alpine AS base
+RUN apk add --no-cache openssl
 RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
 WORKDIR /app
 
 # ---- Dependencies ----
 FROM base AS deps
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/package.json
 COPY packages/types/package.json ./packages/types/package.json
 COPY packages/utils/package.json ./packages/utils/package.json
@@ -29,8 +30,8 @@ RUN pnpm --filter api build
 
 # ---- Runtime ----
 FROM node:20-alpine AS runtime
+RUN apk add --no-cache openssl wget
 RUN corepack enable && corepack prepare pnpm@9.4.0 --activate
-RUN apk add --no-cache wget
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app ./

@@ -5,7 +5,7 @@ WORKDIR /app
 
 # ---- Dependencies ----
 FROM base AS deps
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* tsconfig.base.json ./
 COPY apps/web/package.json ./apps/web/package.json
 COPY packages/ui/package.json ./packages/ui/package.json
 COPY packages/types/package.json ./packages/types/package.json

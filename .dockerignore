@@ -1,0 +1,25 @@
+﻿node_modules
+**/node_modules
+
+.next
+**/.next
+
+dist
+**/dist
+
+coverage
+**/coverage
+
+.git
+.gitignore
+
+.env
+.env.*
+
+# Ignore runtime/generated storage directories only.
+# Do NOT ignore apps/worker/src/storage because it contains source code.
+
+*.log
+*.tsbuildinfo
+
+src-backup-before-ts-fix

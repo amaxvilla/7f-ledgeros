@@ -24,7 +24,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TrustedDeviceService,
     IpRestrictionService,
     IpRestrictionGuard,
-    LoginRateLimitService,
+    {
+      provide: LoginRateLimitService,
+      useFactory: () => new LoginRateLimitService(),
+    },
     LoginRateLimitGuard,
   ],
   exports: [
@@ -36,7 +39,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TrustedDeviceService,
     IpRestrictionService,
     IpRestrictionGuard,
-    LoginRateLimitService,
+    {
+      provide: LoginRateLimitService,
+      useFactory: () => new LoginRateLimitService(),
+    },
     LoginRateLimitGuard,
   ],
 })

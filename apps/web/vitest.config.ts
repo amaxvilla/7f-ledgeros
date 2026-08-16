@@ -60,5 +60,6 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     include: ['app/**/__tests__/**/*.test.tsx', 'lib/**/__tests__/**/*.test.ts', '__tests__/**/*.test.ts'],
     globals: false,
+    fileParallelism: false,
   },
 });

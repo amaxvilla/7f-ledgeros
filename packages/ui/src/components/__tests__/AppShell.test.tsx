@@ -41,7 +41,7 @@ describe('AppShell — chrome', () => {
 
   it("no longer positions the header relatively — Nav's mobile panel is a viewport-fixed overlay now, not anchored to the header (Sidebar conversion)", () => {
     const { container } = render(
-      <AppShell>
+      <AppShell isLoggedIn={true}>
         <p>content</p>
       </AppShell>,
     );
@@ -52,7 +52,7 @@ describe('AppShell — chrome', () => {
 
   it('renders the sidebar nav outside the header, in its own row alongside the page content', () => {
     const { container } = render(
-      <AppShell>
+      <AppShell isLoggedIn={true}>
         <p>content</p>
       </AppShell>,
     );
@@ -72,7 +72,7 @@ describe('AppShell — chrome', () => {
 describe('AppShell — nav composition', () => {
   it('passes all fifty-three current routes to Nav, in order', () => {
     render(
-      <AppShell>
+      <AppShell isLoggedIn={true}>
         <p>content</p>
       </AppShell>,
     );
@@ -196,7 +196,7 @@ describe('AppShell — nav composition', () => {
   it("highlights the route matching the current pathname", () => {
     usePathnameMock.mockReturnValue('/payments');
     render(
-      <AppShell>
+      <AppShell isLoggedIn={true}>
         <p>content</p>
       </AppShell>,
     );
@@ -218,6 +218,18 @@ describe('AppShell — auth control (Checkpoint AK)', () => {
     expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument();
   });
 
+  it('hides the sidebar navigation when logged out', () => {
+    render(
+      <AppShell isLoggedIn={false}>
+        <p>Login content</p>
+      </AppShell>,
+    );
+
+    expect(screen.queryByRole('link', { name: 'Dashboard' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Recruitment' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Log in' })).toBeInTheDocument();
+    expect(screen.getByText('Login content')).toBeInTheDocument();
+  });
   it('shows a "Log in" link to /login when isLoggedIn is false', () => {
     render(
       <AppShell isLoggedIn={false}>

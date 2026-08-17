@@ -649,7 +649,7 @@ export function AppShell({
         )}
       </header>
       <div style={{ flex: 1, display: 'flex' }}>
-        <Nav links={NAV_LINKS} />
+        {isLoggedIn && <Nav links={NAV_LINKS} />}
         <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
       </div>
       <footer

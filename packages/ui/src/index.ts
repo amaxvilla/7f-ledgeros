@@ -1,8 +1,17 @@
-export { tokens } from './tokens';
+﻿export { tokens } from './tokens';
 export { KpiCard } from './components/KpiCard';
 export type { KpiCardProps } from './components/KpiCard';
 export { DataTable } from './components/DataTable';
 export type { DataTableColumn, DataTableProps } from './components/DataTable';
+
+export { DataTableClient } from './components/DataTableClient';
+export type {
+  DataTableClientColumn,
+  DataTableClientFilter,
+  DataTableClientRow,
+  DataTableClientBulkActions,
+  DataTableClientProps,
+} from './components/DataTableClient';
 export { Badge, PageHeader } from './components/Badge';
 export type { BadgeProps, PageHeaderProps } from './components/Badge';
 export { PageContainer } from './components/PageContainer';

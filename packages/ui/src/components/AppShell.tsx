@@ -527,6 +527,7 @@ const NAV_LINKS = [
   { href: '/handover', label: 'Handover' },
   { href: '/real-estate/sales', label: 'Property Sales' },
   { href: '/project-tasks', label: 'Project Tasks' },
+  { href: '/project-resources', label: 'Project Resources' },
   { href: '/integrations', label: 'Integrations' },
   { href: '/roles', label: 'Roles' },
   { href: '/users', label: 'Users' },

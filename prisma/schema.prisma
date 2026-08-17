@@ -771,6 +771,9 @@ model Entity {
 
   @@index([parentEntityId])
   @@map("entities")
+
+  intercompanyConnectionsAsInitiator IntercompanyConnection[] @relation("ICConnectionInitiator")
+  intercompanyConnectionsAsCounterparty IntercompanyConnection[] @relation("ICConnectionCounterparty")
 }
 
 model EntityRelationship {
@@ -842,6 +845,11 @@ model Account {
   @@index([accountType])
   @@index([parentAccountId])
   @@map("accounts")
+
+  intercompanyConnectionsInitiatorDueFrom IntercompanyConnection[] @relation("ICConnectionInitiatorDueFrom")
+  intercompanyConnectionsInitiatorDueTo IntercompanyConnection[] @relation("ICConnectionInitiatorDueTo")
+  intercompanyConnectionsCounterpartyDueFrom IntercompanyConnection[] @relation("ICConnectionCounterpartyDueFrom")
+  intercompanyConnectionsCounterpartyDueTo IntercompanyConnection[] @relation("ICConnectionCounterpartyDueTo")
 }
 
 /// Activates a group-chart account for a specific entity (per-entity enable/disable)
@@ -1551,9 +1559,43 @@ model AuditLog {
 // =====================================================================
 // INTERCOMPANY ENGINE
 // =====================================================================
+model IntercompanyConnection {
+  id                   String   @id @default(uuid())
 
+  initiatorEntityId    String
+  counterpartyEntityId String
+
+  initiatorDueFromAccountId     String
+  initiatorDueToAccountId       String
+  counterpartyDueFromAccountId  String
+  counterpartyDueToAccountId    String
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  initiatorEntity Entity @relation("ICConnectionInitiator", fields: [initiatorEntityId], references: [id], onDelete: Restrict)
+
+  counterpartyEntity Entity @relation("ICConnectionCounterparty", fields: [counterpartyEntityId], references: [id], onDelete: Restrict)
+
+  initiatorDueFromAccount Account @relation("ICConnectionInitiatorDueFrom", fields: [initiatorDueFromAccountId], references: [id], onDelete: Restrict)
+
+  initiatorDueToAccount Account @relation("ICConnectionInitiatorDueTo", fields: [initiatorDueToAccountId], references: [id], onDelete: Restrict)
+
+  counterpartyDueFromAccount Account @relation("ICConnectionCounterpartyDueFrom", fields: [counterpartyDueFromAccountId], references: [id], onDelete: Restrict)
+
+  counterpartyDueToAccount Account @relation("ICConnectionCounterpartyDueTo", fields: [counterpartyDueToAccountId], references: [id], onDelete: Restrict)
+
+  transactions IntercompanyTransaction[]
+
+  @@unique([initiatorEntityId, counterpartyEntityId])
+  @@index([initiatorEntityId])
+  @@index([counterpartyEntityId])
+  @@map("intercompany_connections")
+}
 model IntercompanyTransaction {
   id                 String               @id @default(uuid())
+  connectionId       String
   initiatorEntityId  String
   counterpartyEntityId String
   journalEntryId     String               @unique
@@ -1566,6 +1608,7 @@ model IntercompanyTransaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  connection          IntercompanyConnection @relation(fields: [connectionId], references: [id], onDelete: Restrict)
   initiatorEntity    Entity       @relation("ICInitiatorEntity", fields: [initiatorEntityId], references: [id], onDelete: Restrict)
   counterpartyEntity Entity       @relation("ICCounterpartyEntity", fields: [counterpartyEntityId], references: [id], onDelete: Restrict)
   journalEntry       JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Restrict)

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { JournalEntryStatus, ReconciliationStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PostingEngineService } from '../general-ledger/posting-engine.service';
@@ -32,20 +32,35 @@ export class IntercompanyService {
    */
   async create(dto: CreateIntercompanyDto) {
     if (dto.initiatorEntityId === dto.counterpartyEntityId) {
-      throw new BadRequestException('Intercompany transactions require two distinct entities');
+      throw new BadRequestException(
+        'Intercompany transactions require two distinct entities',
+      );
     }
+
     if (dto.amount <= 0) {
       throw new BadRequestException('Intercompany amount must be positive');
     }
 
-    // ---- Initiator side: Dr [expense/asset] / Cr Due-to-counterparty is one
-    // common pattern; here we model the generic "initiator pays or incurs on
-    // behalf of counterparty" case: Dr Due-from-counterparty / Cr [account].
+    const connection = await this.prisma.intercompanyConnection.findFirst({
+      where: {
+        initiatorEntityId: dto.initiatorEntityId,
+        counterpartyEntityId: dto.counterpartyEntityId,
+        isActive: true,
+      },
+    });
+
+    if (!connection) {
+      throw new BadRequestException(
+        `No active intercompany connection exists between initiator entity ${dto.initiatorEntityId} and counterparty entity ${dto.counterpartyEntityId}`,
+      );
+    }
+
+    // ---- Initiator side: Dr [expense/asset] / Cr Due-from-counterparty
     const initiatorDraft = await this.postingEngine.createDraft(
       {
         entityId: dto.initiatorEntityId,
         entryDate: dto.entryDate,
-        description: `[Intercompany] ${dto.description}`,
+        description: dto.description,
         sourceType: 'INTERCOMPANY',
         lines: [
           { accountId: dto.dueFromAccountId, debit: dto.amount, credit: 0 },
@@ -73,6 +88,7 @@ export class IntercompanyService {
 
     return this.prisma.intercompanyTransaction.create({
       data: {
+        connectionId: connection.id,
         initiatorEntityId: dto.initiatorEntityId,
         counterpartyEntityId: dto.counterpartyEntityId,
         journalEntryId: initiatorDraft.id,

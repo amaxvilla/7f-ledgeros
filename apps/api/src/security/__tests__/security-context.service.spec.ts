@@ -7,6 +7,7 @@ function buildUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUse
     id: 'user-1',
     email: 'user@example.com',
     permissions: [],
+    isSystemAdmin: false,
     entityAccess: [],
     departmentAccess: [],
     costCenterAccess: [],

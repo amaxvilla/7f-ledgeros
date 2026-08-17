@@ -4,6 +4,7 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   permissions: string[];
+  isSystemAdmin: boolean;
   entityAccess: { entityId: string; canPost: boolean; canView: boolean }[];
   /**
    * Phase 2 — Row Level Security. Optional so existing code paths that only

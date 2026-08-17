@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { PERMISSIONS } from '@7f/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -43,10 +44,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       ),
     );
 
+    // SYSTEM_ADMIN is defined structurally by possession of every
+    // known permission, matching SecurityContextService.
+    const isSystemAdmin =
+      permissions.length >= Object.keys(PERMISSIONS).length;
+
     return {
       id: user.id,
       email: user.email,
       permissions,
+      isSystemAdmin,
       entityAccess: user.entityAccess.map((ea) => ({
         entityId: ea.entityId,
         canPost: ea.canPost,

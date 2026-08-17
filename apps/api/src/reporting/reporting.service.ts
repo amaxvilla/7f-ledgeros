@@ -154,16 +154,50 @@ export class ReportingService {
 
   private async buildFinancialPosition(entityId: string, fiscalPeriodId: string) {
     const rows = await this.fetchSofpRows(entityId, fiscalPeriodId);
-    const section = (name: string) => rows.filter((r) => r.statement_section === name);
-    const sum = (list: FinancialPositionViewRow[]) => list.reduce((total, r) => total + Number(r.closing_balance), 0);
-    const currentAssets = section('ASSETS_CURRENT'), nonCurrentAssets = section('ASSETS_NON_CURRENT');
-    const currentLiabilities = section('LIABILITIES_CURRENT'), nonCurrentLiabilities = section('LIABILITIES_NON_CURRENT'), equity = section('EQUITY');
-    const totalCurrentAssets = sum(currentAssets), totalNonCurrentAssets = sum(nonCurrentAssets), totalAssets = totalCurrentAssets + totalNonCurrentAssets;
-    const totalCurrentLiabilities = sum(currentLiabilities), totalNonCurrentLiabilities = sum(nonCurrentLiabilities), totalLiabilities = totalCurrentLiabilities + totalNonCurrentLiabilities;
-    const totalEquity = sum(equity);
-    return { entityId, fiscalPeriodId, periodName: rows[0]?.period_name ?? null, currentAssets, totalCurrentAssets, nonCurrentAssets, totalNonCurrentAssets, totalAssets, currentLiabilities, totalCurrentLiabilities, nonCurrentLiabilities, totalNonCurrentLiabilities, totalLiabilities, equity, totalEquity, balances: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01 };
-  }
 
+    const section = (name: string) =>
+      rows.filter((r) => r.statement_section === name);
+
+    const sum = (list: FinancialPositionViewRow[]) =>
+      list.reduce((total, r) => total + Number(r.closing_balance), 0);
+
+    const currentAssets = section('ASSETS_CURRENT');
+    const nonCurrentAssets = section('ASSETS_NON_CURRENT');
+    const currentLiabilities = section('LIABILITIES_CURRENT');
+    const nonCurrentLiabilities = section('LIABILITIES_NON_CURRENT');
+    const equity = section('EQUITY');
+
+    const totalCurrentAssets = sum(currentAssets);
+    const totalNonCurrentAssets = sum(nonCurrentAssets);
+    const totalAssets = totalCurrentAssets + totalNonCurrentAssets;
+
+    const totalCurrentLiabilities = sum(currentLiabilities);
+    const totalNonCurrentLiabilities = sum(nonCurrentLiabilities);
+    const totalLiabilities =
+      totalCurrentLiabilities + totalNonCurrentLiabilities;
+
+    const totalEquity = sum(equity);
+
+    return {
+      entityId,
+      fiscalPeriodId,
+      periodName: rows[0]?.period_name ?? null,
+      currentAssets,
+      totalCurrentAssets,
+      nonCurrentAssets,
+      totalNonCurrentAssets,
+      totalAssets,
+      currentLiabilities,
+      totalCurrentLiabilities,
+      nonCurrentLiabilities,
+      totalNonCurrentLiabilities,
+      totalLiabilities,
+      equity,
+      totalEquity,
+      balances:
+        Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01,
+    };
+  }
   async statementOfCashFlows(scope: SecurityScope, entityId: string, fiscalPeriodId: string, method: 'INDIRECT' | 'DIRECT' = 'INDIRECT') {
     this.assertEntityAccess(scope, entityId);
     return this.buildCashFlow(entityId, fiscalPeriodId, method);
@@ -241,24 +275,100 @@ export class ReportingService {
   private withTotal(row: Omit<EquityRow, 'total'>): EquityRow {
     return { ...row, total: EQUITY_COMPONENTS.reduce((sum, component) => sum + row[component], 0) };
   }
-  private async buildChangesInEquity(entityId: string, fiscalPeriodId: string, precomputedNetProfit?: number) {
-    const netProfit = precomputedNetProfit ?? (await this.buildProfitOrLoss(entityId, fiscalPeriodId)).netProfit;
-    const rows = await this.prisma.$queryRaw<ChangesInEquityViewRow[]>(Prisma.sql`SELECT * FROM vw_statement_changes_in_equity WHERE entity_id = ${entityId} AND fiscal_period_id = ${fiscalPeriodId} ORDER BY account_code`);
-    const opening = this.emptyEquityRow(), closing = this.emptyEquityRow(), dividends = this.emptyEquityRow(), oci = this.emptyEquityRow(), profitForYear = this.emptyEquityRow();
+  private async buildChangesInEquity(
+    entityId: string,
+    fiscalPeriodId: string,
+    precomputedNetProfit?: number,
+  ) {
+    const netProfit =
+      precomputedNetProfit ??
+      (await this.buildProfitOrLoss(entityId, fiscalPeriodId)).netProfit;
+
+    const rows = await this.prisma.$queryRaw<ChangesInEquityViewRow[]>(
+      Prisma.sql`
+        SELECT *
+        FROM vw_statement_changes_in_equity
+        WHERE entity_id = ${entityId}
+          AND fiscal_period_id = ${fiscalPeriodId}
+        ORDER BY account_code
+      `,
+    );
+
+    const opening = this.emptyEquityRow();
+    const closing = this.emptyEquityRow();
+    const dividends = this.emptyEquityRow();
+    const oci = this.emptyEquityRow();
+    const profitForYear = this.emptyEquityRow();
+
     profitForYear.retainedEarnings = netProfit;
+
     for (const row of rows) {
       const { component, isDividend } = this.classifyEquityRow(row);
-      opening[component] += Number(row.opening_balance); closing[component] += Number(row.closing_balance);
-      if (isDividend) dividends[component] += Number(row.period_net_movement);
-      else if (component === 'revaluationReserve' || component === 'foreignCurrencyTranslationReserve') oci[component] += Number(row.period_net_movement);
-    }
-    const otherMovements = this.emptyEquityRow();
-    for (const component of EQUITY_COMPONENTS) otherMovements[component] = closing[component] - opening[component] - profitForYear[component] - oci[component] - dividends[component];
-    const openingTotal = this.withTotal(opening), closingTotal = this.withTotal(closing);
-    const position = await this.buildFinancialPosition(entityId, fiscalPeriodId);
-    return { entityId, fiscalPeriodId, periodName: rows[0]?.period_name ?? null, components: EQUITY_COMPONENTS, opening: openingTotal, profitForYear: this.withTotal(profitForYear), oci: this.withTotal(oci), dividends: this.withTotal(dividends), otherMovements: this.withTotal(otherMovements), closing: closingTotal, totalComprehensiveIncome: netProfit + oci.revaluationReserve + oci.foreignCurrencyTranslationReserve, reconcilesToBalanceSheet: Math.abs(position.totalEquity - closingTotal.total) < 0.01 };
-  }
 
+      opening[component] += Number(row.opening_balance);
+      closing[component] += Number(row.closing_balance);
+
+      if (isDividend) {
+        dividends[component] += Number(row.period_net_movement);
+      } else if (
+        component === 'revaluationReserve' ||
+        component === 'foreignCurrencyTranslationReserve'
+      ) {
+        oci[component] += Number(row.period_net_movement);
+      }
+    }
+
+    const position = await this.buildFinancialPosition(
+      entityId,
+      fiscalPeriodId,
+    );
+
+    const retainedEarningsPosition = position.equity.find(
+      (row) => row.account_category === 'RETAINED_EARNINGS',
+    );
+
+    if (retainedEarningsPosition) {
+      opening.retainedEarnings = Number(
+        retainedEarningsPosition.opening_balance,
+      );
+      closing.retainedEarnings = Number(
+        retainedEarningsPosition.closing_balance,
+      );
+    }
+
+    const otherMovements = this.emptyEquityRow();
+
+    for (const component of EQUITY_COMPONENTS) {
+      otherMovements[component] =
+        closing[component] -
+        opening[component] -
+        profitForYear[component] -
+        oci[component] -
+        dividends[component];
+    }
+
+    const openingTotal = this.withTotal(opening);
+    const closingTotal = this.withTotal(closing);
+
+    return {
+      entityId,
+      fiscalPeriodId,
+      periodName: rows[0]?.period_name ?? null,
+      components: EQUITY_COMPONENTS,
+      opening: openingTotal,
+      profitForYear: this.withTotal(profitForYear),
+      oci: this.withTotal(oci),
+      dividends: this.withTotal(dividends),
+      otherMovements: this.withTotal(otherMovements),
+      closing: closingTotal,
+      totalComprehensiveIncome:
+        netProfit +
+        oci.revaluationReserve +
+        oci.foreignCurrencyTranslationReserve,
+      reconcilesToBalanceSheet:
+        Math.abs(position.totalEquity - closingTotal.total) < 0.01,
+    };
+  }
   private static readonly GL_DERIVED_SOFP_NOTE_KEYS = ['propertyPlantEquipment','intangibleAssets','investmentProperty','cashAndCashEquivalents','tradeAndOtherReceivables','inventories','prepayments','otherCurrentAssets','tradeAndOtherPayables','borrowings','leaseLiabilities','deferredRevenue','shareCapital','sharePremium','retainedEarnings','otherEquityReserves'] as const;
   private static readonly GL_DERIVED_PL_NOTE_KEYS = ['revenueByCategory','costOfSales','operatingExpenses','financeCosts','incomeTax'] as const;
   private static readonly NARRATIVE_NOTE_KEYS = ['reportingEntityInformation','basisOfPreparation','significantAccountingPolicies','relatedPartyTransactions','commitments','contingentLiabilities','subsequentEvents'] as const;

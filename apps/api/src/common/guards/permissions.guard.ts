@@ -28,6 +28,12 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('No authenticated user on request');
     }
 
+    // SYSTEM_ADMIN is allowed to exercise every permission during
+    // administration/testing. Normal users remain fully RBAC-enforced.
+    if (user.isSystemAdmin) {
+      return true;
+    }
+
     const hasAll = required.every((code) => user.permissions.includes(code));
     if (!hasAll) {
       throw new ForbiddenException(

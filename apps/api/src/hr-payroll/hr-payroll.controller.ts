@@ -95,6 +95,37 @@ export class HrPayrollController {
       user.id,
     );
   }
+  @Get('payroll-runs')
+  @RequirePermissions('payroll.manage')
+  @ApiOperation({
+    summary: 'List payroll runs',
+    description: 'Lists payroll runs for the requested entity, scoped to the caller.',
+  })
+  async listPayrollRuns(
+    @Query('entityId') entityId: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.hrPayroll.listPayrollRuns(
+      entityId,
+      await this.securityContext.buildScope(user),
+    );
+  }
+
+  @Get('payroll-runs/:id')
+  @RequirePermissions('payroll.manage')
+  @ApiOperation({
+    summary: 'Get one payroll run',
+    description: 'Returns the payroll run and its payslips.',
+  })
+  async getPayrollRun(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.hrPayroll.getPayrollRun(
+      id,
+      await this.securityContext.buildScope(user),
+    );
+  }
 
   @Post('payroll-runs/:id/calculate')
   @RequirePermissions('payroll.manage')

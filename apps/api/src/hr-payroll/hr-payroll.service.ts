@@ -147,6 +147,86 @@ export class HrPayrollService {
 
   // ---- Payroll runs ----
 
+  listPayrollRuns(entityId?: string, scope?: SecurityScope) {
+    const rls = scope
+      ? this.rowLevelSecurity.buildWhere(scope, { dimensions: ['entity'] })
+      : {};
+
+    const explicit = entityId ? { entityId } : {};
+
+    return this.prisma.payrollRun.findMany({
+      where: Object.keys(rls).length
+        ? { AND: [rls, explicit] }
+        : explicit,
+      orderBy: [
+        { payPeriodStart: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      include: {
+        _count: {
+          select: {
+            payslips: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getPayrollRun(id: string, scope?: SecurityScope) {
+    const run = await this.prisma.payrollRun.findUnique({
+      where: { id },
+      include: {
+        payslips: {
+          include: {
+            employee: {
+              select: {
+                id: true,
+                employeeCode: true,
+                firstName: true,
+                lastName: true,
+                gradeLevel: true,
+              },
+            },
+          },
+          orderBy: {
+            employee: {
+              employeeCode: 'asc',
+            },
+          },
+        },
+      },
+    });
+
+    if (!run) {
+      throw new NotFoundException(`Payroll run ${id} not found`);
+    }
+
+    if (scope) {
+      const allowed = this.rowLevelSecurity.buildWhere(
+        scope,
+        { dimensions: ['entity'] },
+      );
+
+      const scoped = await this.prisma.payrollRun.findFirst({
+        where: {
+          AND: [
+            { id },
+            allowed,
+          ],
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!scoped) {
+        throw new NotFoundException(`Payroll run ${id} not found`);
+      }
+    }
+
+    return run;
+  }
+
   async createPayrollRun(entityId: string, payPeriodName: string, payPeriodStart: string, payPeriodEnd: string, createdById: string) {
     const existing = await this.prisma.payrollRun.findUnique({
       where: { entityId_payPeriodName: { entityId, payPeriodName } },

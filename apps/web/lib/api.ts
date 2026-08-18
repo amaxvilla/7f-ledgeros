@@ -1,6 +1,9 @@
 import { cookies } from 'next/headers';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
+const API_URL =
+  process.env.INTERNAL_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  'http://localhost:4000/api/v1';
 
 // Server-only bearer token for this dashboard's own service account.
 // Never exposed to the client — only read inside Server Components /

@@ -1,6 +1,7 @@
-import { DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+﻿import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
+import { HrDepartmentTable, HrHiringTable } from './HrTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,14 +52,14 @@ interface StageRow {
 }
 
 /**
- * Frontend Completion, FE-2.1 — opens Stage FE-2 (Dashboard) and picks
+ * Frontend Completion, FE-2.1 â€” opens Stage FE-2 (Dashboard) and picks
  * HR as its first slice for the same reason FE-1.3's own release report
  * recommended it: `HrAnalyticsController` (`hr/analytics`, `hr.view`)
- * already ships a full `executiveSummary(entityId)` aggregate —
+ * already ships a full `executiveSummary(entityId)` aggregate â€”
  * headcount, turnover, attendance, hiring funnel, payroll cost, and
  * training all in one call, the exact "one dashboard-shaped endpoint,
  * zero new backend work" shape `crm-analytics`/`real-estate-analytics`
- * already established for CRM/Real Estate's own pages — while
+ * already established for CRM/Real Estate's own pages â€” while
  * `apps/web/app/hr` didn't exist at all. Search and Theme (this
  * checkpoint's other two candidates, named in FE-1.3's own release
  * report) both still lack that: Search has no backend index/query
@@ -66,17 +67,17 @@ interface StageRow {
  *
  * Entity-scoped (`GET /hr/analytics/executive-summary?entityId=`, same
  * `entityId` query-param + `EntitySelector` pattern every other
- * multi-entity page here already uses — CRM, Payments, Recruitment,
+ * multi-entity page here already uses â€” CRM, Payments, Recruitment,
  * Fixed Assets, etc.), unlike `my-security` (user-scoped) or `security`
  * (system-wide).
  *
  * `byDepartment` on both `headcount` and `payrollCost` are separate
- * `Record<string, number>` maps keyed by department name — merged
+ * `Record<string, number>` maps keyed by department name â€” merged
  * client-side into one `DepartmentRow[]` below (department names line
  * up because both come from the same `Employee.department` relation on
  * the same `entityId`) rather than adding a new combined backend
  * endpoint for what's a one-line `Object.keys` join. `byGender`/
- * `byEmploymentType` are NOT rendered as their own table — the KPI-row
+ * `byEmploymentType` are NOT rendered as their own table â€” the KPI-row
  * + two-table shape below already covers what a Checkpoint-sized page
  * needs; a future checkpoint can add a demographics breakdown if asked
  * for, rather than this one guessing at a layout for data nobody's
@@ -148,7 +149,7 @@ export default async function HrDashboardPage({
               caption={`${data.turnover.exits} exits`}
             />
             <KpiCard
-              label="Attendance — present"
+              label="Attendance â€” present"
               value={`${data.attendance.presentRatePercent}%`}
               tone={data.attendance.presentRatePercent >= 90 ? 'positive' : 'warning'}
               caption={`${data.attendance.totalRecords} records (YTD)`}
@@ -174,32 +175,16 @@ export default async function HrDashboardPage({
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Headcount and payroll cost by department" />
-            <DataTable
-              columns={[
-                { header: 'Department', render: (r: DepartmentRow) => r.department },
-                { header: 'Headcount', align: 'right', render: (r: DepartmentRow) => String(r.headcount) },
-                { header: 'Monthly payroll cost', align: 'right', render: (r: DepartmentRow) => formatCurrency(r.monthlyPayrollCost) },
-              ]}
-              rows={departmentRows}
-              keyOf={(r) => r.department}
-              emptyMessage="No active employees for this entity yet."
-            />
+            <HrDepartmentTable rows={departmentRows} />
           </section>
 
           <section>
             <PageHeader title="Hiring funnel (YTD)" />
-            <DataTable
-              columns={[
-                { header: 'Stage', render: (r: StageRow) => r.stage },
-                { header: 'Applications', align: 'right', render: (r: StageRow) => String(r.count) },
-              ]}
-              rows={stageRows}
-              keyOf={(r) => r.stage}
-              emptyMessage="No job applications for this entity yet."
-            />
+            <HrHiringTable rows={stageRows} />
           </section>
         </>
       )}
     </PageContainer>
   );
 }
+

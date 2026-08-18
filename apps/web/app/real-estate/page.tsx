@@ -1,6 +1,11 @@
-import { DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+﻿import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
+import {
+  RealEstateUnsoldTable,
+  RealEstateAgeingTable,
+  RealEstateSalesVelocityTable,
+} from './RealEstateDashboardTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -69,20 +74,20 @@ function num(v: number | string | null | undefined): number {
 }
 
 /**
- * Frontend Completion, FE-2.2 — Real Estate is FE-2's second slice, picked
+ * Frontend Completion, FE-2.2 â€” Real Estate is FE-2's second slice, picked
  * up from FE-2.1's own release report over PMO for the same "backend
  * exists, page doesn't, and starts simplest" reasoning that put HR ahead
  * of the rest of Stage FE-2: `DashboardController.getRealEstateAnalytics`
  * (`dashboard/real-estate-analytics`, `realestate.view`) takes `entityId`
  * with `projectId` OPTIONAL (see DashboardService.getRealEstateAnalyticsOverview's
- * own doc comment) — no project-selection step needed before this page has
+ * own doc comment) â€” no project-selection step needed before this page has
  * anything to show, unlike `pmo-analytics`, whose `projectId` is required
  * (ReportingService.pmoProjectPerformance's EVM/Gantt data "only makes
  * sense for a single project"). PMO Dashboard remains open for a
  * checkpoint that also builds a project selector.
  *
  * Entity-scoped via `EntitySelector`, same pattern as HR/CRM/Payments.
- * `projectId` itself is NOT exposed as a filter on this first pass — all
+ * `projectId` itself is NOT exposed as a filter on this first pass â€” all
  * four backing views (`vw_sales_velocity`/`vw_inventory_ageing`/
  * `vw_absorption_rate`/`vw_unsold_units_dashboard`, see their own
  * migration comments) already return one row per project, so an
@@ -90,20 +95,20 @@ function num(v: number | string | null | undefined): number {
  * needing a picker; per-project drill-down is a reasonable future
  * addition, not a gap in this checkpoint's own scope.
  *
- * All four endpoints return raw `$queryRaw` rows over Postgres views —
+ * All four endpoints return raw `$queryRaw` rows over Postgres views â€”
  * numeric columns (`total_sale_value`, `list_price`, etc.) come back as
  * either `number` or `string` depending on the pg driver's own type
  * mapping for `numeric`/`bigint`, which this page's own `num()` helper
  * normalizes rather than assuming one or the other (same defensive cast
  * every currency-rendering column here needs, not a new pattern).
  *
- * `inventoryAgeing` is one row PER UNSOLD UNIT, not per project — for an
+ * `inventoryAgeing` is one row PER UNSOLD UNIT, not per project â€” for an
  * entity with hundreds of listed units that's too many rows for a
  * dashboard table (the same "one row per employee would be too many"
  * reasoning FE-2.1's own doc comment gives for aggregating HR headcount
  * by department instead of listing every employee). Bucketed
  * client-side into `AGE_BUCKET_ORDER`'s five bands (already computed
- * server-side as `age_bucket` by the view itself — this page only
+ * server-side as `age_bucket` by the view itself â€” this page only
  * groups and sums, it doesn't recompute the bucketing logic) into unit
  * count + total list price per band instead.
  */
@@ -183,57 +188,25 @@ export default async function RealEstateDashboardPage({
             <KpiCard label="Unsold units" value={String(totalUnsoldUnits)} tone="warning" caption={formatCurrency(totalUnsoldValue)} />
             <KpiCard
               label="Absorption rate"
-              value={avgAbsorptionRate !== null ? `${avgAbsorptionRate}%` : '—'}
+              value={avgAbsorptionRate !== null ? `${avgAbsorptionRate}%` : 'â€”'}
               caption={latestMonth ? new Date(latestMonth).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : undefined}
             />
-            <KpiCard label="Avg. days to sell" value={avgDaysToSell !== null ? `${avgDaysToSell} days` : '—'} />
+            <KpiCard label="Avg. days to sell" value={avgDaysToSell !== null ? `${avgDaysToSell} days` : 'â€”'} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Unsold units by project" />
-            <DataTable
-              columns={[
-                { header: 'Project', render: (r: UnsoldUnitsRow) => r.project_code },
-                { header: 'Available', align: 'right', render: (r: UnsoldUnitsRow) => String(num(r.available_count)) },
-                { header: 'Reserved', align: 'right', render: (r: UnsoldUnitsRow) => String(num(r.reserved_count)) },
-                { header: 'Under contract', align: 'right', render: (r: UnsoldUnitsRow) => String(num(r.under_contract_count)) },
-                { header: 'Total unsold', align: 'right', render: (r: UnsoldUnitsRow) => String(num(r.total_unsold_count)) },
-                { header: 'Total unsold value', align: 'right', render: (r: UnsoldUnitsRow) => formatCurrency(num(r.total_unsold_value)) },
-              ]}
-              rows={data.unsoldUnits}
-              keyOf={(r) => r.project_id}
-              emptyMessage="No projects with unsold units for this entity."
-            />
+            <RealEstateUnsoldTable rows={data.unsoldUnits} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Inventory ageing" />
-            <DataTable
-              columns={[
-                { header: 'Age band', render: (r: AgeingBucketRow) => `${r.bucket} days` },
-                { header: 'Units', align: 'right', render: (r: AgeingBucketRow) => String(r.unitCount) },
-                { header: 'Total list price', align: 'right', render: (r: AgeingBucketRow) => formatCurrency(r.totalListPrice) },
-              ]}
-              rows={ageingBuckets}
-              keyOf={(r) => r.bucket}
-              emptyMessage="No unsold inventory for this entity."
-            />
+            <RealEstateAgeingTable rows={ageingBuckets} />
           </section>
 
           <section>
             <PageHeader title="Sales velocity by month" />
-            <DataTable
-              columns={[
-                { header: 'Project', render: (r: SalesVelocityRow) => r.project_code },
-                { header: 'Month', render: (r: SalesVelocityRow) => new Date(r.sale_month).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) },
-                { header: 'Units sold', align: 'right', render: (r: SalesVelocityRow) => String(num(r.units_sold)) },
-                { header: 'Sale value', align: 'right', render: (r: SalesVelocityRow) => formatCurrency(num(r.total_sale_value)) },
-                { header: 'Avg. days to sell', align: 'right', render: (r: SalesVelocityRow) => (r.avg_days_to_sell !== null ? `${round2(num(r.avg_days_to_sell))} days` : '—') },
-              ]}
-              rows={data.salesVelocity}
-              keyOf={(r) => `${r.project_id}-${r.sale_month}`}
-              emptyMessage="No sales recorded for this entity yet."
-            />
+            <RealEstateSalesVelocityTable rows={data.salesVelocity} />
           </section>
         </>
       )}
@@ -244,3 +217,5 @@ export default async function RealEstateDashboardPage({
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+

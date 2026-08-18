@@ -1,8 +1,14 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+﻿import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { ProjectSelector } from '../ProjectSelector';
 import type { ProjectOption } from '../ProjectSelector';
+import {
+  PmoTaskTable,
+  PmoStatusTable,
+  PmoTopRiskTable,
+  PmoPriorityTable,
+} from './PmoTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,24 +83,24 @@ const TASK_STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'ne
   CANCELLED: 'negative',
 };
 
-/** SPI/CPI: null when there's nothing to divide by yet (`PV`/`AC` of zero, `ReportingService.pmoProjectPerformance`'s own guard) — "—", not "0.00" or "N/A", the same "—" degradation `executive/page.tsx`'s own `ratio()` helper already established for a null financial-ratio cell. */
+/** SPI/CPI: null when there's nothing to divide by yet (`PV`/`AC` of zero, `ReportingService.pmoProjectPerformance`'s own guard) â€” "â€”", not "0.00" or "N/A", the same "â€”" degradation `executive/page.tsx`'s own `ratio()` helper already established for a null financial-ratio cell. */
 function index(v: number | null): string {
-  return v === null ? '—' : v.toFixed(2);
+  return v === null ? 'â€”' : v.toFixed(2);
 }
 
 /**
- * Frontend Completion — PMO Dashboard (`/pmo`), the direct follow-on to
+ * Frontend Completion â€” PMO Dashboard (`/pmo`), the direct follow-on to
  * this checkpoint's own `ProjectSelector` (see that component's doc
- * comment for why a Projects registry — wrongly believed absent by an
- * earlier checkpoint's own doc comment — was the actual blocker, not a
+ * comment for why a Projects registry â€” wrongly believed absent by an
+ * earlier checkpoint's own doc comment â€” was the actual blocker, not a
  * missing endpoint on `DashboardController` itself). This is the same
- * checkpoint as the selector, not a separate one — small enough
+ * checkpoint as the selector, not a separate one â€” small enough
  * together to stay within "2-3 closely related pages/components," and
  * the selector has no other consumer yet to justify shipping it alone.
  *
  * `GET /dashboard/pmo-analytics` (`DashboardService.getPmoAnalyticsOverview`,
  * `pmo.view`) takes `entityId` AND `projectId` BOTH REQUIRED (confirmed
- * directly, no `?` on either in the controller signature) — this page
+ * directly, no `?` on either in the controller signature) â€” this page
  * is gated on both being present, with `EntitySelector` (existing) and
  * `ProjectSelector` (new) as the two-step path to get there, rather
  * than a single combined picker: `ProjectSelector`'s own options list
@@ -106,25 +112,25 @@ function index(v: number | null): string {
  * ASSUMED FROM THE ENDPOINT NAME: `projectPerformance`
  * (`ReportingService.pmoProjectPerformance`, itself `getGanttData` +
  * `computeEarnedValue`) is genuinely project-scoped with no "all
- * projects" mode — `computeEarnedValue`'s own PV/EV/AC math only makes
+ * projects" mode â€” `computeEarnedValue`'s own PV/EV/AC math only makes
  * sense for one project's own tasks. `riskIssueRegister`
  * (`pmoRiskIssueRegister`) is ACTUALLY project-OPTIONAL at the
  * `ReportingService` layer (confirmed directly: `projectId?: string`)
- * — this endpoint just always passes one through since the controller
- * itself requires it — worth naming since a future "all-projects risk
+ * â€” this endpoint just always passes one through since the controller
+ * itself requires it â€” worth naming since a future "all-projects risk
  * register" page could reuse the same service method without a project
  * selected at all, unlike `projectPerformance`.
  *
  * Earned-value terms (PV/EV/AC/SV/CV/SPI/CPI) are shown with their
  * standard abbreviations as KPI labels, each with a plain-English
- * caption — this app has no glossary/tooltip component anywhere to
+ * caption â€” this app has no glossary/tooltip component anywhere to
  * lean on instead, and every other dashboard page's own KPI labels are
  * already domain-jargon-forward (e.g. `executive/page.tsx`'s own
  * "Debt to equity", "Cash conversion cycle").
  *
- * No forms, no new Server Action — same read-only-dashboard scope every
+ * No forms, no new Server Action â€” same read-only-dashboard scope every
  * FE-2 page has had. Gantt-chart rendering itself (the `dependencies`
- * array, task hierarchy) is deliberately NOT attempted here — a real
+ * array, task hierarchy) is deliberately NOT attempted here â€” a real
  * Gantt view is its own visualization checkpoint; the Tasks table below
  * shows the same task list flattened, without the chart.
  */
@@ -164,7 +170,7 @@ export default async function PmoDashboardPage({
   if (!projectId) {
     return (
       <PageContainer>
-        <PageHeader title="PMO" subtitle={`Entity ${entityId} — choose a project to view its dashboard.`} />
+        <PageHeader title="PMO" subtitle={`Entity ${entityId} â€” choose a project to view its dashboard.`} />
         <EntitySelector initialValue={entityId} />
         {projectOptionsError ? (
           <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body }}>{projectOptionsError}</div>
@@ -187,7 +193,7 @@ export default async function PmoDashboardPage({
 
   return (
     <PageContainer>
-      <PageHeader title="PMO" subtitle={selectedProject ? `${selectedProject.code} — ${selectedProject.name}` : `Project ${projectId}`} />
+      <PageHeader title="PMO" subtitle={selectedProject ? `${selectedProject.code} â€” ${selectedProject.name}` : `Project ${projectId}`} />
       <EntitySelector initialValue={entityId} />
       <ProjectSelector entityId={entityId} projectOptions={projectOptions} initialValue={projectId} />
 
@@ -238,43 +244,21 @@ export default async function PmoDashboardPage({
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Tasks" subtitle={`${data.projectPerformance.earnedValue.taskCount} total, as of ${new Date(data.projectPerformance.earnedValue.asOfDate).toLocaleDateString()}`} />
-            <DataTable
-              columns={[
-                { header: 'Task', render: (t: GanttTask) => (t.isMilestone ? `◆ ${t.name}` : t.name) },
-                { header: 'Start', render: (t: GanttTask) => new Date(t.start).toLocaleDateString() },
-                { header: 'End', render: (t: GanttTask) => new Date(t.end).toLocaleDateString() },
-                { header: '% complete', align: 'right', render: (t: GanttTask) => `${t.percentComplete}%` },
-                { header: 'Status', render: (t: GanttTask) => <Badge tone={TASK_STATUS_TONE[t.status] ?? 'neutral'}>{t.status}</Badge> },
-                { header: 'Critical', render: (t: GanttTask) => (t.isCritical ? <Badge tone="negative">Critical path</Badge> : '—') },
-              ]}
-              rows={data.projectPerformance.schedule.tasks}
-              keyOf={(t) => t.id}
-              emptyMessage="No tasks scheduled for this project yet."
-            />
+            <PmoTaskTable rows={data.projectPerformance.schedule.tasks} />
           </section>
 
           <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: tokens.space(6), marginBottom: tokens.space(8) }}>
             <div>
               <PageHeader title="Risks by status" />
-              <DataTable
-                columns={[
-                  { header: 'Status', render: (r: StatusCount) => r.status },
-                  { header: 'Count', align: 'right', render: (r: StatusCount) => String(r.count) },
-                ]}
+              <PmoStatusTable
                 rows={data.riskIssueRegister.risksByStatus}
-                keyOf={(r) => r.status}
                 emptyMessage="No risks logged for this project."
               />
             </div>
             <div>
               <PageHeader title="Issues by status" />
-              <DataTable
-                columns={[
-                  { header: 'Status', render: (r: StatusCount) => r.status },
-                  { header: 'Count', align: 'right', render: (r: StatusCount) => String(r.count) },
-                ]}
+              <PmoStatusTable
                 rows={data.riskIssueRegister.issuesByStatus}
-                keyOf={(r) => r.status}
                 emptyMessage="No issues logged for this project."
               />
             </div>
@@ -282,32 +266,16 @@ export default async function PmoDashboardPage({
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Top open risks" />
-            <DataTable
-              columns={[
-                { header: 'Title', render: (r: TopOpenRisk) => r.title },
-                { header: 'Risk score', align: 'right', render: (r: TopOpenRisk) => String(r.riskScore) },
-                { header: 'Status', render: (r: TopOpenRisk) => <Badge tone="warning">{r.status}</Badge> },
-              ]}
-              rows={data.riskIssueRegister.topOpenRisks}
-              keyOf={(r) => r.id}
-              emptyMessage="No open risks for this project."
-            />
+            <PmoTopRiskTable rows={data.riskIssueRegister.topOpenRisks} />
           </section>
 
           <section>
             <PageHeader title="Open issues by priority" />
-            <DataTable
-              columns={[
-                { header: 'Priority', render: (r: PriorityCount) => r.priority },
-                { header: 'Count', align: 'right', render: (r: PriorityCount) => String(r.count) },
-              ]}
-              rows={data.riskIssueRegister.openIssuesByPriority}
-              keyOf={(r) => r.priority}
-              emptyMessage="No open issues for this project."
-            />
+            <PmoPriorityTable rows={data.riskIssueRegister.openIssuesByPriority} />
           </section>
         </>
       )}
     </PageContainer>
   );
 }
+

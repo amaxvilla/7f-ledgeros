@@ -1,13 +1,15 @@
-﻿import {
+import {
   Badge,
-  DataTable,
   KpiCard,
   PageContainer,
   PageHeader,
   tokens,
 } from '@7f/ui';
+import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
+import { CreatePayrollRunForm } from './CreatePayrollRunForm';
+import { PayrollRunsTable } from './PayrollRunsTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,31 +57,29 @@ interface PayrollRun {
   };
 }
 
-const STATUS_TONE: Record<
-  PayrollRun['status'],
-  'positive' | 'negative' | 'warning' | 'neutral'
-> = {
-  DRAFT: 'neutral',
-  CALCULATED: 'warning',
-  APPROVED: 'positive',
-  POSTED: 'positive',
-};
-
 async function loadPayroll(entityId: string) {
-  const [employees, salaryStructures, payrollRuns] = await Promise.all([
-    fetchApi<Employee[]>(`/hr/employees?entityId=${entityId}`),
-    fetchApi<SalaryStructure[]>(
-      `/hr/salary-structures?entityId=${entityId}`,
-    ),
-    fetchApi<PayrollRun[]>(
-      `/hr/payroll-runs?entityId=${entityId}`,
-    ),
-  ]);
+  const [employees, salaryStructures, payrollRuns, accounts] =
+    await Promise.all([
+      fetchApi<Employee[]>(`/hr/employees?entityId=${entityId}`),
+      fetchApi<SalaryStructure[]>(
+        `/hr/salary-structures?entityId=${entityId}`,
+      ),
+      fetchApi<PayrollRun[]>(
+        `/hr/payroll-runs?entityId=${entityId}`,
+      ),
+      fetchApi<Array<{ id: string; code: string; name: string }>>(
+        `/accounts/entity/${entityId}/active`,
+      ),
+    ]);
 
   return {
     employees,
     salaryStructures,
     payrollRuns,
+    accountOptions: accounts.map<SelectOption>((account) => ({
+      value: account.id,
+      label: `${account.code} — ${account.name}`,
+    })),
   };
 }
 
@@ -185,175 +185,192 @@ export default async function PayrollPage({
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader
+              title="Create payroll run"
+              subtitle="Start a new payroll cycle in DRAFT status."
+            />
+            <CreatePayrollRunForm entityId={entityId} />
+          </section>
+
+          <section style={{ marginBottom: tokens.space(8) }}>
+            <PageHeader
               title="Employees and Pay Grade"
               subtitle="Grade Level is stored on the Employee master record."
             />
 
-            <DataTable
-              columns={[
-                {
-                  header: 'Employee',
-                  render: (r: Employee) =>
-                    `${r.employeeCode} — ${r.firstName} ${r.lastName}`,
-                },
-                {
-                  header: 'Job title',
-                  render: (r: Employee) => r.jobTitle ?? '—',
-                },
-                {
-                  header: 'Grade Level',
-                  render: (r: Employee) =>
-                    r.gradeLevel ?? 'Not assigned',
-                },
-                {
-                  header: 'Department',
-                  render: (r: Employee) =>
-                    r.department?.name ?? '—',
-                },
-                {
-                  header: 'Salary Structure',
-                  render: (r: Employee) =>
-                    r.salaryStructure
-                      ? `${r.salaryStructure.code} — ${r.salaryStructure.name}`
-                      : 'Not assigned',
-                },
-                {
-                  header: 'Basic Salary',
-                  align: 'right',
-                  render: (r: Employee) =>
-                    r.salaryStructure
-                      ? formatCurrency(
-                          Number(r.salaryStructure.basicSalary),
-                        )
-                      : '—',
-                },
-                {
-                  header: 'Status',
-                  render: (r: Employee) => (
-                    <Badge
-                      tone={
-                        r.isActive ? 'positive' : 'neutral'
-                      }
-                    >
-                      {r.isActive ? 'ACTIVE' : 'INACTIVE'}
-                    </Badge>
-                  ),
-                },
-              ]}
-              rows={data.employees}
-              keyOf={(r) => r.id}
-              emptyMessage="No active employees for this entity."
-            />
+            <div
+              style={{
+                overflowX: 'auto',
+              }}
+            >
+              <table
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontFamily: tokens.font.body,
+                }}
+              >
+                <thead>
+                  <tr>
+                    {[
+                      'Employee',
+                      'Job title',
+                      'Grade Level',
+                      'Department',
+                      'Salary Structure',
+                      'Basic Salary',
+                      'Status',
+                    ].map((header) => (
+                      <th
+                        key={header}
+                        style={{
+                          textAlign: header === 'Basic Salary' ? 'right' : 'left',
+                          padding: tokens.space(3),
+                          borderBottom: `1px solid ${tokens.color.border}`,
+                          fontSize: '12px',
+                        }}
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.employees.map((employee) => (
+                    <tr key={employee.id}>
+                      <td style={{ padding: tokens.space(3) }}>
+                        {employee.employeeCode} — {employee.firstName}{' '}
+                        {employee.lastName}
+                      </td>
+                      <td style={{ padding: tokens.space(3) }}>
+                        {employee.jobTitle ?? '—'}
+                      </td>
+                      <td style={{ padding: tokens.space(3) }}>
+                        {employee.gradeLevel ?? 'Not assigned'}
+                      </td>
+                      <td style={{ padding: tokens.space(3) }}>
+                        {employee.department?.name ?? '—'}
+                      </td>
+                      <td style={{ padding: tokens.space(3) }}>
+                        {employee.salaryStructure
+                          ? `${employee.salaryStructure.code} — ${employee.salaryStructure.name}`
+                          : 'Not assigned'}
+                      </td>
+                      <td
+                        style={{
+                          padding: tokens.space(3),
+                          textAlign: 'right',
+                        }}
+                      >
+                        {employee.salaryStructure
+                          ? formatCurrency(
+                              Number(employee.salaryStructure.basicSalary),
+                            )
+                          : '—'}
+                      </td>
+                      <td style={{ padding: tokens.space(3) }}>
+                        <Badge
+                          tone={
+                            employee.isActive ? 'positive' : 'neutral'
+                          }
+                        >
+                          {employee.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Salary Structures" />
 
-            <DataTable
-              columns={[
-                {
-                  header: 'Code',
-                  render: (r: SalaryStructure) => r.code,
-                },
-                {
-                  header: 'Name',
-                  render: (r: SalaryStructure) => r.name,
-                },
-                {
-                  header: 'Basic',
-                  align: 'right',
-                  render: (r: SalaryStructure) =>
-                    formatCurrency(Number(r.basicSalary)),
-                },
-                {
-                  header: 'Housing',
-                  align: 'right',
-                  render: (r: SalaryStructure) =>
-                    formatCurrency(
-                      Number(r.housingAllowance),
-                    ),
-                },
-                {
-                  header: 'Transport',
-                  align: 'right',
-                  render: (r: SalaryStructure) =>
-                    formatCurrency(
-                      Number(r.transportAllowance),
-                    ),
-                },
-                {
-                  header: 'Other',
-                  align: 'right',
-                  render: (r: SalaryStructure) =>
-                    formatCurrency(
-                      Number(r.otherAllowances),
-                    ),
-                },
-                {
-                  header: 'Status',
-                  render: (r: SalaryStructure) => (
-                    <Badge
-                      tone={
-                        r.isActive ? 'positive' : 'neutral'
-                      }
-                    >
-                      {r.isActive ? 'ACTIVE' : 'INACTIVE'}
-                    </Badge>
-                  ),
-                },
-              ]}
-              rows={data.salaryStructures}
-              keyOf={(r) => r.id}
-              emptyMessage="No salary structures configured."
-            />
+            <div
+              style={{
+                overflowX: 'auto',
+              }}
+            >
+              <table
+                style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontFamily: tokens.font.body,
+                }}
+              >
+                <thead>
+                  <tr>
+                    {[
+                      'Code',
+                      'Name',
+                      'Basic',
+                      'Housing',
+                      'Transport',
+                      'Other',
+                      'Status',
+                    ].map((header) => (
+                      <th
+                        key={header}
+                        style={{
+                          textAlign:
+                            ['Basic', 'Housing', 'Transport', 'Other'].includes(
+                              header,
+                            )
+                              ? 'right'
+                              : 'left',
+                          padding: tokens.space(3),
+                          borderBottom: `1px solid ${tokens.color.border}`,
+                          fontSize: '12px',
+                        }}
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.salaryStructures.map((structure) => (
+                    <tr key={structure.id}>
+                      <td style={{ padding: tokens.space(3) }}>
+                        {structure.code}
+                      </td>
+                      <td style={{ padding: tokens.space(3) }}>
+                        {structure.name}
+                      </td>
+                      <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
+                        {formatCurrency(Number(structure.basicSalary))}
+                      </td>
+                      <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
+                        {formatCurrency(Number(structure.housingAllowance))}
+                      </td>
+                      <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
+                        {formatCurrency(Number(structure.transportAllowance))}
+                      </td>
+                      <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
+                        {formatCurrency(Number(structure.otherAllowances))}
+                      </td>
+                      <td style={{ padding: tokens.space(3) }}>
+                        <Badge
+                          tone={structure.isActive ? 'positive' : 'neutral'}
+                        >
+                          {structure.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
 
           <section>
-            <PageHeader title="Payroll Runs" />
-
-            <DataTable
-              columns={[
-                {
-                  header: 'Pay Period',
-                  render: (r: PayrollRun) => r.payPeriodName,
-                },
-                {
-                  header: 'Start',
-                  render: (r: PayrollRun) =>
-                    new Date(
-                      r.payPeriodStart,
-                    ).toLocaleDateString(),
-                },
-                {
-                  header: 'End',
-                  render: (r: PayrollRun) =>
-                    new Date(
-                      r.payPeriodEnd,
-                    ).toLocaleDateString(),
-                },
-                {
-                  header: 'Payslips',
-                  align: 'right',
-                  render: (r: PayrollRun) =>
-                    String(r._count.payslips),
-                },
-                {
-                  header: 'Status',
-                  render: (r: PayrollRun) => (
-                    <Badge tone={STATUS_TONE[r.status]}>
-                      {r.status}
-                    </Badge>
-                  ),
-                },
-                {
-                  header: 'Journal',
-                  render: (r: PayrollRun) =>
-                    r.journalEntryId ? 'POSTED' : '—',
-                },
-              ]}
+            <PageHeader
+              title="Payroll Runs"
+              subtitle="Lifecycle: DRAFT → CALCULATED → APPROVED → POSTED."
+            />
+            <PayrollRunsTable
               rows={data.payrollRuns}
-              keyOf={(r) => r.id}
-              emptyMessage="No payroll runs created for this entity."
+              accountOptions={data.accountOptions}
             />
           </section>
         </>

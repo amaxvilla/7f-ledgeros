@@ -60,7 +60,7 @@ export class SelfServiceService {
 
   async myLeaveBalances(userId: string, year?: number) {
     const employeeId = await this.resolveEmployeeId(userId);
-    return this.leave.findBalances(employeeId, year);
+    return this.leave.findBalances(employeeId, year ?? new Date().getUTCFullYear());
   }
 
   async applyMyLeave(userId: string, dto: ApplyMyLeaveDto) {

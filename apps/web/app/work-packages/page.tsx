@@ -1,10 +1,10 @@
-import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateWorkPackageForm } from './CreateWorkPackageForm';
-import { WorkPackageStatusActions } from './WorkPackageStatusActions';
+import { WorkPackagesTable } from './WorkPackagesTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +36,7 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
 };
 
 /**
- * Frontend Completion, PMO.2 — Work Packages, the direct continuation
+ * Frontend Completion, PMO.2 â€” Work Packages, the direct continuation
  * of PMO.1 (`app/boq/page.tsx`), the second link in PMO's own BOQ ->
  * Work Package -> Progress Valuation -> Interim Payment Certificate
  * chain. See `actions.ts`'s own doc comment for the full before-coding
@@ -46,10 +46,10 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * `GET /pmo/work-packages` (`PmoController.findWorkPackages`) takes the
  * same OPTIONAL `projectId` query param / RLS-only scoping shape
  * `GET /pmo/boqs` has (`RowLevelSecurityService.buildWhere(scope,
- * { dimensions: ['project'] })`, confirmed directly) — called here with
+ * { dimensions: ['project'] })`, confirmed directly) â€” called here with
  * no query param, same as `loadBoqs`. It also `include`s
  * `contractor: { include: { vendor: true } }` (confirmed directly
- * against `PmoService.findWorkPackages`) — a genuine upgrade over Boq's
+ * against `PmoService.findWorkPackages`) â€” a genuine upgrade over Boq's
  * own register, which has no way to resolve `contractorId` to a name at
  * all: this table shows `contractor.vendor.name` in its Contractor
  * column instead of the raw id, even though the CREATE form still can't
@@ -59,18 +59,18 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * `EntitySelector` gates this page for the same reason it gates
  * `/boq`: `CreateWorkPackageDto.projectId` is `@RlsBodyCheck`-validated,
  * and the Project `Select` this page's own `CreateWorkPackageForm`
- * needs is fetched via `GET /dimensions/projects?entityId=` — `entityId`
+ * needs is fetched via `GET /dimensions/projects?entityId=` â€” `entityId`
  * flows only into that fetch and the create form, never into
  * `loadWorkPackages` below.
  *
  * NO DEDICATED WORK PACKAGE DASHBOARD AGGREGATE EXISTS EITHER
  * (re-confirmed the same `dashboard.controller.ts` grep `boq/page.tsx`
- * already ran) — KPIs here are likewise derived client-side from the
+ * already ran) â€” KPIs here are likewise derived client-side from the
  * fetched `workPackages` array.
  *
- * ADDENDUM (PMO.3) — added a "View" column linking each row to the new
+ * ADDENDUM (PMO.3) â€” added a "View" column linking each row to the new
  * `/work-packages/[id]` detail page (Progress Valuations for that work
- * package). No new fetch here — just the `Link`.
+ * package). No new fetch here â€” just the `Link`.
  */
 async function loadWorkPackages(entityId: string) {
   const [workPackages, projects] = await Promise.all([
@@ -82,12 +82,12 @@ async function loadWorkPackages(entityId: string) {
   const inProgressCount = workPackages.filter((wp) => wp.status === 'DRAFT' || wp.status === 'REVIEWED').length;
   const certifiedCount = workPackages.filter((wp) => wp.status === 'CERTIFIED').length;
 
-  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} — ${p.name}`]));
+  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} â€” ${p.name}`]));
 
   return {
     workPackages,
     kpis: { total: workPackages.length, inProgress: inProgressCount, certified: certifiedCount, totalBudget },
-    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
+    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} â€” ${p.name}` })),
     projectLabelById,
   };
 }
@@ -140,28 +140,18 @@ export default async function WorkPackagesPage({ searchParams }: { searchParams:
           <section>
             <PageHeader title="Work package register" />
             <CreateWorkPackageForm entityId={entityId} projectOptions={data.projectOptions} />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (wp: WorkPackage) => wp.code },
-                { header: 'Name', render: (wp: WorkPackage) => wp.name },
-                { header: 'Project', render: (wp: WorkPackage) => data!.projectLabelById.get(wp.projectId) ?? wp.projectId },
-                { header: 'Contractor', render: (wp: WorkPackage) => wp.contractor.vendor.name },
-                { header: 'Budget', align: 'right', render: (wp: WorkPackage) => formatCurrency(Number(wp.budgetAmount)) },
-                { header: 'Status', render: (wp: WorkPackage) => <Badge tone={STATUS_TONE[wp.status] ?? 'neutral'}>{wp.status}</Badge> },
-                { header: 'Created', render: (wp: WorkPackage) => new Date(wp.createdAt).toLocaleDateString() },
-                {
-                  header: 'View',
-                  render: (wp: WorkPackage) => (
-                    <Link href={`/work-packages/${wp.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                      Progress →
-                    </Link>
-                  ),
-                },
-                { header: 'Actions', align: 'right', render: (wp: WorkPackage) => <WorkPackageStatusActions id={wp.id} status={wp.status} /> },
-              ]}
-              rows={data.workPackages}
-              keyOf={(wp) => wp.id}
-              emptyMessage="No work packages logged yet."
+            <WorkPackagesTable
+              rows={data.workPackages.map((wp) => ({
+                id: wp.id,
+                projectId: wp.projectId,
+                code: wp.code,
+                name: wp.name,
+                budgetAmount: Number(wp.budgetAmount),
+                status: wp.status,
+                createdAt: wp.createdAt,
+                contractorName: wp.contractor.vendor.name,
+                projectLabel: data!.projectLabelById.get(wp.projectId) ?? wp.projectId,
+              }))}
             />
           </section>
         </>

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../../lib/api';
 import { CreateProgressValuationForm } from './CreateProgressValuationForm';
 import { ProgressValuationStatusActions } from './ProgressValuationStatusActions';
@@ -8,6 +8,11 @@ import { CertificateStatusActions } from './CertificateStatusActions';
 import { ReleaseRetentionForm } from './ReleaseRetentionForm';
 import { CreateVariationOrderForm } from './CreateVariationOrderForm';
 import { VariationOrderStatusActions } from './VariationOrderStatusActions';
+import {
+  ProgressValuationsTable,
+  RetentionReleasesTable,
+  VariationOrdersTable,
+} from './WorkPackageDetailTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -71,12 +76,12 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
 };
 
 /**
- * Frontend Completion, PMO.3 — Work Package detail (`/work-packages/[id]`),
+ * Frontend Completion, PMO.3 â€” Work Package detail (`/work-packages/[id]`),
  * the direct continuation of PMO.2 (recommended explicitly by its own
  * report) and the third link in PMO's own BOQ -> Work Package -> Progress
  * Valuation -> Interim Payment Certificate chain.
  *
- * NO `GET /pmo/work-packages/:id` SINGLE-ITEM ENDPOINT EXISTS — confirmed
+ * NO `GET /pmo/work-packages/:id` SINGLE-ITEM ENDPOINT EXISTS â€” confirmed
  * directly by grepping every `@Get` route in `pmo.controller.ts` (only
  * the list endpoint, `GET /pmo/work-packages`, exists). This page
  * therefore fetches the full RLS-scoped list (same no-query-param call
@@ -86,7 +91,7 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * doesn't exist. `GET /pmo/work-packages/:workPackageId/progress-valuations`
  * DOES exist and is fetched directly with the route's own `id` param.
  *
- * `projectId` is shown as a raw id, not resolved to a project name —
+ * `projectId` is shown as a raw id, not resolved to a project name â€”
  * unlike the register page, this detail page has no `entityId` in its
  * URL to scope a `GET /dimensions/projects?entityId=` call with, and
  * fetching every project across every entity just to resolve one label
@@ -95,26 +100,26 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * unresolved `projectId` fields (see those pages' own doc comments).
  *
  * Both endpoints require only `pmo.view` (confirmed directly against
- * their own `@RequirePermissions` decorators) — same permission
+ * their own `@RequirePermissions` decorators) â€” same permission
  * `/work-packages` itself already gates on, so no new permission
  * surface is introduced here.
  *
- * Addendum — Interim Payment Certificates: the "Certificate" column
- * now renders one of three states per row rather than a static badge —
+ * Addendum â€” Interim Payment Certificates: the "Certificate" column
+ * now renders one of three states per row rather than a static badge â€”
  * `GenerateCertificateForm` (APPROVED, no certificate yet), a dash
  * (any other status, no certificate), or the certificate's own number/
  * status/net-payable-amount plus `CertificateStatusActions` (a
  * certificate already exists). `certificate` was widened from `{id}`
- * to its full shape used here — `findProgressValuations`'s own
+ * to its full shape used here â€” `findProgressValuations`'s own
  * `include: { certificate: true }` (read directly) already returns all
  * of it, this page just wasn't using more than the id before this
  * checkpoint.
  *
- * Addendum — Retention: `GET /pmo/work-packages/:workPackageId/retention`
+ * Addendum â€” Retention: `GET /pmo/work-packages/:workPackageId/retention`
  * (`PmoService.getRetention`, `pmo.view`) throws `NotFoundException`
  * until the first certificate on this work package is `CERTIFIED`
- * (confirmed directly — `advanceCertificateStatus`'s own `CERTIFIED`
- * branch is what creates the `Retention` row) — a real, expected 404,
+ * (confirmed directly â€” `advanceCertificateStatus`'s own `CERTIFIED`
+ * branch is what creates the `Retention` row) â€” a real, expected 404,
  * not an error state. Fetched in its own separate `try/catch` outside
  * `loadWorkPackageDetail`'s own `Promise.all` for exactly that reason:
  * folding it into the same `Promise.all` would turn every work package
@@ -123,20 +128,20 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * distinguish from a genuine failure. `retentionAvailable` (`totalHeld -
  * totalReleased`) is computed here, not requested from the backend,
  * matching `releaseRetention`'s own identical arithmetic (read directly)
- * — this page's own copy is display-only and never sent back.
+ * â€” this page's own copy is display-only and never sent back.
  *
- * Addendum — Variation Orders (following FE-5.5's own recommendation,
+ * Addendum â€” Variation Orders (following FE-5.5's own recommendation,
  * from the fixed-and-reverified baseline FIX.4 established):
  * `GET /pmo/work-packages/:workPackageId/variation-orders`
  * (`PmoService.findVariationOrders`, `pmo.view`) takes no status
  * filter and always returns an array (empty, not a 404, for a work
- * package with none yet — confirmed directly, unlike Retention's own
- * 404-until-certified shape) — added to `loadWorkPackageDetail`'s own
+ * package with none yet â€” confirmed directly, unlike Retention's own
+ * 404-until-certified shape) â€” added to `loadWorkPackageDetail`'s own
  * `Promise.all` alongside `workPackages`/`valuations`, not a separate
  * `try/catch` the way Retention needed. Rendered as its own section
  * (`CreateVariationOrderForm` + a register `DataTable`), the same
  * "form above the table" placement `Progress valuations` already uses,
- * not a per-row inline form the way certificate generation is — see
+ * not a per-row inline form the way certificate generation is â€” see
  * `CreateVariationOrderForm.tsx`'s own doc comment for why, and for a
  * real, notable backend gap this checkpoint found and flagged rather
  * than silently working around (`CreateVariationOrderDto` has no
@@ -159,7 +164,7 @@ async function loadWorkPackageDetail(id: string) {
     retention = await fetchApi<Retention>(`/pmo/work-packages/${id}/retention`);
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 404) throw e;
-    // No certificate on this work package has been CERTIFIED yet — see
+    // No certificate on this work package has been CERTIFIED yet â€” see
     // this function's own doc comment above.
   }
 
@@ -188,9 +193,9 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
   if (error || !data) {
     return (
       <PageContainer>
-        {/* FE-1.1 — breadcrumbs added to both this page's headers (see
+        {/* FE-1.1 â€” breadcrumbs added to both this page's headers (see
             PageHeader's own doc comment in Badge.tsx); the pre-existing
-            "← Back to register" link below is left untouched. */}
+            "â† Back to register" link below is left untouched. */}
         <PageHeader
           title="Work package detail"
           breadcrumbs={[{ label: 'Work Packages', href: '/work-packages' }, { label: 'Work package detail' }]}
@@ -198,7 +203,7 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
         <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body }}>{error ?? 'Work package not found.'}</div>
         <p style={{ marginTop: tokens.space(4) }}>
           <Link href="/work-packages" style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-            ← Back to register
+            â† Back to register
           </Link>
         </p>
       </PageContainer>
@@ -211,12 +216,12 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
     <PageContainer>
       <p style={{ marginBottom: tokens.space(4) }}>
         <Link href="/work-packages" style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-          ← Back to register
+          â† Back to register
         </Link>
       </p>
 
       <PageHeader
-        title={`${workPackage.code} — ${workPackage.name}`}
+        title={`${workPackage.code} â€” ${workPackage.name}`}
         subtitle={`Contractor: ${workPackage.contractor.vendor.name}`}
         breadcrumbs={[{ label: 'Work Packages', href: '/work-packages' }, { label: workPackage.code }]}
       />
@@ -245,44 +250,9 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
       <section>
         <PageHeader title="Progress valuations" />
         <CreateProgressValuationForm workPackageId={workPackage.id} />
-        <DataTable
-          columns={[
-            { header: '#', render: (v: ProgressValuation) => String(v.valuationNumber) },
-            { header: 'Date', render: (v: ProgressValuation) => new Date(v.valuationDate).toLocaleDateString() },
-            { header: '% complete', align: 'right', render: (v: ProgressValuation) => `${v.percentComplete}%` },
-            { header: 'Valuation amount', align: 'right', render: (v: ProgressValuation) => formatCurrency(Number(v.valuationAmount)) },
-            {
-              header: 'Certificate',
-              align: 'right',
-              render: (v: ProgressValuation) => {
-                if (v.certificate) {
-                  return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space(1), alignItems: 'flex-end' }}>
-                      <span style={{ fontFamily: tokens.font.body, fontSize: '12px' }}>{v.certificate.certificateNumber}</span>
-                      <Badge tone={STATUS_TONE[v.certificate.status] ?? 'neutral'}>{v.certificate.status}</Badge>
-                      <span style={{ fontFamily: tokens.font.body, fontSize: '11px', color: tokens.color.textMuted }}>
-                        Net: {formatCurrency(Number(v.certificate.netPayableAmount))}
-                      </span>
-                      <CertificateStatusActions id={v.certificate.id} status={v.certificate.status} workPackageId={workPackage.id} />
-                    </div>
-                  );
-                }
-                if (v.status === 'APPROVED') {
-                  return <GenerateCertificateForm progressValuationId={v.id} workPackageId={workPackage.id} />;
-                }
-                return <span style={{ fontFamily: tokens.font.body, fontSize: '12px', color: tokens.color.textMuted }}>—</span>;
-              },
-            },
-            { header: 'Status', render: (v: ProgressValuation) => <Badge tone={STATUS_TONE[v.status] ?? 'neutral'}>{v.status}</Badge> },
-            {
-              header: 'Actions',
-              align: 'right',
-              render: (v: ProgressValuation) => <ProgressValuationStatusActions id={v.id} status={v.status} workPackageId={workPackage.id} />,
-            },
-          ]}
+        <ProgressValuationsTable
+          workPackageId={workPackage.id}
           rows={valuations}
-          keyOf={(v) => v.id}
-          emptyMessage="No progress valuations logged yet for this work package."
         />
       </section>
 
@@ -292,27 +262,19 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
           <>
             <div style={{ display: 'flex', gap: tokens.space(6), marginBottom: tokens.space(4), flexWrap: 'wrap' }}>
               <span style={{ fontFamily: tokens.font.body, fontSize: '13px' }}>
-                Retention: {retention.retentionPercent}% · Held: {formatCurrency(Number(retention.totalHeld))} · Released:{' '}
-                {formatCurrency(Number(retention.totalReleased))} · Available:{' '}
+                Retention: {retention.retentionPercent}% Â· Held: {formatCurrency(Number(retention.totalHeld))} Â· Released:{' '}
+                {formatCurrency(Number(retention.totalReleased))} Â· Available:{' '}
                 {formatCurrency(Number(retention.totalHeld) - Number(retention.totalReleased))}
               </span>
             </div>
             {Number(retention.totalHeld) - Number(retention.totalReleased) > 0 && (
               <ReleaseRetentionForm retentionId={retention.id} workPackageId={workPackage.id} />
             )}
-            <DataTable
-              columns={[
-                { header: 'Release date', render: (r: RetentionRelease) => new Date(r.releaseDate).toLocaleDateString() },
-                { header: 'Amount', align: 'right', render: (r: RetentionRelease) => formatCurrency(Number(r.amount)) },
-              ]}
-              rows={retention.releases}
-              keyOf={(r) => r.id}
-              emptyMessage="No retention released yet."
-            />
+            <RetentionReleasesTable rows={retention.releases} />
           </>
         ) : (
           <p style={{ fontFamily: tokens.font.body, fontSize: '13px', color: tokens.color.textMuted }}>
-            No retention record yet — this is created automatically once a certificate on this work package is certified.
+            No retention record yet â€” this is created automatically once a certificate on this work package is certified.
           </p>
         )}
       </section>
@@ -320,21 +282,9 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
       <section style={{ marginTop: tokens.space(8) }}>
         <PageHeader title="Variation orders" />
         <CreateVariationOrderForm workPackageId={workPackage.id} />
-        <DataTable
-          columns={[
-            { header: 'VO #', render: (v: VariationOrder) => v.voNumber },
-            { header: 'Description', render: (v: VariationOrder) => v.description },
-            { header: 'Amount', align: 'right', render: (v: VariationOrder) => formatCurrency(Number(v.amount)) },
-            { header: 'Status', render: (v: VariationOrder) => <Badge tone={STATUS_TONE[v.status] ?? 'neutral'}>{v.status}</Badge> },
-            {
-              header: 'Actions',
-              align: 'right',
-              render: (v: VariationOrder) => <VariationOrderStatusActions id={v.id} status={v.status} workPackageId={workPackage.id} />,
-            },
-          ]}
+        <VariationOrdersTable
+          workPackageId={workPackage.id}
           rows={variationOrders}
-          keyOf={(v) => v.id}
-          emptyMessage="No variation orders logged yet for this work package."
         />
       </section>
     </PageContainer>

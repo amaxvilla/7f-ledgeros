@@ -1,9 +1,9 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateBoqForm } from './CreateBoqForm';
-import { BoqStatusActions } from './BoqStatusActions';
+import { BoqTable } from './BoqTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +42,7 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
 };
 
 /**
- * Frontend Completion, PMO.1 — Bill of Quantities register, the first
+ * Frontend Completion, PMO.1 â€” Bill of Quantities register, the first
  * page for PMO's own BOQ -> Work Package -> Progress Valuation ->
  * Interim Payment Certificate chain (`PmoController`, `pmo.module.ts`).
  * See `actions.ts`'s own doc comment for why this checkpoint scoped to
@@ -54,27 +54,27 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * `GET /pmo/boqs` (`PmoController.findBoqs`) takes an OPTIONAL
  * `projectId` query param but is otherwise scoped entirely through RLS
  * (`RowLevelSecurityService.buildWhere(scope, { dimensions: ['project'] })`,
- * confirmed directly) — no `entityId` filter exists on this endpoint at
+ * confirmed directly) â€” no `entityId` filter exists on this endpoint at
  * all, the same "RLS alone scopes this" shape `project-risks`'s own
  * `GET /project-risks` has, not Budgeting's own `entityId`-filtered
  * `GET /budgets`. Called here with no query param, same as
  * `project-risks`'s own `loadProjectRisks`.
  *
- * `EntitySelector` still gates this page, though — same reasoning
+ * `EntitySelector` still gates this page, though â€” same reasoning
  * `project-risks/page.tsx` already gives for its own identical shape:
  * `CreateBoqDto.projectId` is an `@RlsBodyCheck`-validated body field
  * (`dimension: 'project', bodyField: 'projectId'`), and the Project
  * `Select` this checkpoint's own `CreateBoqForm` needs is fetched via
- * `GET /dimensions/projects?entityId=` — this page's own `entityId`
+ * `GET /dimensions/projects?entityId=` â€” this page's own `entityId`
  * flows ONLY into that fetch and the create form, never into
  * `loadBoqs` below, worth stating plainly since every entity-scoped
  * page's `entityId` (Budgeting, AP/AR) does both.
  *
- * NO DEDICATED PMO/BOQ DASHBOARD AGGREGATE EXISTS — confirmed directly
+ * NO DEDICATED PMO/BOQ DASHBOARD AGGREGATE EXISTS â€” confirmed directly
  * (grepped `dashboard.controller.ts` for `boq`/`workPackage`/`pmo`;
  * only `pmo-risk-issue-overview`/`pmo-analytics`, both Risk/Issue/
  * schedule-shaped, not BOQ-shaped, exist). KPIs here are therefore
- * derived client-side from the fetched `boqs` array itself — same
+ * derived client-side from the fetched `boqs` array itself â€” same
  * "no dedicated aggregate, derive from the list response" shape
  * `signatures/page.tsx`'s own doc comment already established for its
  * own four KPI cards.
@@ -92,12 +92,12 @@ async function loadBoqs(entityId: string) {
   const draftCount = boqs.filter((b) => b.status === 'DRAFT' || b.status === 'REVIEWED').length;
   const certifiedCount = boqs.filter((b) => b.status === 'CERTIFIED').length;
 
-  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} — ${p.name}`]));
+  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} â€” ${p.name}`]));
 
   return {
     boqs,
     kpis: { total: boqs.length, inProgress: draftCount, certified: certifiedCount, totalValue },
-    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
+    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} â€” ${p.name}` })),
     projectLabelById,
   };
 }
@@ -150,22 +150,16 @@ export default async function BoqPage({ searchParams }: { searchParams: { entity
           <section>
             <PageHeader title="BOQ register" />
             <CreateBoqForm entityId={entityId} projectOptions={data.projectOptions} />
-            <DataTable
-              columns={[
-                { header: 'Title', render: (b: Boq) => b.title },
-                { header: 'Project', render: (b: Boq) => data!.projectLabelById.get(b.projectId) ?? b.projectId },
-                {
-                  header: 'Lines total',
-                  align: 'right',
-                  render: (b: Boq) => formatCurrency(b.lines.reduce((sum, l) => sum + Number(l.amount), 0)),
-                },
-                { header: 'Status', render: (b: Boq) => <Badge tone={STATUS_TONE[b.status] ?? 'neutral'}>{b.status}</Badge> },
-                { header: 'Created', render: (b: Boq) => new Date(b.createdAt).toLocaleDateString() },
-                { header: 'Actions', align: 'right', render: (b: Boq) => <BoqStatusActions id={b.id} status={b.status} /> },
-              ]}
-              rows={data.boqs}
-              keyOf={(b) => b.id}
-              emptyMessage="No BOQs logged yet."
+            <BoqTable
+              rows={data.boqs.map((b) => ({
+                id: b.id,
+                projectId: b.projectId,
+                title: b.title,
+                status: b.status,
+                createdAt: b.createdAt,
+                lineTotal: b.lines.reduce((sum, l) => sum + Number(l.amount), 0),
+                projectLabel: data!.projectLabelById.get(b.projectId) ?? b.projectId,
+              }))}
             />
           </section>
         </>

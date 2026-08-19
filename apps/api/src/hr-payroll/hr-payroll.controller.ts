@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { HrPayrollService } from './hr-payroll.service';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
@@ -44,6 +44,26 @@ export class HrPayrollController {
     return this.hrPayroll.createSalaryStructure(body);
   }
 
+  @Patch('salary-structures/:id')
+  @RequirePermissions('hr.manage')
+  @ApiOperation({
+    summary: 'Update a salary structure',
+    description:
+      'Updates one or more salary structure fields. The structure remains bound to its existing entity; entityId cannot be changed.',
+  })
+  async updateSalaryStructure(
+    @Param('id') id: string,
+    @Body()
+    body: Partial<Parameters<HrPayrollService['createSalaryStructure']>[0]>,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const { entityId: _entityId, ...changes } = body;
+    return this.hrPayroll.updateSalaryStructure(
+      id,
+      changes,
+      await this.securityContext.buildScope(user),
+    );
+  }
   @Get('salary-structures')
   @RequirePermissions('hr.view')
   @MaskFields({

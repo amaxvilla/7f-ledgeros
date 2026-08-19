@@ -116,6 +116,76 @@ export class HrPayrollService {
     });
   }
 
+  async updateSalaryStructure(
+    id: string,
+    dto: Partial<Omit<CreateSalaryStructureDto, 'entityId'>>,
+    scope?: SecurityScope,
+  ) {
+    const rls = scope
+      ? this.rowLevelSecurity.buildWhere(scope, { dimensions: ['entity'] })
+      : {};
+
+    const existing = await this.prisma.salaryStructure.findFirst({
+      where: Object.keys(rls).length ? { AND: [{ id }, rls] } : { id },
+    });
+
+    if (!existing) {
+      throw new NotFoundException(`Salary structure ${id} not found`);
+    }
+
+    if (dto.code !== undefined && dto.code !== existing.code) {
+      const duplicate = await this.prisma.salaryStructure.findUnique({
+        where: {
+          entityId_code: {
+            entityId: existing.entityId,
+            code: dto.code,
+          },
+        },
+      });
+
+      if (duplicate && duplicate.id !== id) {
+        throw new ConflictException(
+          `Salary structure code "${dto.code}" already exists for this entity`,
+        );
+      }
+    }
+
+    if (dto.basicSalary !== undefined && dto.basicSalary <= 0) {
+      throw new BadRequestException('Basic salary must be positive');
+    }
+
+    const data: {
+      code?: string;
+      name?: string;
+      basicSalary?: number;
+      housingAllowance?: number;
+      transportAllowance?: number;
+      otherAllowances?: number;
+    } = {};
+
+    if (dto.code !== undefined) data.code = dto.code;
+    if (dto.name !== undefined) data.name = dto.name;
+    if (dto.basicSalary !== undefined) data.basicSalary = dto.basicSalary;
+    if (dto.housingAllowance !== undefined) {
+      data.housingAllowance = dto.housingAllowance;
+    }
+    if (dto.transportAllowance !== undefined) {
+      data.transportAllowance = dto.transportAllowance;
+    }
+    if (dto.otherAllowances !== undefined) {
+      data.otherAllowances = dto.otherAllowances;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('At least one salary structure field must be supplied');
+    }
+
+    return this.prisma.salaryStructure.update({
+      where: { id },
+      data,
+    });
+  }
+
   // ---- Employees ----
 
   async createEmployee(dto: CreateEmployeeDto) {

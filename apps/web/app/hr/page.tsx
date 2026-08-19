@@ -1,4 +1,4 @@
-﻿import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { HrDepartmentTable, HrHiringTable } from './HrTables';
@@ -101,7 +101,30 @@ export default async function HrDashboardPage({
       <PageContainer>
         <PageHeader title="HR" subtitle="Enter an entity ID to view its HR dashboard." />
         <EntitySelector />
-      </PageContainer>
+            <section
+        style={{
+          marginTop: tokens.space(8),
+          paddingTop: tokens.space(6),
+          borderTop: `1px solid ${tokens.color.border}`,
+        }}
+      >
+        <PageHeader
+          title="HR Analytics"
+          subtitle="Workforce, attendance, leave, hiring, payroll and training reporting."
+        />
+        <a
+          href="/hr/analytics"
+          style={{
+            fontFamily: tokens.font.body,
+            fontSize: '13px',
+            color: tokens.color.textPrimary,
+            textDecoration: 'none',
+          }}
+        >
+          Open HR Analytics
+        </a>
+      </section>
+</PageContainer>
     );
   }
 
@@ -184,7 +207,29 @@ export default async function HrDashboardPage({
           </section>
         </>
       )}
-    </PageContainer>
+          <section
+        style={{
+          marginTop: tokens.space(8),
+          paddingTop: tokens.space(6),
+          borderTop: `1px solid ${tokens.color.border}`,
+        }}
+      >
+        <PageHeader
+          title="HR Analytics"
+          subtitle="Workforce, attendance, leave, hiring, payroll and training reporting."
+        />
+        <a
+          href="/hr/analytics"
+          style={{
+            fontFamily: tokens.font.body,
+            fontSize: '13px',
+            color: tokens.color.textPrimary,
+            textDecoration: 'none',
+          }}
+        >
+          Open HR Analytics
+        </a>
+      </section>
+</PageContainer>
   );
 }
-

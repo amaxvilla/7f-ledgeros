@@ -285,6 +285,19 @@ export default async function PayrollPage({
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Salary Structures" />
+            <a
+              href={`/payroll/salary-structures?entityId=${encodeURIComponent(entityId)}`}
+              style={{
+                display: 'inline-block',
+                marginBottom: tokens.space(4),
+                color: tokens.color.textPrimary,
+                textDecoration: 'none',
+                fontFamily: tokens.font.body,
+                fontSize: '13px',
+              }}
+            >
+              Manage salary structures →
+            </a>
 
             <div
               style={{

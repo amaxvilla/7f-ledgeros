@@ -1,4 +1,5 @@
-import { KpiCard, PageContainer, PageHeader, DataTable, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { ExecutiveTables } from './ExecutiveTables';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 
@@ -235,41 +236,16 @@ export default async function ExecutiveDashboardPage({
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Cash forecast" />
-            <DataTable
-              columns={[
-                { header: 'Horizon', render: (r: CashForecast['horizons'][number]) => `${r.days} days` },
-                { header: 'Inflow', align: 'right', render: (r: CashForecast['horizons'][number]) => formatCurrency(r.inflow) },
-                { header: 'Outflow', align: 'right', render: (r: CashForecast['horizons'][number]) => formatCurrency(r.outflow) },
-                { header: 'Net', align: 'right', render: (r: CashForecast['horizons'][number]) => formatCurrency(r.net) },
-              ]}
-              rows={data.cashForecast.horizons}
-              keyOf={(r) => String(r.days)}
-              emptyMessage="No cash forecast data for this entity yet."
-            />
           </section>
 
           <section>
             <PageHeader title="Top projects by budget variance" />
-            <DataTable
-              columns={[
-                { header: 'Project', render: (r: TopVarianceProject) => r.projectName },
-                { header: 'Budgeted', align: 'right', render: (r: TopVarianceProject) => formatCurrency(r.budgeted) },
-                { header: 'Actual', align: 'right', render: (r: TopVarianceProject) => formatCurrency(r.actual) },
-                {
-                  header: 'Variance',
-                  align: 'right',
-                  render: (r: TopVarianceProject) => (
-                    <span style={{ color: r.variance >= 0 ? tokens.color.positive : tokens.color.negative }}>
-                      {formatCurrency(r.variance)}
-                    </span>
-                  ),
-                },
-              ]}
-              rows={data.topVarianceProjects}
-              keyOf={(r) => r.projectId}
-              emptyMessage="No approved budgets for this entity yet."
-            />
           </section>
+
+          <ExecutiveTables
+            cashForecast={data.cashForecast.horizons}
+            topVarianceProjects={data.topVarianceProjects}
+          />
         </>
       )}
     </PageContainer>

@@ -42,7 +42,7 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
 };
 
 /**
- * Frontend Completion, PMO.1 â€” Bill of Quantities register, the first
+ * Frontend Completion, PMO.1 — Bill of Quantities register, the first
  * page for PMO's own BOQ -> Work Package -> Progress Valuation ->
  * Interim Payment Certificate chain (`PmoController`, `pmo.module.ts`).
  * See `actions.ts`'s own doc comment for why this checkpoint scoped to
@@ -54,27 +54,27 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * `GET /pmo/boqs` (`PmoController.findBoqs`) takes an OPTIONAL
  * `projectId` query param but is otherwise scoped entirely through RLS
  * (`RowLevelSecurityService.buildWhere(scope, { dimensions: ['project'] })`,
- * confirmed directly) â€” no `entityId` filter exists on this endpoint at
+ * confirmed directly) — no `entityId` filter exists on this endpoint at
  * all, the same "RLS alone scopes this" shape `project-risks`'s own
  * `GET /project-risks` has, not Budgeting's own `entityId`-filtered
  * `GET /budgets`. Called here with no query param, same as
  * `project-risks`'s own `loadProjectRisks`.
  *
- * `EntitySelector` still gates this page, though â€” same reasoning
+ * `EntitySelector` still gates this page, though — same reasoning
  * `project-risks/page.tsx` already gives for its own identical shape:
  * `CreateBoqDto.projectId` is an `@RlsBodyCheck`-validated body field
  * (`dimension: 'project', bodyField: 'projectId'`), and the Project
  * `Select` this checkpoint's own `CreateBoqForm` needs is fetched via
- * `GET /dimensions/projects?entityId=` â€” this page's own `entityId`
+ * `GET /dimensions/projects?entityId=` — this page's own `entityId`
  * flows ONLY into that fetch and the create form, never into
  * `loadBoqs` below, worth stating plainly since every entity-scoped
  * page's `entityId` (Budgeting, AP/AR) does both.
  *
- * NO DEDICATED PMO/BOQ DASHBOARD AGGREGATE EXISTS â€” confirmed directly
+ * NO DEDICATED PMO/BOQ DASHBOARD AGGREGATE EXISTS — confirmed directly
  * (grepped `dashboard.controller.ts` for `boq`/`workPackage`/`pmo`;
  * only `pmo-risk-issue-overview`/`pmo-analytics`, both Risk/Issue/
  * schedule-shaped, not BOQ-shaped, exist). KPIs here are therefore
- * derived client-side from the fetched `boqs` array itself â€” same
+ * derived client-side from the fetched `boqs` array itself — same
  * "no dedicated aggregate, derive from the list response" shape
  * `signatures/page.tsx`'s own doc comment already established for its
  * own four KPI cards.
@@ -92,18 +92,19 @@ async function loadBoqs(entityId: string) {
   const draftCount = boqs.filter((b) => b.status === 'DRAFT' || b.status === 'REVIEWED').length;
   const certifiedCount = boqs.filter((b) => b.status === 'CERTIFIED').length;
 
-  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} â€” ${p.name}`]));
+  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} — ${p.name}`]));
 
   return {
     boqs,
     kpis: { total: boqs.length, inProgress: draftCount, certified: certifiedCount, totalValue },
-    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} â€” ${p.name}` })),
+    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
     projectLabelById,
   };
 }
 
-export default async function BoqPage({ searchParams }: { searchParams: { entityId?: string } }) {
+export default async function BoqPage({ searchParams }: { searchParams: { entityId?: string; projectId?: string } }) {
   const entityId = searchParams.entityId;
+  const projectId = searchParams.projectId;
 
   if (!entityId) {
     return (
@@ -149,7 +150,7 @@ export default async function BoqPage({ searchParams }: { searchParams: { entity
 
           <section>
             <PageHeader title="BOQ register" />
-            <CreateBoqForm entityId={entityId} projectOptions={data.projectOptions} />
+            <CreateBoqForm entityId={entityId} projectOptions={data.projectOptions} initialProjectId={projectId} />
             <BoqTable
               rows={data.boqs.map((b) => ({
                 id: b.id,

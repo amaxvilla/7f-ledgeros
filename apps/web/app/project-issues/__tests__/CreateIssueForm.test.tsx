@@ -151,7 +151,7 @@ describe('CreateIssueForm', () => {
     await fillRequiredFields(user);
     await user.click(screen.getByRole('button', { name: 'Log issue' }));
 
-    const pendingButton = screen.getByRole('button', { name: 'Logging…' });
+    const pendingButton = screen.getByRole('button', { name: 'Logging...' });
     expect(pendingButton).toBeDisabled();
 
     resolveAction({ ok: true });

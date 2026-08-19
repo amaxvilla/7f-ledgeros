@@ -65,8 +65,8 @@ const EMPTY_LINE: Line = { itemCode: '', description: '', unit: '', quantity: ''
  * batch just applied. Verified directly against this file's own
  * current source before fixing.
  */
-export function CreateBoqForm({ entityId, projectOptions }: { entityId: string; projectOptions: SelectOption[] }) {
-  const [projectId, setProjectId] = React.useState('');
+export function CreateBoqForm({ entityId, projectOptions, initialProjectId }: { entityId: string; projectOptions: SelectOption[]; initialProjectId?: string }) {
+  const [projectId, setProjectId] = React.useState(initialProjectId ?? '');
   const [contractorId, setContractorId] = React.useState('');
   const [title, setTitle] = React.useState('');
   const [lines, setLines] = React.useState<Line[]>([{ ...EMPTY_LINE }]);
@@ -209,7 +209,7 @@ export function CreateBoqForm({ entityId, projectOptions }: { entityId: string; 
 
       <div style={{ display: 'flex', gap: tokens.space(3), alignItems: 'center' }}>
         <Button type="submit" disabled={pending}>
-          {pending ? 'Creating…' : 'Create BOQ'}
+          {pending ? 'Creating...' : 'Create BOQ'}
         </Button>
         {error && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, fontSize: '13px' }}>{error}</div>}
       </div>

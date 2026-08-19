@@ -29,31 +29,31 @@ interface Project {
 }
 
 /**
- * Frontend Completion â€” Project Issues, `project-risks/page.tsx`'s own
+ * Frontend Completion — Project Issues, `project-risks/page.tsx`'s own
  * recommended follow-on: the `IssueController` counterpart to that
  * checkpoint's `RiskController` page, same size and shape, linked to it
  * via `convertRiskToIssue` on the risk side (not surfaced by either
- * page â€” that's a risk-row action, deferred along with the rest of
+ * page — that's a risk-row action, deferred along with the rest of
  * `RiskController`'s own un-surfaced actions).
  *
- * ADDENDUM â€” same Projects-registry correction as
+ * ADDENDUM — same Projects-registry correction as
  * `project-risks/page.tsx`'s own addendum, applied here unchanged:
  * `projectId` now has a real registry (`GET
  * /dimensions/projects?entityId=X`, corrected during FE-2.5), so
  * `loadProjectIssues` fetches this entity's own projects, builds
  * `projectOptions` for `CreateIssueForm`'s own `Select` and a
- * `projectId -> "<code> â€” <name>"` lookup for this page's own register
- * table's Project column â€” see that page's own addendum for the fuller
+ * `projectId -> "<code> — <name>"` lookup for this page's own register
+ * table's Project column — see that page's own addendum for the fuller
  * reasoning, not re-derived here.
  *
  * ONE REAL DIFFERENCE FROM PROJECT RISKS, found by reading
  * `RiskIssueService.closeIssue` directly rather than assuming symmetry
  * with `closeRisk`: closing an issue requires it to already be
- * `RESOLVED` (`BadRequestException` otherwise) â€” `close` isn't a
+ * `RESOLVED` (`BadRequestException` otherwise) — `close` isn't a
  * same-shape terminal action here the way it was for risks. `resolve`
  * (`POST .../resolve`, callable from any non-CLOSED status) is the
  * closer analog to `closeRisk`'s own "the one terminal-ish action a
- * user reaches for" role, so that's what `ResolveIssueButton` calls â€”
+ * user reaches for" role, so that's what `ResolveIssueButton` calls —
  * `close` itself is left unsurfaced this checkpoint, alongside
  * `assign`/`start`/`escalate`, all deferred as row actions this page
  * doesn't yet have room for (same "one resource, one action" budget
@@ -61,13 +61,13 @@ interface Project {
  *
  * `GET /dashboard/pmo-risk-issue-overview`'s `issuesByStatus` (unused by
  * the risks page) is what this page's KPI section reads instead of
- * `risksByStatus` â€” same aggregate call, different field, no new
+ * `risksByStatus` — same aggregate call, different field, no new
  * endpoint needed.
  *
- * ADDENDUM (FE-1.4) â€” `assign`/`start`/`escalate`, named above as
+ * ADDENDUM (FE-1.4) — `assign`/`start`/`escalate`, named above as
  * deferred, are deferred no longer: see the new `IssueRowActions.tsx`
  * for all three (rendered as a second component in the Actions cell,
- * stacked below `ResolveIssueButton` rather than merged into it â€” that
+ * stacked below `ResolveIssueButton` rather than merged into it — that
  * file's own doc comment explains why it's a separate component).
  * `close` remains the one action still unsurfaced on this page.
  */
@@ -81,8 +81,8 @@ async function loadProjectIssues(entityId: string) {
   const closedCount = overview.issuesByStatus.find((r) => r.status === 'CLOSED')?.count ?? 0;
   const totalCount = overview.issuesByStatus.reduce((sum, r) => sum + r.count, 0);
 
-  const projectOptions: SelectOption[] = projects.map((p) => ({ value: p.id, label: `${p.code} â€” ${p.name}` }));
-  const projectNames = new Map(projects.map((p) => [p.id, `${p.code} â€” ${p.name}`]));
+  const projectOptions: SelectOption[] = projects.map((p) => ({ value: p.id, label: `${p.code} — ${p.name}` }));
+  const projectNames = new Map(projects.map((p) => [p.id, `${p.code} — ${p.name}`]));
 
   return { issues, kpis: { total: totalCount, active: totalCount - closedCount, closed: closedCount }, projectOptions, projectNames };
 }
@@ -95,8 +95,9 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
   CLOSED: 'neutral',
 };
 
-export default async function ProjectIssuesPage({ searchParams }: { searchParams: { entityId?: string } }) {
+export default async function ProjectIssuesPage({ searchParams }: { searchParams: { entityId?: string; projectId?: string } }) {
   const entityId = searchParams.entityId;
+  const projectId = searchParams.projectId;
 
   if (!entityId) {
     return (
@@ -141,7 +142,7 @@ export default async function ProjectIssuesPage({ searchParams }: { searchParams
 
           <section>
             <PageHeader title="Issue register" />
-            <CreateIssueForm entityId={entityId} projectOptions={data.projectOptions} />
+            <CreateIssueForm entityId={entityId} projectOptions={data.projectOptions} initialProjectId={projectId} />
             <ProjectIssuesTable
               issues={data.issues}
               projectNames={Object.fromEntries(data.projectNames)}

@@ -36,8 +36,8 @@ const PRIORITY_OPTIONS = [
  * date input's own `value`/`onChange` already produce, so no separate
  * formatting step is needed before it's sent.
  */
-export function CreateIssueForm({ entityId, projectOptions }: { entityId: string; projectOptions: SelectOption[] }) {
-  const [projectId, setProjectId] = React.useState('');
+export function CreateIssueForm({ entityId, projectOptions, initialProjectId }: { entityId: string; projectOptions: SelectOption[]; initialProjectId?: string }) {
+  const [projectId, setProjectId] = React.useState(initialProjectId ?? '');
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [priority, setPriority] = React.useState('');
@@ -117,7 +117,7 @@ export function CreateIssueForm({ entityId, projectOptions }: { entityId: string
         style={{ minWidth: '220px' }}
       />
       <Button type="submit" disabled={pending}>
-        {pending ? 'Logging…' : 'Log issue'}
+        {pending ? 'Logging...' : 'Log issue'}
       </Button>
       {error && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, fontSize: '13px' }}>{error}</div>}
     </form>

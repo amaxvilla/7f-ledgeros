@@ -145,7 +145,7 @@ describe('CreateWorkPackageForm', () => {
     await fillForm(user);
     await user.click(screen.getByRole('button', { name: 'Create work package' }));
 
-    expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Creating...' })).toBeDisabled();
 
     resolveAction({ ok: true });
     expect(await screen.findByRole('button', { name: 'Create work package' })).not.toBeDisabled();

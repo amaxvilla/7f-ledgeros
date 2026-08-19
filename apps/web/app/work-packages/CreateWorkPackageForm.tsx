@@ -26,8 +26,8 @@ import { createWorkPackage } from './actions';
  * `phaseId` is deliberately NOT a field on this form, same as
  * `CreateBoqForm` — no `GET /dimensions/phases` list endpoint exists.
  */
-export function CreateWorkPackageForm({ entityId, projectOptions }: { entityId: string; projectOptions: SelectOption[] }) {
-  const [projectId, setProjectId] = React.useState('');
+export function CreateWorkPackageForm({ entityId, projectOptions, initialProjectId }: { entityId: string; projectOptions: SelectOption[]; initialProjectId?: string }) {
+  const [projectId, setProjectId] = React.useState(initialProjectId ?? '');
   const [contractorId, setContractorId] = React.useState('');
   const [code, setCode] = React.useState('');
   const [name, setName] = React.useState('');
@@ -111,7 +111,7 @@ export function CreateWorkPackageForm({ entityId, projectOptions }: { entityId: 
       />
       <div style={{ display: 'flex', gap: tokens.space(3), alignItems: 'center' }}>
         <Button type="submit" disabled={pending}>
-          {pending ? 'Creating…' : 'Create work package'}
+          {pending ? 'Creating...' : 'Create work package'}
         </Button>
         {error && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, fontSize: '13px' }}>{error}</div>}
       </div>

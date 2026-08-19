@@ -36,7 +36,7 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
 };
 
 /**
- * Frontend Completion, PMO.2 â€” Work Packages, the direct continuation
+ * Frontend Completion, PMO.2 — Work Packages, the direct continuation
  * of PMO.1 (`app/boq/page.tsx`), the second link in PMO's own BOQ ->
  * Work Package -> Progress Valuation -> Interim Payment Certificate
  * chain. See `actions.ts`'s own doc comment for the full before-coding
@@ -46,10 +46,10 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * `GET /pmo/work-packages` (`PmoController.findWorkPackages`) takes the
  * same OPTIONAL `projectId` query param / RLS-only scoping shape
  * `GET /pmo/boqs` has (`RowLevelSecurityService.buildWhere(scope,
- * { dimensions: ['project'] })`, confirmed directly) â€” called here with
+ * { dimensions: ['project'] })`, confirmed directly) — called here with
  * no query param, same as `loadBoqs`. It also `include`s
  * `contractor: { include: { vendor: true } }` (confirmed directly
- * against `PmoService.findWorkPackages`) â€” a genuine upgrade over Boq's
+ * against `PmoService.findWorkPackages`) — a genuine upgrade over Boq's
  * own register, which has no way to resolve `contractorId` to a name at
  * all: this table shows `contractor.vendor.name` in its Contractor
  * column instead of the raw id, even though the CREATE form still can't
@@ -59,18 +59,18 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * `EntitySelector` gates this page for the same reason it gates
  * `/boq`: `CreateWorkPackageDto.projectId` is `@RlsBodyCheck`-validated,
  * and the Project `Select` this page's own `CreateWorkPackageForm`
- * needs is fetched via `GET /dimensions/projects?entityId=` â€” `entityId`
+ * needs is fetched via `GET /dimensions/projects?entityId=` — `entityId`
  * flows only into that fetch and the create form, never into
  * `loadWorkPackages` below.
  *
  * NO DEDICATED WORK PACKAGE DASHBOARD AGGREGATE EXISTS EITHER
  * (re-confirmed the same `dashboard.controller.ts` grep `boq/page.tsx`
- * already ran) â€” KPIs here are likewise derived client-side from the
+ * already ran) — KPIs here are likewise derived client-side from the
  * fetched `workPackages` array.
  *
- * ADDENDUM (PMO.3) â€” added a "View" column linking each row to the new
+ * ADDENDUM (PMO.3) — added a "View" column linking each row to the new
  * `/work-packages/[id]` detail page (Progress Valuations for that work
- * package). No new fetch here â€” just the `Link`.
+ * package). No new fetch here — just the `Link`.
  */
 async function loadWorkPackages(entityId: string) {
   const [workPackages, projects] = await Promise.all([
@@ -82,18 +82,19 @@ async function loadWorkPackages(entityId: string) {
   const inProgressCount = workPackages.filter((wp) => wp.status === 'DRAFT' || wp.status === 'REVIEWED').length;
   const certifiedCount = workPackages.filter((wp) => wp.status === 'CERTIFIED').length;
 
-  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} â€” ${p.name}`]));
+  const projectLabelById = new Map(projects.map((p) => [p.id, `${p.code} — ${p.name}`]));
 
   return {
     workPackages,
     kpis: { total: workPackages.length, inProgress: inProgressCount, certified: certifiedCount, totalBudget },
-    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} â€” ${p.name}` })),
+    projectOptions: projects.map<SelectOption>((p) => ({ value: p.id, label: `${p.code} — ${p.name}` })),
     projectLabelById,
   };
 }
 
-export default async function WorkPackagesPage({ searchParams }: { searchParams: { entityId?: string } }) {
+export default async function WorkPackagesPage({ searchParams }: { searchParams: { entityId?: string; projectId?: string } }) {
   const entityId = searchParams.entityId;
+  const projectId = searchParams.projectId;
 
   if (!entityId) {
     return (
@@ -139,7 +140,7 @@ export default async function WorkPackagesPage({ searchParams }: { searchParams:
 
           <section>
             <PageHeader title="Work package register" />
-            <CreateWorkPackageForm entityId={entityId} projectOptions={data.projectOptions} />
+            <CreateWorkPackageForm entityId={entityId} projectOptions={data.projectOptions} initialProjectId={projectId} />
             <WorkPackagesTable
               rows={data.workPackages.map((wp) => ({
                 id: wp.id,

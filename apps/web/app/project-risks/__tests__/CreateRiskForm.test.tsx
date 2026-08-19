@@ -147,7 +147,7 @@ describe('CreateRiskForm', () => {
     await fillRequiredFields(user);
     await user.click(screen.getByRole('button', { name: 'Log risk' }));
 
-    const pendingButton = screen.getByRole('button', { name: 'Logging…' });
+    const pendingButton = screen.getByRole('button', { name: 'Logging...' });
     expect(pendingButton).toBeDisabled();
 
     resolveAction({ ok: true });

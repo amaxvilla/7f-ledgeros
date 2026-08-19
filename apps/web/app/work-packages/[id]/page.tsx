@@ -76,12 +76,12 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
 };
 
 /**
- * Frontend Completion, PMO.3 â€” Work Package detail (`/work-packages/[id]`),
+ * Frontend Completion, PMO.3 — Work Package detail (`/work-packages/[id]`),
  * the direct continuation of PMO.2 (recommended explicitly by its own
  * report) and the third link in PMO's own BOQ -> Work Package -> Progress
  * Valuation -> Interim Payment Certificate chain.
  *
- * NO `GET /pmo/work-packages/:id` SINGLE-ITEM ENDPOINT EXISTS â€” confirmed
+ * NO `GET /pmo/work-packages/:id` SINGLE-ITEM ENDPOINT EXISTS — confirmed
  * directly by grepping every `@Get` route in `pmo.controller.ts` (only
  * the list endpoint, `GET /pmo/work-packages`, exists). This page
  * therefore fetches the full RLS-scoped list (same no-query-param call
@@ -91,7 +91,7 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * doesn't exist. `GET /pmo/work-packages/:workPackageId/progress-valuations`
  * DOES exist and is fetched directly with the route's own `id` param.
  *
- * `projectId` is shown as a raw id, not resolved to a project name â€”
+ * `projectId` is shown as a raw id, not resolved to a project name —
  * unlike the register page, this detail page has no `entityId` in its
  * URL to scope a `GET /dimensions/projects?entityId=` call with, and
  * fetching every project across every entity just to resolve one label
@@ -100,26 +100,26 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * unresolved `projectId` fields (see those pages' own doc comments).
  *
  * Both endpoints require only `pmo.view` (confirmed directly against
- * their own `@RequirePermissions` decorators) â€” same permission
+ * their own `@RequirePermissions` decorators) — same permission
  * `/work-packages` itself already gates on, so no new permission
  * surface is introduced here.
  *
- * Addendum â€” Interim Payment Certificates: the "Certificate" column
- * now renders one of three states per row rather than a static badge â€”
+ * Addendum — Interim Payment Certificates: the "Certificate" column
+ * now renders one of three states per row rather than a static badge —
  * `GenerateCertificateForm` (APPROVED, no certificate yet), a dash
  * (any other status, no certificate), or the certificate's own number/
  * status/net-payable-amount plus `CertificateStatusActions` (a
  * certificate already exists). `certificate` was widened from `{id}`
- * to its full shape used here â€” `findProgressValuations`'s own
+ * to its full shape used here — `findProgressValuations`'s own
  * `include: { certificate: true }` (read directly) already returns all
  * of it, this page just wasn't using more than the id before this
  * checkpoint.
  *
- * Addendum â€” Retention: `GET /pmo/work-packages/:workPackageId/retention`
+ * Addendum — Retention: `GET /pmo/work-packages/:workPackageId/retention`
  * (`PmoService.getRetention`, `pmo.view`) throws `NotFoundException`
  * until the first certificate on this work package is `CERTIFIED`
- * (confirmed directly â€” `advanceCertificateStatus`'s own `CERTIFIED`
- * branch is what creates the `Retention` row) â€” a real, expected 404,
+ * (confirmed directly — `advanceCertificateStatus`'s own `CERTIFIED`
+ * branch is what creates the `Retention` row) — a real, expected 404,
  * not an error state. Fetched in its own separate `try/catch` outside
  * `loadWorkPackageDetail`'s own `Promise.all` for exactly that reason:
  * folding it into the same `Promise.all` would turn every work package
@@ -128,20 +128,20 @@ const STATUS_TONE: Record<string, 'positive' | 'negative' | 'warning' | 'neutral
  * distinguish from a genuine failure. `retentionAvailable` (`totalHeld -
  * totalReleased`) is computed here, not requested from the backend,
  * matching `releaseRetention`'s own identical arithmetic (read directly)
- * â€” this page's own copy is display-only and never sent back.
+ * — this page's own copy is display-only and never sent back.
  *
- * Addendum â€” Variation Orders (following FE-5.5's own recommendation,
+ * Addendum — Variation Orders (following FE-5.5's own recommendation,
  * from the fixed-and-reverified baseline FIX.4 established):
  * `GET /pmo/work-packages/:workPackageId/variation-orders`
  * (`PmoService.findVariationOrders`, `pmo.view`) takes no status
  * filter and always returns an array (empty, not a 404, for a work
- * package with none yet â€” confirmed directly, unlike Retention's own
- * 404-until-certified shape) â€” added to `loadWorkPackageDetail`'s own
+ * package with none yet — confirmed directly, unlike Retention's own
+ * 404-until-certified shape) — added to `loadWorkPackageDetail`'s own
  * `Promise.all` alongside `workPackages`/`valuations`, not a separate
  * `try/catch` the way Retention needed. Rendered as its own section
  * (`CreateVariationOrderForm` + a register `DataTable`), the same
  * "form above the table" placement `Progress valuations` already uses,
- * not a per-row inline form the way certificate generation is â€” see
+ * not a per-row inline form the way certificate generation is — see
  * `CreateVariationOrderForm.tsx`'s own doc comment for why, and for a
  * real, notable backend gap this checkpoint found and flagged rather
  * than silently working around (`CreateVariationOrderDto` has no
@@ -164,7 +164,7 @@ async function loadWorkPackageDetail(id: string) {
     retention = await fetchApi<Retention>(`/pmo/work-packages/${id}/retention`);
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 404) throw e;
-    // No certificate on this work package has been CERTIFIED yet â€” see
+    // No certificate on this work package has been CERTIFIED yet — see
     // this function's own doc comment above.
   }
 
@@ -193,9 +193,9 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
   if (error || !data) {
     return (
       <PageContainer>
-        {/* FE-1.1 â€” breadcrumbs added to both this page's headers (see
+        {/* FE-1.1 — breadcrumbs added to both this page's headers (see
             PageHeader's own doc comment in Badge.tsx); the pre-existing
-            "â† Back to register" link below is left untouched. */}
+            "← Back to register" link below is left untouched. */}
         <PageHeader
           title="Work package detail"
           breadcrumbs={[{ label: 'Work Packages', href: '/work-packages' }, { label: 'Work package detail' }]}
@@ -203,7 +203,7 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
         <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body }}>{error ?? 'Work package not found.'}</div>
         <p style={{ marginTop: tokens.space(4) }}>
           <Link href="/work-packages" style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-            â† Back to register
+            ← Back to register
           </Link>
         </p>
       </PageContainer>
@@ -216,12 +216,12 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
     <PageContainer>
       <p style={{ marginBottom: tokens.space(4) }}>
         <Link href="/work-packages" style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-          â† Back to register
+          ← Back to register
         </Link>
       </p>
 
       <PageHeader
-        title={`${workPackage.code} â€” ${workPackage.name}`}
+        title={`${workPackage.code} — ${workPackage.name}`}
         subtitle={`Contractor: ${workPackage.contractor.vendor.name}`}
         breadcrumbs={[{ label: 'Work Packages', href: '/work-packages' }, { label: workPackage.code }]}
       />
@@ -262,8 +262,8 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
           <>
             <div style={{ display: 'flex', gap: tokens.space(6), marginBottom: tokens.space(4), flexWrap: 'wrap' }}>
               <span style={{ fontFamily: tokens.font.body, fontSize: '13px' }}>
-                Retention: {retention.retentionPercent}% Â· Held: {formatCurrency(Number(retention.totalHeld))} Â· Released:{' '}
-                {formatCurrency(Number(retention.totalReleased))} Â· Available:{' '}
+                Retention: {retention.retentionPercent}% · Held: {formatCurrency(Number(retention.totalHeld))} · Released:{' '}
+                {formatCurrency(Number(retention.totalReleased))} · Available:{' '}
                 {formatCurrency(Number(retention.totalHeld) - Number(retention.totalReleased))}
               </span>
             </div>
@@ -274,7 +274,7 @@ export default async function WorkPackageDetailPage({ params }: { params: { id: 
           </>
         ) : (
           <p style={{ fontFamily: tokens.font.body, fontSize: '13px', color: tokens.color.textMuted }}>
-            No retention record yet â€” this is created automatically once a certificate on this work package is certified.
+            No retention record yet — this is created automatically once a certificate on this work package is certified.
           </p>
         )}
       </section>

@@ -39,8 +39,8 @@ const IMPACT_OPTIONS = PROBABILITY_OPTIONS;
  * backend's own default apply, rather than this form silently
  * hardcoding a value the backend already owns.
  */
-export function CreateRiskForm({ entityId, projectOptions }: { entityId: string; projectOptions: SelectOption[] }) {
-  const [projectId, setProjectId] = React.useState('');
+export function CreateRiskForm({ entityId, projectOptions, initialProjectId }: { entityId: string; projectOptions: SelectOption[]; initialProjectId?: string }) {
+  const [projectId, setProjectId] = React.useState(initialProjectId ?? '');
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [category, setCategory] = React.useState('');
@@ -130,10 +130,9 @@ export function CreateRiskForm({ entityId, projectOptions }: { entityId: string;
         style={{ minWidth: '220px' }}
       />
       <Button type="submit" disabled={pending}>
-        {pending ? 'Logging…' : 'Log risk'}
+        {pending ? 'Logging...' : 'Log risk'}
       </Button>
       {error && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, fontSize: '13px' }}>{error}</div>}
     </form>
   );
 }
-

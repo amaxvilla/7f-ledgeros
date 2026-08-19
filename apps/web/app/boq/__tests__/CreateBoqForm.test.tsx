@@ -185,7 +185,7 @@ describe('CreateBoqForm', () => {
     await fillLine(user, 1, 'BOQ-001', 'Excavation', 'm3', '120', '45.5');
     await user.click(screen.getByRole('button', { name: 'Create BOQ' }));
 
-    expect(screen.getByRole('button', { name: 'Creating…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Creating...' })).toBeDisabled();
 
     resolveAction({ ok: true });
     expect(await screen.findByRole('button', { name: 'Create BOQ' })).not.toBeDisabled();

@@ -1,68 +1,13 @@
-import { fetchApi, formatCurrency } from '../../lib/api';
-import { PageContainer, PageHeader, DataTable, KpiCard } from '@7f/ui';
+import { fetchApi } from '../../lib/api';
+import { ConsolidationTable } from './ConsolidationTable';
+import { PageContainer, PageHeader, KpiCard } from '@7f/ui';
 
 export const dynamic = 'force-dynamic';
 
 type AnyRow = Record<string, unknown>;
 
-function rowsOf(value: unknown): AnyRow[] {
-  if (Array.isArray(value)) return value as AnyRow[];
-
-  if (value && typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-
-    for (const key of ['rows', 'data', 'items', 'results']) {
-      if (Array.isArray(obj[key])) return obj[key] as AnyRow[];
-    }
-
-    return [obj];
-  }
-
-  return [];
-}
-
-function text(value: unknown): string {
-  if (value === null || value === undefined) return '';
-  if (typeof value === 'number') return formatCurrency(value);
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
-}
-
 function DynamicTable({ value }: { value: unknown }) {
-  const rows = rowsOf(value);
-
-  if (!rows.length) {
-    return <div style={{ padding: 16 }}>No data returned.</div>;
-  }
-
-  const keys = Array.from(
-    rows.reduce((set, row) => {
-      Object.keys(row).forEach((key) => set.add(key));
-      return set;
-    }, new Set<string>()),
-  );
-
-  return (
-    <DataTable
-      keyOf={(row) =>
-        String(
-          row.id ??
-            row.key ??
-            row.code ??
-            row.account_id ??
-            row.account_code ??
-            JSON.stringify(row),
-        )
-      }
-      rows={rows}
-      columns={keys.map((key) => ({
-        header: key.replace(/_/g, ' '),
-        render: (row: AnyRow) => text(row[key]),
-      }))}
-      emptyMessage="No records."
-    />
-  );
+  return <ConsolidationTable value={value} />;
 }
 
 export default async function ConsolidationPage({

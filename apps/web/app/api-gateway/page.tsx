@@ -1,8 +1,9 @@
-import { ActionForm, Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { GenerateApiKeyForm } from './GenerateApiKeyForm';
 import { revokeApiKey } from './actions';
+import { ApiGatewayKeysTable } from './ApiGatewayTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,48 +109,7 @@ export default async function ApiGatewayPage({
         <section>
           <PageHeader title="Keys" />
           <GenerateApiKeyForm entityId={entityId} />
-          <DataTable
-            columns={[
-              { header: 'Name', render: (k: ApiKey) => k.name },
-              { header: 'Key', render: (k: ApiKey) => <code style={{ fontFamily: tokens.font.mono, fontSize: '12px' }}>{k.keyPrefix}…</code> },
-              {
-                header: 'Scopes',
-                render: (k: ApiKey) =>
-                  k.scopes.length === 0 ? (
-                    <span style={{ fontFamily: tokens.font.body, fontSize: '13px', color: tokens.color.textMuted }}>All</span>
-                  ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.space(1) }}>
-                      {k.scopes.map((s) => (
-                        <Badge key={s} tone="neutral">
-                          {s}
-                        </Badge>
-                      ))}
-                    </div>
-                  ),
-              },
-              { header: 'Status', render: (k: ApiKey) => <Badge tone={STATUS_TONE[k.status] ?? 'neutral'}>{k.status}</Badge> },
-              { header: 'Rate limit', render: (k: ApiKey) => (k.rateLimitPerMinute ? `${k.rateLimitPerMinute}/min` : 'Unlimited') },
-              { header: 'Expires', render: (k: ApiKey) => (k.expiresAt ? new Date(k.expiresAt).toLocaleDateString() : '—') },
-              { header: 'Last used', render: (k: ApiKey) => (k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : '—') },
-              {
-                header: '',
-                render: (k: ApiKey) =>
-                  k.status === 'REVOKED' ? null : (
-                    <ActionForm action={revokeApiKey.bind(null, k.id)}>
-                      <button
-                        type="submit"
-                        style={{ color: tokens.color.negative, fontFamily: tokens.font.body, background: 'none', border: 'none', cursor: 'pointer' }}
-                      >
-                        Revoke
-                      </button>
-                    </ActionForm>
-                  ),
-              },
-            ]}
-            rows={keys}
-            keyOf={(k) => k.id}
-            emptyMessage="No API keys for this entity yet."
-          />
+          <ApiGatewayKeysTable rows={keys} />
         </section>
       )}
     </PageContainer>

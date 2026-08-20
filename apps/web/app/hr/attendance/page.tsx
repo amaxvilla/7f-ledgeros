@@ -5,6 +5,7 @@ import { EntitySelector } from '../../EntitySelector';
 import { ClockInOutForm } from './ClockInOutForm';
 import { MarkAbsenteesButton } from './MarkAbsenteesButton';
 import { EmployeeAttendanceSelector } from './EmployeeAttendanceSelector';
+import { AttendanceTable } from '../HrTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,9 +36,9 @@ const STATUS_TONE: Record<AttendanceRecord['status'], 'positive' | 'negative' | 
 };
 
 /**
- * `GET /hr/attendance/:employeeId` is per-employee only â€” there is no
+ * `GET /hr/attendance/:employeeId` is per-employee only Ã¢â‚¬â€ there is no
  * entity-wide attendance list endpoint. This page defaults the history
- * view to the entity's first employee (deterministic, not arbitrary â€”
+ * view to the entity's first employee (deterministic, not arbitrary Ã¢â‚¬â€
  * same employee every load for a given `employeeOptions` order) rather
  * than showing nothing, and lets `EmployeeAttendanceSelector` switch
  * which employee's history is shown via a URL param, consistent with
@@ -45,7 +46,7 @@ const STATUS_TONE: Record<AttendanceRecord['status'], 'positive' | 'negative' | 
  */
 async function loadAttendance(entityId: string, employeeId?: string) {
   const employees = await fetchApi<Employee[]>(`/hr/employees?entityId=${entityId}`);
-  const employeeOptions: SelectOption[] = employees.map((e) => ({ value: e.id, label: `${e.employeeCode} â€” ${e.firstName} ${e.lastName}` }));
+  const employeeOptions: SelectOption[] = employees.map((e) => ({ value: e.id, label: `${e.employeeCode} Ã¢â‚¬â€ ${e.firstName} ${e.lastName}` }));
 
   const selectedId = employeeId && employees.some((e) => e.id === employeeId) ? employeeId : employees[0]?.id;
 
@@ -88,7 +89,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
 
   return (
     <PageContainer>
-      <PageHeader title="Attendance" subtitle={`Entity ${entityId} â€” last 30 days`} />
+      <PageHeader title="Attendance" subtitle={`Entity ${entityId} Ã¢â‚¬â€ last 30 days`} />
       <EntitySelector initialValue={entityId} />
 
       {error && (
@@ -123,18 +124,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
           <section>
             <PageHeader title="Attendance history" />
             <EmployeeAttendanceSelector employeeOptions={data.employeeOptions} selectedId={data.selectedId} entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Date', render: (r: AttendanceRecord) => new Date(r.date).toLocaleDateString() },
-                { header: 'Clock in', render: (r: AttendanceRecord) => (r.clockIn ? new Date(r.clockIn).toLocaleTimeString() : 'â€”') },
-                { header: 'Clock out', render: (r: AttendanceRecord) => (r.clockOut ? new Date(r.clockOut).toLocaleTimeString() : 'â€”') },
-                { header: 'Status', render: (r: AttendanceRecord) => <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge> },
-                { header: 'Source', render: (r: AttendanceRecord) => r.source },
-              ]}
-              rows={data.records}
-              keyOf={(r) => r.id}
-              emptyMessage="No attendance records in the last 30 days."
-            />
+            <AttendanceTable rows={data.records} />
           </section>
         </>
       )}
@@ -158,7 +148,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: {
             textDecoration: 'none',
           }}
         >
-          Open Attendance Management â†’
+          Open Attendance Management Ã¢â€ â€™
         </a>
       </section>
 </PageContainer>

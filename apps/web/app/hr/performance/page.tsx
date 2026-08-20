@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { EntitySelector } from '../../EntitySelector';
 import { CreateCycleForm } from './CreateCycleForm';
 import { CycleStatusActions } from './CycleStatusActions';
 import { SubmitSelfAssessmentForm } from './SubmitSelfAssessmentForm';
+import { PerformanceCyclesTable, PerformanceReviewsTable } from './PerformanceTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -126,43 +127,13 @@ export default async function PerformancePage({ searchParams }: { searchParams: 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Performance cycles" />
             <CreateCycleForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Name', render: (c: Cycle) => c.name },
-                { header: 'Start', render: (c: Cycle) => new Date(c.startDate).toLocaleDateString() },
-                { header: 'End', render: (c: Cycle) => new Date(c.endDate).toLocaleDateString() },
-                { header: 'Status', render: (c: Cycle) => <Badge tone={CYCLE_TONE[c.status]}>{c.status}</Badge> },
-                { header: 'Actions', align: 'right', render: (c: Cycle) => <CycleStatusActions id={c.id} status={c.status} /> },
-              ]}
-              rows={data.cycles}
-              keyOf={(c) => c.id}
-              emptyMessage="No performance cycles yet."
-            />
+            <PerformanceCyclesTable rows={data.cycles} />
           </section>
 
           <section>
             <PageHeader title="Reviews" />
             <SubmitSelfAssessmentForm employeeOptions={data.employeeOptions} cycleOptions={data.cycleOptions} />
-            <DataTable
-              columns={[
-                {
-                  header: 'Employee',
-                  render: (r: Review) => (
-                    <Link href={`/hr/performance/${r.id}`} style={{ color: tokens.color.accent }}>
-                      {data.employeeNames.get(r.employeeId) ?? r.employeeId}
-                    </Link>
-                  ),
-                },
-                { header: 'Cycle', render: (r: Review) => data.cycleNames.get(r.cycleId) ?? r.cycleId },
-                { header: 'Self', align: 'right', render: (r: Review) => (r.selfRating != null ? String(r.selfRating) : '—') },
-                { header: 'Manager', align: 'right', render: (r: Review) => (r.managerRating != null ? String(r.managerRating) : '—') },
-                { header: 'Calibrated', align: 'right', render: (r: Review) => (r.calibratedRating != null ? String(r.calibratedRating) : '—') },
-                { header: 'Status', render: (r: Review) => <Badge tone={REVIEW_TONE[r.status]}>{r.status}</Badge> },
-              ]}
-              rows={data.reviews}
-              keyOf={(r) => r.id}
-              emptyMessage="No reviews started for this entity's cycles yet."
-            />
+            <PerformanceReviewsTable rows={data.reviews} employeeNames={Object.fromEntries(data.employeeNames)} cycleNames={Object.fromEntries(data.cycleNames)} />
           </section>
         </>
       )}

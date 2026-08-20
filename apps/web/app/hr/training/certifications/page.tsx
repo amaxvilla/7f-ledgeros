@@ -12,6 +12,7 @@ import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../../lib/api';
 import { EntitySelector } from '../../../EntitySelector';
 import { IssueCertificationForm } from './IssueCertificationForm';
+import { TrainingCertificationsTable, TrainingExpiringCertificationsTable, TrainingSkillMatrixTable } from './CertificationTables';
 
 interface Employee {
   id: string;
@@ -215,144 +216,19 @@ export default async function TrainingCertificationsPage({
           title={selectedEmployee ? String(selectedEmployee.label) : 'No employee selected'}
         />
 
-        <DataTable
-          columns={[
-            {
-              header: 'Certification',
-              render: (row: Certification) => row.name,
-            },
-            {
-              header: 'Issued by',
-              render: (row: Certification) => row.issuedBy ?? '—',
-            },
-            {
-              header: 'Issue date',
-              render: (row: Certification) =>
-                new Date(row.issueDate).toLocaleDateString(),
-            },
-            {
-              header: 'Expiry',
-              render: (row: Certification) =>
-                row.expiryDate
-                  ? new Date(row.expiryDate).toLocaleDateString()
-                  : 'No expiry',
-            },
-            {
-              header: 'Status',
-              render: (row: Certification) => (
-                <Badge tone={expiryTone(row.expiryDate)}>
-                  {row.expiryDate
-                    ? new Date(row.expiryDate) < new Date()
-                      ? 'Expired'
-                      : 'Valid'
-                    : 'No expiry'}
-                </Badge>
-              ),
-            },
-            {
-              header: 'Certificate',
-              render: (row: Certification) =>
-                row.certificateUrl ? (
-                  <Link
-                    href={row.certificateUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      color: tokens.color.textPrimary,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    Open
-                  </Link>
-                ) : (
-                  '—'
-                ),
-            },
-          ]}
-          rows={data.certifications}
-          keyOf={(row) => row.id}
-          emptyMessage="No certifications recorded for this employee."
-        />
+        <TrainingCertificationsTable rows={data.certifications} />
       </section>
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Certifications expiring soon" />
 
-        <DataTable
-          columns={[
-            {
-              header: 'Employee',
-              render: (row: ExpiringCertification) =>
-                row.employee
-                  ? `${row.employee.firstName} ${row.employee.lastName}`
-                  : row.employeeId,
-            },
-            {
-              header: 'Certification',
-              render: (row: ExpiringCertification) => row.name,
-            },
-            {
-              header: 'Expiry',
-              render: (row: ExpiringCertification) =>
-                row.expiryDate
-                  ? new Date(row.expiryDate).toLocaleDateString()
-                  : '—',
-            },
-            {
-              header: 'Status',
-              render: (row: ExpiringCertification) => (
-                <Badge tone={expiryTone(row.expiryDate)}>
-                  {row.expiryDate
-                    ? `${Math.max(
-                        0,
-                        Math.ceil(
-                          (new Date(row.expiryDate).getTime() - Date.now()) /
-                            86_400_000,
-                        ),
-                      )} day(s)`
-                    : '—'}
-                </Badge>
-              ),
-            },
-          ]}
-          rows={data.expiring}
-          keyOf={(row) => row.id}
-          emptyMessage="No certifications are expiring within the next 30 days."
-        />
+        <TrainingExpiringCertificationsTable rows={data.expiring} />
       </section>
 
       <section>
         <PageHeader title="Employee skills matrix" />
 
-        <DataTable
-          columns={[
-            {
-              header: 'Employee',
-              render: (row: SkillMatrixRow) => row.name,
-            },
-            {
-              header: 'Certifications / skills',
-              render: (row: SkillMatrixRow) =>
-                row.skills.length === 0
-                  ? 'None recorded'
-                  : row.skills
-                      .map(
-                        (skill) =>
-                          `${skill.name}${
-                            skill.expiryDate
-                              ? ` (expires ${new Date(
-                                  skill.expiryDate,
-                                ).toLocaleDateString()})`
-                              : ''
-                          }`,
-                      )
-                      .join(', '),
-            },
-          ]}
-          rows={data.matrix}
-          keyOf={(row) => row.employeeId}
-          emptyMessage="No active employees were returned for this entity."
-        />
+        <TrainingSkillMatrixTable rows={data.matrix} />
       </section>
     </PageContainer>
   );

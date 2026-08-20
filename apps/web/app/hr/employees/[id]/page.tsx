@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../../lib/api';
 import { ConfirmEmployeeButton } from './ConfirmEmployeeButton';
 import { StartOnboardingButton } from './StartOnboardingButton';
 import { CompleteTaskButton } from './CompleteTaskButton';
 import { InitiateExitForm } from './InitiateExitForm';
 import { EmployeeLifecycleActions } from './EmployeeLifecycleActions';
+import { EmployeeDirectReportsTable, EmployeeOnboardingTable, EmployeeEmploymentHistoryTable, EmployeeClearanceTable } from './EmployeeDetailTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,55 +131,18 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
       {employee.directReports.length > 0 && (
         <section style={{ marginBottom: tokens.space(8) }}>
           <PageHeader title="Direct reports" />
-          <DataTable
-            columns={[
-              {
-                header: 'Name',
-                render: (r: EmployeeDetail['directReports'][number]) => (
-                  <Link href={`/hr/employees/${r.id}`} style={{ color: tokens.color.accent }}>
-                    {r.firstName} {r.lastName}
-                  </Link>
-                ),
-              },
-              { header: 'Job title', render: (r: EmployeeDetail['directReports'][number]) => r.jobTitle ?? '—' },
-            ]}
-            rows={employee.directReports}
-            keyOf={(r) => r.id}
-            emptyMessage="No direct reports."
-          />
+          <EmployeeDirectReportsTable rows={employee.directReports} />
         </section>
       )}
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Onboarding checklist" />
-        <DataTable
-          columns={[
-            { header: 'Task', render: (t: OnboardingTask) => t.taskName },
-            { header: 'Due', render: (t: OnboardingTask) => (t.dueDate ? new Date(t.dueDate).toLocaleDateString() : '—') },
-            { header: 'Status', render: (t: OnboardingTask) => <Badge tone={STATUS_TONE[t.status] ?? 'neutral'}>{t.status}</Badge> },
-            {
-              header: 'Actions',
-              align: 'right',
-              render: (t: OnboardingTask) => <CompleteTaskButton taskId={t.id} employeeId={employee.id} status={t.status} />,
-            },
-          ]}
-          rows={employee.onboardingTasks}
-          keyOf={(t) => t.id}
-          emptyMessage="Onboarding hasn't been started for this employee."
-        />
+        <EmployeeOnboardingTable rows={employee.onboardingTasks} employeeId={employee.id} />
       </section>
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Employment history" />
-        <DataTable
-          columns={[
-            { header: 'Event', render: (h: EmploymentEvent) => h.eventType },
-            { header: 'Effective date', render: (h: EmploymentEvent) => new Date(h.effectiveDate).toLocaleDateString() },
-          ]}
-          rows={history}
-          keyOf={(h) => h.id}
-          emptyMessage="No employment events logged yet."
-        />
+        <EmployeeEmploymentHistoryTable rows={history} />
       </section>
 
       <EmployeeLifecycleActions employeeId={employee.id} />
@@ -191,16 +155,7 @@ export default async function EmployeeDetailPage({ params }: { params: { id: str
               Last working day {new Date(employee.exitRecord.lastWorkingDate).toLocaleDateString()}
             </span>
           </div>
-          <DataTable
-            columns={[
-              { header: 'Department', render: (c: ClearanceItem) => c.department },
-              { header: 'Item', render: (c: ClearanceItem) => c.item },
-              { header: 'Status', render: (c: ClearanceItem) => <Badge tone={STATUS_TONE[c.status] ?? 'neutral'}>{c.status}</Badge> },
-            ]}
-            rows={employee.exitRecord.clearanceItems}
-            keyOf={(c) => c.id}
-            emptyMessage="No clearance items."
-          />
+          <EmployeeClearanceTable rows={employee.exitRecord.clearanceItems} />
         </section>
       )}
     </PageContainer>

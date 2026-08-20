@@ -1,9 +1,10 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { EntitySelector } from '../../EntitySelector';
 import { CreateLeaveRequestForm } from './CreateLeaveRequestForm';
 import { LeaveRequestActions } from './LeaveRequestActions';
+import { LeaveRequestsTable } from '../HrTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,24 +117,11 @@ export default async function LeavePage({ searchParams }: { searchParams: { enti
           <section>
             <PageHeader title="Leave requests" />
             <CreateLeaveRequestForm employeeOptions={data.employeeOptions} leaveTypeOptions={data.leaveTypeOptions} />
-            <DataTable
-              columns={[
-                { header: 'Employee', render: (r: LeaveRequest) => data.employeeNames.get(r.employeeId) ?? r.employeeId },
-                { header: 'Type', render: (r: LeaveRequest) => data.leaveTypeNames.get(r.leaveTypeId) ?? r.leaveTypeId },
-                { header: 'From', render: (r: LeaveRequest) => new Date(r.startDate).toLocaleDateString() },
-                { header: 'To', render: (r: LeaveRequest) => new Date(r.endDate).toLocaleDateString() },
-                { header: 'Days', align: 'right', render: (r: LeaveRequest) => String(r.daysRequested) },
-                { header: 'Status', render: (r: LeaveRequest) => <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge> },
-                {
-                  header: 'Actions',
-                  align: 'right',
-                  render: (r: LeaveRequest) => <LeaveRequestActions id={r.id} status={r.status} />,
-                },
-              ]}
-              rows={data.requests}
-              keyOf={(r) => r.id}
-              emptyMessage="No leave requests for this entity's employees."
-            />
+            <LeaveRequestsTable
+  rows={data.requests}
+  employeeNames={Object.fromEntries(data.employeeNames)}
+  leaveTypeNames={Object.fromEntries(data.leaveTypeNames)}
+/>
           </section>
         </>
       )}

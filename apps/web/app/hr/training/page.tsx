@@ -1,4 +1,4 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { EntitySelector } from '../../EntitySelector';
@@ -6,6 +6,7 @@ import { CreateCourseForm } from './CreateCourseForm';
 import { CreateSessionForm } from './CreateSessionForm';
 import { EnrolForm } from './EnrolForm';
 import { EnrollmentActions } from './EnrollmentActions';
+import { TrainingCoursesTable, TrainingSessionsTable, TrainingEnrollmentsTable } from './TrainingTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -141,56 +142,19 @@ export default async function TrainingPage({ searchParams }: { searchParams: { e
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Courses" />
             <CreateCourseForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (c: Course) => c.code },
-                { header: 'Name', render: (c: Course) => c.name },
-                { header: 'Duration (hrs)', align: 'right', render: (c: Course) => (c.durationHours != null ? String(c.durationHours) : '—') },
-                { header: 'Provider', render: (c: Course) => c.provider ?? '—' },
-              ]}
-              rows={data.courses}
-              keyOf={(c) => c.id}
-              emptyMessage="No training courses yet."
-            />
+            <TrainingCoursesTable rows={data.courses} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Sessions" />
             <CreateSessionForm courseOptions={data.courseOptions} />
-            <DataTable
-              columns={[
-                { header: 'Course', render: (s: Session) => s.course.name },
-                { header: 'Start', render: (s: Session) => new Date(s.startDate).toLocaleDateString() },
-                { header: 'End', render: (s: Session) => new Date(s.endDate).toLocaleDateString() },
-                { header: 'Location', render: (s: Session) => s.location ?? '—' },
-                { header: 'Status', render: (s: Session) => <Badge tone={SESSION_TONE[s.status]}>{s.status}</Badge> },
-              ]}
-              rows={data.sessions}
-              keyOf={(s) => s.id}
-              emptyMessage="No sessions scheduled yet."
-            />
+            <TrainingSessionsTable rows={data.sessions} />
           </section>
 
           <section>
             <PageHeader title="Enrollments" />
             <EnrolForm employeeOptions={data.employeeOptions} sessionOptions={data.sessionOptions} />
-            <DataTable
-              columns={[
-                { header: 'Employee', render: (e: Enrollment) => data.employeeNames.get(e.employeeId) ?? e.employeeId },
-                { header: 'Course', render: (e: Enrollment) => e.session.course.name },
-                { header: 'Session date', render: (e: Enrollment) => new Date(e.session.startDate).toLocaleDateString() },
-                { header: 'Rating', align: 'right', render: (e: Enrollment) => (e.evaluationRating != null ? String(e.evaluationRating) : '—') },
-                { header: 'Status', render: (e: Enrollment) => <Badge tone={ENROLLMENT_TONE[e.status]}>{e.status}</Badge> },
-                {
-                  header: 'Actions',
-                  align: 'right',
-                  render: (e: Enrollment) => <EnrollmentActions id={e.id} status={e.status} evaluationRating={e.evaluationRating} />,
-                },
-              ]}
-              rows={data.enrollments}
-              keyOf={(e) => e.id}
-              emptyMessage="No enrollments yet."
-            />
+            <TrainingEnrollmentsTable rows={data.enrollments} employeeNames={Object.fromEntries(data.employeeNames)} />
           </section>
         </>
       )}

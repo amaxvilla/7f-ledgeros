@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { EntitySelector } from '../../EntitySelector';
 import { CreateEmployeeForm } from './CreateEmployeeForm';
+import { EmployeesTable } from '../HrTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,40 +118,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: { 
               departmentOptions={data.departmentOptions}
               salaryStructureOptions={data.salaryStructureOptions}
             />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (e: Employee) => e.employeeCode },
-                {
-                  header: 'Name',
-                  render: (e: Employee) => (
-                    <Link href={`/hr/employees/${e.id}`} style={{ color: tokens.color.accent }}>
-                      {e.firstName} {e.lastName}
-                    </Link>
-                  ),
-                },
-                { header: 'Department', render: (e: Employee) => e.department?.name ?? '—' },
-                { header: 'Job title', render: (e: Employee) => e.jobTitle ?? '—' },
-                { header: 'Type', render: (e: Employee) => e.employmentType ?? '—' },
-                {
-                  header: 'Status',
-                  render: (e: Employee) => (
-                    <Badge tone={STATUS_TONE[e.employmentStatus ?? ''] ?? 'neutral'}>{e.employmentStatus ?? 'ACTIVE'}</Badge>
-                  ),
-                },
-                {
-                  header: 'Actions',
-                  align: 'right',
-                  render: (e: Employee) => (
-                    <Link href={`/hr/employees/${e.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                      View →
-                    </Link>
-                  ),
-                },
-              ]}
-              rows={data.employees}
-              keyOf={(e) => e.id}
-              emptyMessage="No employees yet."
-            />
+            <EmployeesTable rows={data.employees} />
           </section>
         </>
       )}

@@ -1,4 +1,4 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
@@ -10,6 +10,7 @@ import { CreatePaymentBatchForm } from './CreatePaymentBatchForm';
 import { PaymentBatchActions } from './PaymentBatchActions';
 import { CreatePaymentVoucherForm } from './CreatePaymentVoucherForm';
 import { PaymentVoucherActions } from './PaymentVoucherActions';
+import { CashForecastTable, APInvoiceTable, ARInvoiceTable } from './ApArTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -311,60 +312,13 @@ export default async function ApArPage({ searchParams }: { searchParams: { entit
 
           <section>
             <PageHeader title="Cash forecast" subtitle="Outflow (AP due) vs inflow (AR due) by horizon" />
-            <DataTable
-              columns={[
-                { header: 'Horizon', render: (h: CashForecastHorizon) => `${h.days} days` },
-                { header: 'Outflow (AP due)', align: 'right', render: (h: CashForecastHorizon) => formatCurrency(h.outflow) },
-                { header: 'Inflow (AR due)', align: 'right', render: (h: CashForecastHorizon) => formatCurrency(h.inflow) },
-                {
-                  header: 'Net',
-                  align: 'right',
-                  render: (h: CashForecastHorizon) => (
-                    <span style={{ color: h.net < 0 ? tokens.color.negative : tokens.color.positive }}>
-                      {formatCurrency(h.net)}
-                    </span>
-                  ),
-                },
-              ]}
-              rows={data.forecast.horizons}
-              keyOf={(h) => String(h.days)}
-              emptyMessage="No cash forecast data for this entity yet."
-            />
+            <CashForecastTable rows={data.forecast.horizons} />
           </section>
 
           <section>
             <PageHeader title="AP invoice register" />
             <CreateAPInvoiceForm entityId={entityId} vendorOptions={data.vendorOptions} accountOptions={data.accountOptions} />
-            <DataTable
-              columns={[
-                { header: 'Invoice #', render: (i: APInvoice) => i.invoiceNumber },
-                { header: 'Vendor', render: (i: APInvoice) => i.vendorId },
-                {
-                  header: 'Total',
-                  align: 'right',
-                  render: (i: APInvoice) =>
-                    formatCurrency(i.lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unitCost), 0)),
-                },
-                { header: 'Status', render: (i: APInvoice) => <Badge tone={AP_STATUS_TONE[i.status] ?? 'neutral'}>{i.status}</Badge> },
-                { header: 'Invoice date', render: (i: APInvoice) => new Date(i.invoiceDate).toLocaleDateString() },
-                { header: 'Due', render: (i: APInvoice) => (i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '—') },
-                {
-                  header: 'Actions',
-                  align: 'right',
-                  render: (i: APInvoice) => (
-                    <PostAPInvoiceButton
-                      id={i.id}
-                      status={i.status}
-                      purchaseOrderId={i.purchaseOrderId}
-                      accountOptions={data.accountOptions}
-                    />
-                  ),
-                },
-              ]}
-              rows={data.invoices}
-              keyOf={(i) => i.id}
-              emptyMessage="No AP invoices for this entity yet."
-            />
+            <APInvoiceTable rows={data.invoices} accountOptions={data.accountOptions} />
           </section>
 
           <section>
@@ -381,31 +335,7 @@ export default async function ApArPage({ searchParams }: { searchParams: { entit
           <section>
             <PageHeader title="AR invoice register" />
             <CreateARInvoiceForm entityId={entityId} customerOptions={data.customerOptions} accountOptions={data.accountOptions} />
-            <DataTable
-              columns={[
-                { header: 'Invoice #', render: (i: ARInvoice) => i.invoiceNumber },
-                { header: 'Customer', render: (i: ARInvoice) => i.customerId },
-                {
-                  header: 'Total',
-                  align: 'right',
-                  render: (i: ARInvoice) =>
-                    formatCurrency(i.lines.reduce((sum, line) => sum + Number(line.quantity) * Number(line.unitPrice), 0)),
-                },
-                { header: 'Status', render: (i: ARInvoice) => <Badge tone={AR_STATUS_TONE[i.status] ?? 'neutral'}>{i.status}</Badge> },
-                { header: 'Invoice date', render: (i: ARInvoice) => new Date(i.invoiceDate).toLocaleDateString() },
-                { header: 'Due', render: (i: ARInvoice) => (i.dueDate ? new Date(i.dueDate).toLocaleDateString() : '—') },
-                {
-                  header: 'Actions',
-                  align: 'right',
-                  render: (i: ARInvoice) => (
-                    <PostARInvoiceButton id={i.id} status={i.status} accountOptions={data.accountOptions} />
-                  ),
-                },
-              ]}
-              rows={data.arInvoices}
-              keyOf={(i) => i.id}
-              emptyMessage="No AR invoices for this entity yet."
-            />
+            <ARInvoiceTable rows={data.arInvoices} accountOptions={data.accountOptions} />
           </section>
         </>
       )}

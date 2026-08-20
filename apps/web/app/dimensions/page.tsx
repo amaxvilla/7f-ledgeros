@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateProjectForm } from './CreateProjectForm';
 import { CreateVendorForm } from './CreateVendorForm';
 import { CreateCustomerForm } from './CreateCustomerForm';
+import { DimensionsProjectsTable, DimensionsVendorsTable, DimensionsCustomersTable } from './DimensionsTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -103,17 +104,7 @@ export default async function DimensionsPage({ searchParams }: { searchParams: {
               </div>
             )}
             {projects && (
-              <DataTable
-                columns={[
-                  { header: 'Code', render: (p: Project) => p.code },
-                  { header: 'Name', render: (p: Project) => p.name },
-                  { header: 'Description', render: (p: Project) => p.description ?? '—' },
-                  { header: 'Status', render: (p: Project) => <Badge tone={p.isActive ? 'positive' : 'neutral'}>{p.isActive ? 'Active' : 'Inactive'}</Badge> },
-                ]}
-                rows={projects}
-                keyOf={(p) => p.id}
-                emptyMessage="No projects for this entity yet."
-              />
+              <DimensionsProjectsTable rows={projects} />
             )}
           </>
         )}
@@ -128,17 +119,7 @@ export default async function DimensionsPage({ searchParams }: { searchParams: {
           </div>
         )}
         {vendors && (
-          <DataTable
-            columns={[
-              { header: 'Code', render: (v: Vendor) => v.code },
-              { header: 'Name', render: (v: Vendor) => v.name },
-              { header: 'Tax ID', render: (v: Vendor) => v.taxId ?? '—' },
-              { header: 'Status', render: (v: Vendor) => <Badge tone={v.isActive ? 'positive' : 'neutral'}>{v.isActive ? 'Active' : 'Inactive'}</Badge> },
-            ]}
-            rows={vendors}
-            keyOf={(v) => v.id}
-            emptyMessage="No vendors configured yet."
-          />
+          <DimensionsVendorsTable rows={vendors} />
         )}
       </section>
 
@@ -151,26 +132,7 @@ export default async function DimensionsPage({ searchParams }: { searchParams: {
           </div>
         )}
         {customers && (
-          <DataTable
-            columns={[
-              { header: 'Code', render: (c: Customer) => c.code },
-              { header: 'Name', render: (c: Customer) => c.name },
-              { header: 'Email', render: (c: Customer) => c.email ?? '—' },
-              { header: 'Status', render: (c: Customer) => <Badge tone={c.isActive ? 'positive' : 'neutral'}>{c.isActive ? 'Active' : 'Inactive'}</Badge> },
-              {
-                header: 'Actions',
-                align: 'right',
-                render: (c: Customer) => (
-                  <Link href={`/real-estate/customers/${c.id}/statement`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                    Statement
-                  </Link>
-                ),
-              },
-            ]}
-            rows={customers}
-            keyOf={(c) => c.id}
-            emptyMessage="No customers configured yet."
-          />
+          <DimensionsCustomersTable rows={customers} />
         )}
       </section>
     </PageContainer>

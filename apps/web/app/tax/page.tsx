@@ -1,8 +1,9 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateTaxCodeForm } from './CreateTaxCodeForm';
 import { TaxPositionForm } from './TaxPositionForm';
+import { TaxCodesTable } from './TaxTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -188,19 +189,7 @@ export default async function TaxPage({
           </div>
         )}
         {codes && (
-          <DataTable
-            columns={[
-              { header: 'Code', render: (r: TaxCode) => r.code },
-              { header: 'Name', render: (r: TaxCode) => r.name },
-              { header: 'Type', render: (r: TaxCode) => <Badge tone={TAX_TYPE_TONE[r.taxType] ?? 'neutral'}>{r.taxType}</Badge> },
-              { header: 'Rate', render: (r: TaxCode) => `${(r.rate * 100).toFixed(2)}%` },
-              { header: 'Jurisdiction', render: (r: TaxCode) => r.jurisdiction ?? '—' },
-              { header: 'Status', render: (r: TaxCode) => <Badge tone={r.isActive ? 'positive' : 'neutral'}>{r.isActive ? 'Active' : 'Inactive'}</Badge> },
-            ]}
-            rows={codes}
-            keyOf={(r) => r.id}
-            emptyMessage="No tax codes configured yet."
-          />
+          <TaxCodesTable rows={codes} />
         )}
       </section>
     </PageContainer>

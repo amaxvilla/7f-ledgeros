@@ -529,6 +529,116 @@ export class InventoryService {
       }
     }
   }
+
+  // --------------------------------------------------
+  // Inventory read models
+  // --------------------------------------------------
+
+  async findGoodsReceipts(scope: SecurityScope, entityId?: string, limit = 100) {
+    const warehouseIds = await this.getAccessibleWarehouseIds(scope, entityId);
+    if (warehouseIds.length === 0) return [];
+
+    return this.prisma.goodsReceipt.findMany({
+      where: { warehouseId: { in: warehouseIds } },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async findMaterialIssues(scope: SecurityScope, entityId?: string, limit = 100) {
+    const warehouseIds = await this.getAccessibleWarehouseIds(scope, entityId);
+    if (warehouseIds.length === 0) return [];
+
+    return this.prisma.materialIssue.findMany({
+      where: { warehouseId: { in: warehouseIds } },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async findStockTransfers(scope: SecurityScope, entityId?: string, limit = 100) {
+    const warehouseIds = await this.getAccessibleWarehouseIds(scope, entityId);
+    if (warehouseIds.length === 0) return [];
+
+    return this.prisma.stockTransfer.findMany({
+      where: {
+        OR: [
+          { fromWarehouseId: { in: warehouseIds } },
+          { toWarehouseId: { in: warehouseIds } },
+        ],
+      },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async findStockCounts(scope: SecurityScope, entityId?: string, limit = 100) {
+    const warehouseIds = await this.getAccessibleWarehouseIds(scope, entityId);
+    if (warehouseIds.length === 0) return [];
+
+    return this.prisma.stockCount.findMany({
+      where: { warehouseId: { in: warehouseIds } },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async findStockMovements(
+    scope: SecurityScope,
+    entityId?: string,
+    stockItemId?: string,
+    warehouseId?: string,
+    limit = 200,
+  ) {
+    const warehouseIds = await this.getAccessibleWarehouseIds(scope, entityId);
+
+    if (warehouseIds.length === 0) return [];
+
+    if (warehouseId && !warehouseIds.includes(warehouseId)) {
+      throw new ForbiddenException(`No view access to warehouse ${warehouseId}`);
+    }
+
+    return this.prisma.stockMovement.findMany({
+      where: {
+        warehouseId: warehouseId ? warehouseId : { in: warehouseIds },
+        ...(stockItemId ? { stockItemId } : {}),
+      },
+      include: {
+        stockItem: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            unitOfMeasure: true,
+          },
+        },
+        warehouse: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        { movementDate: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      take: limit,
+    });
+  }
+
+  private async getAccessibleWarehouseIds(
+    scope: SecurityScope,
+    entityId?: string,
+  ): Promise<string[]> {
+    const warehouses = await this.findWarehouses(scope, entityId);
+    return warehouses.map((warehouse) => warehouse.id);
+  }
   // ---- External receipts (e.g. Procurement's ProcurementGRN posting) ----
   // Public, transaction-composable wrapper around applyMovement so other
   // modules can record a stock receipt against their own reference

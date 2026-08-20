@@ -92,12 +92,28 @@ describe('InventoryService — weighted-average valuation', () => {
   beforeEach(async () => {
     prisma = {
       $transaction: jest.fn(),
-      goodsReceipt: { findUnique: jest.fn(), update: jest.fn() },
-      materialIssue: { findUnique: jest.fn(), update: jest.fn() },
-      stockTransfer: { findUnique: jest.fn(), update: jest.fn() },
-      stockCount: { findUnique: jest.fn(), update: jest.fn() },
-      warehouse: {
+      goodsReceipt: {
+        findUnique: jest.fn(),
         findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      materialIssue: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      stockTransfer: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      stockCount: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      warehouse: {
+        findMany: jest.fn().mockResolvedValue([]),
         findUnique: jest.fn(({ where }: any) =>
           Promise.resolve({
             id: where.id,
@@ -294,5 +310,285 @@ describe('InventoryService — weighted-average valuation', () => {
         where: { AND: [{ entityId: { in: ['ent-1'] } }, { entityId: undefined, domain: undefined }] },
       });
     });
+  });
+});
+
+describe('InventoryService — read models', () => {
+  let service: InventoryService;
+  let prisma: {
+    $transaction: jest.Mock;
+    goodsReceipt: any;
+    materialIssue: any;
+    stockTransfer: any;
+    stockCount: any;
+    warehouse: any;
+    stockItem: any;
+    stockMovement: any;
+  };
+
+  beforeEach(async () => {
+    prisma = {
+      $transaction: jest.fn(),
+      goodsReceipt: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      materialIssue: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      stockTransfer: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      stockCount: {
+        findUnique: jest.fn(),
+        findMany: jest.fn(),
+        update: jest.fn(),
+      },
+      warehouse: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'wh-1', entityId: 'ent-1', code: 'MAIN', name: 'Main Warehouse', isActive: true },
+          { id: 'wh-2', entityId: 'ent-1', code: 'SITE', name: 'Site Warehouse', isActive: true },
+        ]),
+        findUnique: jest.fn(),
+      },
+      stockItem: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'item-1', entityId: 'ent-1', isActive: true },
+        ]),
+      },
+      stockMovement: {
+        findMany: jest.fn(),
+      },
+    };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        InventoryService,
+        RowLevelSecurityService,
+        { provide: PrismaService, useValue: prisma },
+      ],
+    }).compile();
+
+    service = moduleRef.get(InventoryService);
+  });
+
+  it('lists goods receipts through accessible warehouses with lines and limit', async () => {
+    const rows = [
+      {
+        id: 'gr-1',
+        warehouseId: 'wh-1',
+        createdAt: new Date('2026-08-20T10:00:00Z'),
+        lines: [{ id: 'grl-1' }],
+      },
+    ];
+
+    prisma.goodsReceipt.findMany.mockResolvedValue(rows);
+
+    const result = await service.findGoodsReceipts(
+      buildUnrestrictedScope(),
+      'ent-1',
+      25,
+    );
+
+    expect(result).toEqual(rows);
+    expect(prisma.goodsReceipt.findMany).toHaveBeenCalledWith({
+      where: { warehouseId: { in: ['wh-1', 'wh-2'] } },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: 25,
+    });
+  });
+
+  it('lists material issues through accessible warehouses with lines and limit', async () => {
+    const rows = [
+      {
+        id: 'mi-1',
+        warehouseId: 'wh-1',
+        createdAt: new Date('2026-08-20T09:00:00Z'),
+        lines: [{ id: 'mil-1' }],
+      },
+    ];
+
+    prisma.materialIssue.findMany.mockResolvedValue(rows);
+
+    const result = await service.findMaterialIssues(
+      buildUnrestrictedScope(),
+      'ent-1',
+      30,
+    );
+
+    expect(result).toEqual(rows);
+    expect(prisma.materialIssue.findMany).toHaveBeenCalledWith({
+      where: { warehouseId: { in: ['wh-1', 'wh-2'] } },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+    });
+  });
+
+  it('lists transfers visible from either accessible side with lines', async () => {
+    const rows = [
+      {
+        id: 'st-1',
+        fromWarehouseId: 'wh-1',
+        toWarehouseId: 'wh-2',
+        createdAt: new Date('2026-08-20T08:00:00Z'),
+        lines: [{ id: 'stl-1' }],
+      },
+    ];
+
+    prisma.stockTransfer.findMany.mockResolvedValue(rows);
+
+    const result = await service.findStockTransfers(
+      buildUnrestrictedScope(),
+      'ent-1',
+      40,
+    );
+
+    expect(result).toEqual(rows);
+    expect(prisma.stockTransfer.findMany).toHaveBeenCalledWith({
+      where: {
+        OR: [
+          { fromWarehouseId: { in: ['wh-1', 'wh-2'] } },
+          { toWarehouseId: { in: ['wh-1', 'wh-2'] } },
+        ],
+      },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: 40,
+    });
+  });
+
+  it('lists stock counts through accessible warehouses with lines', async () => {
+    const rows = [
+      {
+        id: 'sc-1',
+        warehouseId: 'wh-2',
+        createdAt: new Date('2026-08-20T07:00:00Z'),
+        lines: [{ id: 'scl-1', varianceQuantity: '2' }],
+      },
+    ];
+
+    prisma.stockCount.findMany.mockResolvedValue(rows);
+
+    const result = await service.findStockCounts(
+      buildUnrestrictedScope(),
+      'ent-1',
+      50,
+    );
+
+    expect(result).toEqual(rows);
+    expect(prisma.stockCount.findMany).toHaveBeenCalledWith({
+      where: { warehouseId: { in: ['wh-1', 'wh-2'] } },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  });
+
+  it('lists stock movements with item and warehouse details', async () => {
+    const rows = [
+      {
+        id: 'mv-1',
+        stockItemId: 'item-1',
+        warehouseId: 'wh-1',
+        movementType: StockMovementType.RECEIPT,
+        quantity: '100',
+        unitCost: '10',
+        totalCost: '1000',
+      },
+    ];
+
+    prisma.stockMovement.findMany.mockResolvedValue(rows);
+
+    const result = await service.findStockMovements(
+      buildUnrestrictedScope(),
+      'ent-1',
+      'item-1',
+      'wh-1',
+      75,
+    );
+
+    expect(result).toEqual(rows);
+    expect(prisma.stockMovement.findMany).toHaveBeenCalledWith({
+      where: {
+        warehouseId: 'wh-1',
+        stockItemId: 'item-1',
+      },
+      include: {
+        stockItem: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+            unitOfMeasure: true,
+          },
+        },
+        warehouse: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [
+        { movementDate: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      take: 75,
+    });
+  });
+
+  it('returns no read rows when the caller has no accessible warehouses', async () => {
+    prisma.warehouse.findMany.mockResolvedValue([]);
+
+    expect(
+      await service.findGoodsReceipts(buildUnrestrictedScope(), 'ent-1'),
+    ).toEqual([]);
+
+    expect(
+      await service.findMaterialIssues(buildUnrestrictedScope(), 'ent-1'),
+    ).toEqual([]);
+
+    expect(
+      await service.findStockTransfers(buildUnrestrictedScope(), 'ent-1'),
+    ).toEqual([]);
+
+    expect(
+      await service.findStockCounts(buildUnrestrictedScope(), 'ent-1'),
+    ).toEqual([]);
+
+    expect(
+      await service.findStockMovements(buildUnrestrictedScope(), 'ent-1'),
+    ).toEqual([]);
+
+    expect(prisma.goodsReceipt.findMany).not.toHaveBeenCalled();
+    expect(prisma.materialIssue.findMany).not.toHaveBeenCalled();
+    expect(prisma.stockTransfer.findMany).not.toHaveBeenCalled();
+    expect(prisma.stockCount.findMany).not.toHaveBeenCalled();
+    expect(prisma.stockMovement.findMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects a movement query for an inaccessible warehouse', async () => {
+    prisma.warehouse.findMany.mockResolvedValue([
+      { id: 'wh-1', entityId: 'ent-1', code: 'MAIN', name: 'Main Warehouse', isActive: true },
+    ]);
+
+    await expect(
+      service.findStockMovements(
+        buildUnrestrictedScope(),
+        'ent-1',
+        undefined,
+        'wh-forbidden',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+
+    expect(prisma.stockMovement.findMany).not.toHaveBeenCalled();
   });
 });

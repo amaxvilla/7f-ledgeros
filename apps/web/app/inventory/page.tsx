@@ -7,6 +7,20 @@ import { CreateStockItemForm } from './CreateStockItemForm';
 import { StockBalanceLookup } from './StockBalanceLookup';
 import { InventoryWarehousesTable, InventoryStockItemsTable } from './InventoryTables';
 import { InventoryTransactionForms } from './InventoryTransactionForms';
+import {
+  InventoryReceiptsTable,
+  InventoryIssuesTable,
+  InventoryTransfersTable,
+  InventoryCountsTable,
+  InventoryMovementsTable,
+} from './InventoryReadTables';
+import type {
+  InventoryReceiptRow,
+  InventoryIssueRow,
+  InventoryTransferRow,
+  InventoryCountRow,
+  InventoryMovementRow,
+} from './InventoryReadTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +69,12 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
   let warehousesError: string | null = null;
   let stockItemData: { entityId: string; stockItems: StockItem[] } | null = null;
   let stockItemsError: string | null = null;
+  let receiptRows: InventoryReceiptRow[] = [];
+  let issueRows: InventoryIssueRow[] = [];
+  let transferRows: InventoryTransferRow[] = [];
+  let countRows: InventoryCountRow[] = [];
+  let movementRows: InventoryMovementRow[] = [];
+  let transactionReadError: string | null = null;
 
   if (entityId) {
     try {
@@ -67,6 +87,22 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
     try {
       const stockItems = await fetchApi<StockItem[]>(`/inventory/stock-items?entityId=${entityId}`);
       stockItemData = { entityId, stockItems };
+
+      try {
+        [receiptRows, issueRows, transferRows, countRows, movementRows] =
+          await Promise.all([
+            fetchApi<InventoryReceiptRow[]>(`/inventory/goods-receipts?entityId=${encodeURIComponent(entityId)}&limit=100`),
+            fetchApi<InventoryIssueRow[]>(`/inventory/material-issues?entityId=${encodeURIComponent(entityId)}&limit=100`),
+            fetchApi<InventoryTransferRow[]>(`/inventory/stock-transfers?entityId=${encodeURIComponent(entityId)}&limit=100`),
+            fetchApi<InventoryCountRow[]>(`/inventory/stock-counts?entityId=${encodeURIComponent(entityId)}&limit=100`),
+            fetchApi<InventoryMovementRow[]>(`/inventory/movements?entityId=${encodeURIComponent(entityId)}&limit=200`),
+          ]);
+      } catch (e) {
+        transactionReadError =
+          e instanceof ApiError
+            ? e.message
+            : 'Failed to load inventory transaction history.';
+      }
     } catch (e) {
       stockItemsError = e instanceof ApiError ? e.message : 'Failed to load stock items.';
     }
@@ -131,6 +167,43 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
             warehouseOptions={warehouseOptions}
             stockItemOptions={stockItemOptions}
           />
+
+          {transactionReadError && (
+            <div
+              style={{
+                color: tokens.color.negative,
+                fontFamily: tokens.font.body,
+                marginTop: tokens.space(4),
+              }}
+            >
+              {transactionReadError}
+            </div>
+          )}
+
+          <section id="goods-receipts" style={{ marginTop: tokens.space(8) }}>
+            <PageHeader title="Goods receipts" />
+            <InventoryReceiptsTable rows={receiptRows} />
+          </section>
+
+          <section id="material-issues" style={{ marginTop: tokens.space(8) }}>
+            <PageHeader title="Material issues" />
+            <InventoryIssuesTable rows={issueRows} />
+          </section>
+
+          <section id="stock-transfers" style={{ marginTop: tokens.space(8) }}>
+            <PageHeader title="Stock transfers" />
+            <InventoryTransfersTable rows={transferRows} />
+          </section>
+
+          <section id="stock-counts" style={{ marginTop: tokens.space(8) }}>
+            <PageHeader title="Stock counts" />
+            <InventoryCountsTable rows={countRows} />
+          </section>
+
+          <section id="inventory-movements" style={{ marginTop: tokens.space(8) }}>
+            <PageHeader title="Stock movement ledger" />
+            <InventoryMovementsTable rows={movementRows} />
+          </section>
         </section>
       )}
     </PageContainer>

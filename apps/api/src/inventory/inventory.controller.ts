@@ -68,6 +68,91 @@ export class InventoryController {
     return this.inventory.getBalance(stockItemId, warehouseId, scope);
   }
 
+  // ---- Inventory read models ----
+
+  @Get('goods-receipts')
+  @ApiOperation({ summary: 'List goods receipts visible to the caller' })
+  @RequirePermissions('inventory.view')
+  async findGoodsReceipts(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('entityId') entityId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.findGoodsReceipts(
+      scope,
+      entityId,
+      Math.min(Math.max(Number(limit) || 100, 1), 500),
+    );
+  }
+
+  @Get('material-issues')
+  @ApiOperation({ summary: 'List material issues visible to the caller' })
+  @RequirePermissions('inventory.view')
+  async findMaterialIssues(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('entityId') entityId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.findMaterialIssues(
+      scope,
+      entityId,
+      Math.min(Math.max(Number(limit) || 100, 1), 500),
+    );
+  }
+
+  @Get('stock-transfers')
+  @ApiOperation({ summary: 'List stock transfers visible to the caller' })
+  @RequirePermissions('inventory.view')
+  async findStockTransfers(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('entityId') entityId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.findStockTransfers(
+      scope,
+      entityId,
+      Math.min(Math.max(Number(limit) || 100, 1), 500),
+    );
+  }
+
+  @Get('stock-counts')
+  @ApiOperation({ summary: 'List stock counts visible to the caller' })
+  @RequirePermissions('inventory.view')
+  async findStockCounts(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('entityId') entityId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.findStockCounts(
+      scope,
+      entityId,
+      Math.min(Math.max(Number(limit) || 100, 1), 500),
+    );
+  }
+
+  @Get('movements')
+  @ApiOperation({ summary: 'List stock movements visible to the caller' })
+  @RequirePermissions('inventory.view')
+  async findStockMovements(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('entityId') entityId?: string,
+    @Query('stockItemId') stockItemId?: string,
+    @Query('warehouseId') warehouseId?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.findStockMovements(
+      scope,
+      entityId,
+      stockItemId,
+      warehouseId,
+      Math.min(Math.max(Number(limit) || 200, 1), 500),
+    );
+  }
   // ---- Goods Receipt ----
 
   @Post('goods-receipts')

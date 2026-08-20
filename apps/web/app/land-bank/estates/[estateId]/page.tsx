@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../../lib/api';
 import { CreateMasterPlanForm } from './CreateMasterPlanForm';
 import { MasterPlanActions } from './MasterPlanActions';
+import { MasterPlansTable } from '../../LandBankTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,32 +153,7 @@ export default async function EstateDetailPage({ params }: { params: { estateId:
       <section>
         <PageHeader title="Master plans" />
         <CreateMasterPlanForm estateId={estate.id} />
-        <DataTable
-          columns={[
-            { header: 'Version', render: (p: MasterPlan) => `v${p.version}` },
-            { header: 'Summary', render: (p: MasterPlan) => p.summary ?? '—' },
-            { header: 'Total planned units', align: 'right', render: (p: MasterPlan) => (p.totalPlannedUnits != null ? String(p.totalPlannedUnits) : '—') },
-            {
-              header: 'Zones',
-              render: (p: MasterPlan) =>
-                p.zones.length === 0
-                  ? '—'
-                  : p.zones
-                      .map((z) => `${z.code} (${PLOT_USE_TYPE_LABEL[z.useType] ?? z.useType})`)
-                      .join(', '),
-            },
-            { header: 'Status', render: (p: MasterPlan) => <Badge tone={MASTER_PLAN_STATUS_TONE[p.status] ?? 'neutral'}>{p.status}</Badge> },
-            { header: 'Approved', render: (p: MasterPlan) => (p.approvedAt ? new Date(p.approvedAt).toLocaleDateString() : '—') },
-            {
-              header: 'Actions',
-              align: 'right',
-              render: (p: MasterPlan) => <MasterPlanActions id={p.id} status={p.status} estateId={estate!.id} />,
-            },
-          ]}
-          rows={masterPlans}
-          keyOf={(p) => p.id}
-          emptyMessage="No master plans for this estate yet."
-        />
+        <MasterPlansTable rows={masterPlans} estateId={estate.id} />
       </section>
     </PageContainer>
   );

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../../lib/api';
 import { AddTitleDeedForm } from './AddTitleDeedForm';
@@ -8,6 +8,7 @@ import { CreateSurveyPlanForm } from './CreateSurveyPlanForm';
 import { SurveyPlanActions } from './SurveyPlanActions';
 import { SubdividePlotsForm } from './SubdividePlotsForm';
 import { PlotReleaseActions } from './PlotReleaseActions';
+import { TitleDeedsTable, SurveyPlansTable, PlotsTable } from '../LandBankTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -280,77 +281,19 @@ export default async function LandParcelDetailPage({ params }: { params: { parce
       <section>
         <PageHeader title="Title deeds" />
         <AddTitleDeedForm parcelId={parcel.id} />
-        <DataTable
-          columns={[
-            { header: 'Type', render: (t: TitleDeed) => TITLE_TYPE_LABEL[t.titleType] ?? t.titleType },
-            { header: 'Title #', render: (t: TitleDeed) => t.titleNumber ?? '—' },
-            { header: 'Issuing authority', render: (t: TitleDeed) => t.issuingAuthority ?? '—' },
-            { header: 'Issued', render: (t: TitleDeed) => (t.issuedDate ? new Date(t.issuedDate).toLocaleDateString() : '—') },
-            { header: 'Expiry', render: (t: TitleDeed) => (t.expiryDate ? new Date(t.expiryDate).toLocaleDateString() : '—') },
-            { header: 'Status', render: (t: TitleDeed) => <Badge tone={TITLE_STATUS_TONE[t.status] ?? 'neutral'}>{t.status}</Badge> },
-            { header: 'Notes', render: (t: TitleDeed) => t.notes ?? '—' },
-            {
-              header: 'Actions',
-              align: 'right',
-              render: (t: TitleDeed) => <TitleDeedActions id={t.id} status={t.status} parcelId={parcel.id} />,
-            },
-          ]}
-          rows={parcel.titleDeeds}
-          keyOf={(t) => t.id}
-          emptyMessage="No title deeds recorded for this parcel yet."
-        />
+        <TitleDeedsTable rows={parcel.titleDeeds} parcelId={parcel.id} />
       </section>
 
       <section style={{ marginTop: tokens.space(8) }}>
         <PageHeader title="Survey plans" />
         <CreateSurveyPlanForm parcelId={parcel.id} />
-        <DataTable
-          columns={[
-            { header: 'Plan #', render: (s: SurveyPlan) => s.planNumber },
-            { header: 'Surveyor', render: (s: SurveyPlan) => s.surveyorName ?? '—' },
-            { header: 'Survey date', render: (s: SurveyPlan) => (s.surveyDate ? new Date(s.surveyDate).toLocaleDateString() : '—') },
-            { header: 'Area (sqm)', align: 'right', render: (s: SurveyPlan) => (s.areaSqm != null ? String(s.areaSqm) : '—') },
-            { header: 'Status', render: (s: SurveyPlan) => <Badge tone={SURVEY_STATUS_TONE[s.status] ?? 'neutral'}>{s.status}</Badge> },
-            {
-              header: 'Actions',
-              align: 'right',
-              render: (s: SurveyPlan) => <SurveyPlanActions id={s.id} status={s.status} parcelId={parcel.id} />,
-            },
-          ]}
-          rows={parcel.surveyPlans}
-          keyOf={(s) => s.id}
-          emptyMessage="No survey plans recorded for this parcel yet."
-        />
+        <SurveyPlansTable rows={parcel.surveyPlans} parcelId={parcel.id} />
       </section>
 
       <section style={{ marginTop: tokens.space(8) }}>
         <PageHeader title="Plots" />
         <SubdividePlotsForm parcelId={parcel.id} surveyPlanOptions={surveyPlanOptions} />
-        <DataTable
-          columns={[
-            { header: 'Plot #', render: (p: Plot) => p.plotNumber },
-            { header: 'Area (sqm)', align: 'right', render: (p: Plot) => String(p.areaSqm) },
-            { header: 'Use type', render: (p: Plot) => PLOT_USE_TYPE_LABEL[p.useType] ?? p.useType },
-            { header: 'Status', render: (p: Plot) => <Badge tone={PLOT_STATUS_TONE[p.status] ?? 'neutral'}>{p.status}</Badge> },
-            { header: 'Notes', render: (p: Plot) => p.notes ?? '—' },
-            {
-              header: 'Actions',
-              align: 'right',
-              render: (p: Plot) => (
-                <PlotReleaseActions
-                  plotId={p.id}
-                  status={p.status}
-                  parcelId={parcel.id}
-                  projectOptions={projectOptions}
-                  release={p.release && !p.release.cancelledAt ? p.release : null}
-                />
-              ),
-            },
-          ]}
-          rows={parcel.plots}
-          keyOf={(p) => p.id}
-          emptyMessage="This parcel has not been subdivided into plots yet."
-        />
+        <PlotsTable rows={parcel.plots} parcelId={parcel.id} projectOptions={projectOptions} />
       </section>
     </PageContainer>
   );

@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateParcelForm } from './CreateParcelForm';
 import { CreateEstateForm } from './CreateEstateForm';
 import { RecordAcquisitionForm } from './RecordAcquisitionForm';
+import { LandParcelsTable, EstatesTable } from './LandBankTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -144,46 +145,34 @@ export default async function LandBankPage({ searchParams }: { searchParams: { e
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Land parcels" />
+
         {parcelsError && (
-          <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>
+          <div
+            style={{
+              color: tokens.color.negative,
+              fontFamily: tokens.font.body,
+              marginBottom: tokens.space(4),
+            }}
+          >
             {parcelsError}
           </div>
         )}
+
         {parcelData && (
           <>
             <CreateParcelForm entityId={parcelData.entityId} />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (p: LandParcel) => p.code },
-                { header: 'Name', render: (p: LandParcel) => p.name },
-                { header: 'Location', render: (p: LandParcel) => p.location ?? '—' },
-                { header: 'Area (sqm)', align: 'right', render: (p: LandParcel) => String(p.areaSqm) },
-                { header: 'Status', render: (p: LandParcel) => <Badge tone={STATUS_TONE[p.status] ?? 'neutral'}>{p.status}</Badge> },
-                { header: 'Acquisitions', align: 'right', render: (p: LandParcel) => String(p.acquisitions.length) },
-                { header: 'Titles', align: 'right', render: (p: LandParcel) => String(p.titleDeeds.length) },
-                { header: 'Survey plans', align: 'right', render: (p: LandParcel) => String(p.surveyPlans.length) },
-                { header: 'Plots', align: 'right', render: (p: LandParcel) => String(p.plots.length) },
-                {
-                  header: 'View',
-                  render: (p: LandParcel) => (
-                    <Link href={`/land-bank/${p.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                      Titles →
-                    </Link>
-                  ),
-                },
-              ]}
-              rows={parcelData.parcels}
-              keyOf={(p) => p.id}
-              emptyMessage="No land parcels for this entity yet."
-              filters={[{ label: 'Status', options: STATUS_FILTER_OPTIONS, getValue: (p: LandParcel) => p.status }]}
-            />
+
+            <LandParcelsTable rows={parcelData.parcels} />
           </>
         )}
       </section>
 
       {parcelData && (
         <section style={{ marginBottom: tokens.space(8) }}>
-          <PageHeader title="Record acquisition" subtitle="Selects from the parcels listed above." />
+          <PageHeader
+            title="Record acquisition"
+            subtitle="Selects from the parcels listed above."
+          />
           <RecordAcquisitionForm parcelOptions={parcelOptions} />
         </section>
       )}
@@ -191,34 +180,23 @@ export default async function LandBankPage({ searchParams }: { searchParams: { e
       {entityId && (
         <section>
           <PageHeader title="Estates" />
+
           {estatesError && (
-            <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>
+            <div
+              style={{
+                color: tokens.color.negative,
+                fontFamily: tokens.font.body,
+                marginBottom: tokens.space(4),
+              }}
+            >
               {estatesError}
             </div>
           )}
+
           {estates && (
             <>
               <CreateEstateForm entityId={entityId} />
-              <DataTable
-                columns={[
-                  { header: 'Code', render: (e: Estate) => e.code },
-                  { header: 'Name', render: (e: Estate) => e.name },
-                  { header: 'Location', render: (e: Estate) => e.location ?? '—' },
-                  { header: 'Description', render: (e: Estate) => e.description ?? '—' },
-                  { header: 'Projects', align: 'right', render: (e: Estate) => String(e.projects.length) },
-                  {
-                    header: 'View',
-                    render: (e: Estate) => (
-                      <Link href={`/land-bank/estates/${e.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                        Master plans →
-                      </Link>
-                    ),
-                  },
-                ]}
-                rows={estates}
-                keyOf={(e) => e.id}
-                emptyMessage="No estates for this entity yet."
-              />
+              <EstatesTable rows={estates} />
             </>
           )}
         </section>

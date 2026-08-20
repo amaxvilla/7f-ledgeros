@@ -1,9 +1,9 @@
-import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateCommissionPlanForm } from './CreateCommissionPlanForm';
 import { DeactivatePlanControl } from './DeactivatePlanControl';
+import { CommissionPlansTable } from './CommissionPlansTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,28 +117,7 @@ export default async function CommissionPlansPage({ searchParams }: { searchPara
 
           <CreateCommissionPlanForm entityId={entityId!} />
 
-          <DataTable
-            columns={[
-              { header: 'Code', render: (p: CommissionPlan) => <Link href={`/commission-plans/${p.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>{p.code}</Link> },
-              { header: 'Name', render: (p: CommissionPlan) => p.name },
-              { header: 'Type', render: (p: CommissionPlan) => p.type },
-              { header: 'Scope', render: (p: CommissionPlan) => p.scope },
-              { header: 'Target', render: (p: CommissionPlan) => scopeTarget(p) },
-              { header: 'Rate / Amount', render: (p: CommissionPlan) => rateDisplay(p) },
-              { header: 'Referral', render: (p: CommissionPlan) => (p.isReferral ? 'Yes' : 'No') },
-              { header: 'Effective from', render: (p: CommissionPlan) => new Date(p.effectiveFrom).toLocaleDateString() },
-              { header: 'Status', render: (p: CommissionPlan) => <Badge tone={STATUS_TONE[p.status]}>{p.status}</Badge> },
-              { header: 'Actions', render: (p: CommissionPlan) => <DeactivatePlanControl planId={p.id} status={p.status} /> },
-            ]}
-            rows={plans}
-            keyOf={(p) => p.id}
-            emptyMessage="No commission plans configured for this entity yet."
-            search={{ placeholder: 'Search code, name…', getText: (p) => `${p.code} ${p.name}` }}
-            filters={[
-              { label: 'Status', options: STATUS_FILTER_OPTIONS, getValue: (p: CommissionPlan) => p.status },
-              { label: 'Scope', options: SCOPE_FILTER_OPTIONS, getValue: (p: CommissionPlan) => p.scope },
-            ]}
-          />
+          <CommissionPlansTable rows={plans} />
         </>
       )}
     </PageContainer>

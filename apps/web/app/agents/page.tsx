@@ -1,8 +1,8 @@
-import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateAgentForm } from './CreateAgentForm';
+import { AgentsTable } from './AgentsTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,25 +101,7 @@ export default async function AgentsPage({ searchParams }: { searchParams: { ent
 
           <CreateAgentForm entityId={entityId!} />
 
-          <DataTable
-            columns={[
-              { header: 'Code', render: (a: Agent) => <Link href={`/agents/${a.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>{a.code}</Link> },
-              { header: 'Name', render: (a: Agent) => a.displayName },
-              { header: 'Type', render: (a: Agent) => a.agentType },
-              { header: 'Email', render: (a: Agent) => a.email },
-              { header: 'Phone', render: (a: Agent) => a.phone },
-              { header: 'License expiry', render: (a: Agent) => (a.licenseExpiryDate ? new Date(a.licenseExpiryDate).toLocaleDateString() : '—') },
-              { header: 'Status', render: (a: Agent) => <Badge tone={STATUS_TONE[a.status]}>{a.status.replace('_', ' ')}</Badge> },
-            ]}
-            rows={agents}
-            keyOf={(a) => a.id}
-            emptyMessage="No agents registered for this entity yet."
-            search={{ placeholder: 'Search name, code, email, phone…', getText: (a) => `${a.code} ${a.displayName} ${a.email} ${a.phone}` }}
-            filters={[
-              { label: 'Status', options: STATUS_FILTER_OPTIONS, getValue: (a: Agent) => a.status },
-              { label: 'Type', options: TYPE_FILTER_OPTIONS, getValue: (a: Agent) => a.agentType },
-            ]}
-          />
+          <AgentsTable rows={agents} />
         </>
       )}
     </PageContainer>

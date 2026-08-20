@@ -1,5 +1,6 @@
-import { Badge, DataTable, KpiCard, tokens } from '@7f/ui';
+import { KpiCard, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../../lib/api';
+import { AgentCommissionTable } from '../AgentsTables';
 
 interface AgentStatementCalculation {
   id: string;
@@ -71,18 +72,7 @@ export async function AgentCommissionStatement({ agentId }: { agentId: string })
         <KpiCard label="Paid" value={formatCurrency(statement.summary.paid)} tone="positive" />
         <KpiCard label="Outstanding" value={formatCurrency(statement.summary.outstanding)} tone={statement.summary.outstanding > 0 ? 'warning' : 'positive'} />
       </section>
-      <DataTable
-        columns={[
-          { header: 'Calculation', render: (r: AgentStatementCalculation) => r.id.slice(0, 8) },
-          { header: 'Sale allocation', render: (r: AgentStatementCalculation) => r.allocationId.slice(0, 8) },
-          { header: 'Status', render: (r: AgentStatementCalculation) => <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge> },
-          { header: 'Net commission', align: 'right' as const, render: (r: AgentStatementCalculation) => formatCurrency(Number(r.netCommission)) },
-          { header: 'Calculated', render: (r: AgentStatementCalculation) => new Date(r.calculatedAt).toLocaleDateString() },
-        ]}
-        rows={statement.calculations}
-        keyOf={(r: AgentStatementCalculation) => r.id}
-        emptyMessage="No commission calculations for this agent yet."
-      />
+      <AgentCommissionTable rows={statement.calculations} />
     </div>
   );
 }

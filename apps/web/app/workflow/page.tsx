@@ -3,6 +3,7 @@ import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { CreateWorkflowDefinitionForm } from './CreateWorkflowDefinitionForm';
+import { WorkflowDefinitionsTable } from './WorkflowTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,29 +123,7 @@ export default async function WorkflowPage() {
       <PageHeader title="New definition" />
       <CreateWorkflowDefinitionForm roleOptions={roleOptions} />
 
-      <DataTable
-        columns={[
-          { header: 'Code', render: (d: WorkflowDefinitionSummary) => d.code },
-          { header: 'Name', render: (d: WorkflowDefinitionSummary) => d.name },
-          { header: 'Entity type', render: (d: WorkflowDefinitionSummary) => d.entityType },
-          { header: 'Stages', align: 'right', render: (d: WorkflowDefinitionSummary) => String(d.stages.length) },
-          {
-            header: 'Status',
-            render: (d: WorkflowDefinitionSummary) => <Badge tone={d.isActive ? 'positive' : 'neutral'}>{d.isActive ? 'Active' : 'Inactive'}</Badge>,
-          },
-          {
-            header: '',
-            render: (d: WorkflowDefinitionSummary) => (
-              <Link href={`/workflow/${d.code}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                View →
-              </Link>
-            ),
-          },
-        ]}
-        rows={definitions}
-        keyOf={(d) => d.id}
-        emptyMessage="No active workflow definitions found."
-      />
+      <WorkflowDefinitionsTable rows={definitions} />
     </PageContainer>
   );
 }

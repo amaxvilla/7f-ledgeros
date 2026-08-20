@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { InstanceLookupForm } from './InstanceLookupForm';
+import { WorkflowInstancesTable } from '../WorkflowTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,31 +120,7 @@ export default async function WorkflowInstancesPage({
       )}
 
       {searched && !error && (
-        <DataTable
-          columns={[
-            { header: 'Started', render: (i: WorkflowInstanceSummary) => new Date(i.startedAt).toLocaleString() },
-            { header: 'Status', render: (i: WorkflowInstanceSummary) => <Badge tone={STATUS_TONE[i.status] ?? 'neutral'}>{i.status}</Badge> },
-            {
-              header: 'Active stage',
-              render: (i: WorkflowInstanceSummary) => {
-                const active = i.stageInstances.find((s) => s.status === 'ACTIVE');
-                return active ? `#${active.sequence}` : '—';
-              },
-            },
-            { header: 'Completed', render: (i: WorkflowInstanceSummary) => (i.completedAt ? new Date(i.completedAt).toLocaleString() : '—') },
-            {
-              header: '',
-              render: (i: WorkflowInstanceSummary) => (
-                <Link href={`/workflow/instances/${i.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                  View →
-                </Link>
-              ),
-            },
-          ]}
-          rows={instances}
-          keyOf={(i) => i.id}
-          emptyMessage="No workflow instances found for that entity."
-        />
+        <WorkflowInstancesTable rows={instances} />
       )}
     </PageContainer>
   );

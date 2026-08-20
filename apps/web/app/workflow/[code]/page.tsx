@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { StartInstanceForm } from './StartInstanceForm';
+import { WorkflowStagesTable, WorkflowStageRulesTable, WorkflowRulesTable } from '../WorkflowTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,58 +141,20 @@ export default async function WorkflowDefinitionPage({ params }: { params: { cod
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Stages" />
-        <DataTable
-          columns={[
-            { header: '#', align: 'right', render: (s: WorkflowStage) => String(s.sequence) },
-            { header: 'Name', render: (s: WorkflowStage) => s.name },
-            { header: 'Type', render: (s: WorkflowStage) => s.stageType },
-            { header: 'Required role', render: (s: WorkflowStage) => s.requiredRoleCode ?? '—' },
-            { header: 'Min approvals', align: 'right', render: (s: WorkflowStage) => String(s.minApprovals) },
-            { header: 'Stage rules', align: 'right', render: (s: WorkflowStage) => String(s.rules.length) },
-          ]}
-          rows={definition.stages}
-          keyOf={(s) => s.id}
-          emptyMessage="This workflow has no stages."
-        />
+        <WorkflowStagesTable rows={definition.stages} />
       </section>
 
       {definition.stages.some((s) => s.rules.length > 0) && (
         <section style={{ marginBottom: tokens.space(8) }}>
           <PageHeader title="Stage-level rules" subtitle="Conditions that change how a specific stage's approval is required" />
-          <DataTable
-            columns={[
-              {
-                header: 'Stage',
-                render: (r: WorkflowRule & { stageName: string }) => r.stageName,
-              },
-              { header: 'Field', render: (r: WorkflowRule) => r.field },
-              { header: 'Operator', render: (r: WorkflowRule) => OPERATOR_LABEL[r.operator] ?? r.operator },
-              { header: 'Value', render: (r: WorkflowRule) => r.value },
-              { header: 'Required role', render: (r: WorkflowRule) => r.requiredRoleCode ?? '—' },
-              { header: 'Description', render: (r: WorkflowRule) => r.description ?? '—' },
-            ]}
-            rows={definition.stages.flatMap((s) => s.rules.map((r) => ({ ...r, stageName: s.name })))}
-            keyOf={(r) => r.id}
-            emptyMessage="No stage-level rules."
-          />
+          <WorkflowStageRulesTable rows={definition.stages.flatMap((s) => s.rules.map((r) => ({ ...r, stageName: s.name })))} />
         </section>
       )}
 
       {definition.rules.length > 0 && (
         <section>
           <PageHeader title="Workflow-level rules" subtitle="Conditions that decide whether an entire stage applies at all" />
-          <DataTable
-            columns={[
-              { header: 'Field', render: (r: WorkflowRule) => r.field },
-              { header: 'Operator', render: (r: WorkflowRule) => OPERATOR_LABEL[r.operator] ?? r.operator },
-              { header: 'Value', render: (r: WorkflowRule) => r.value },
-              { header: 'Required role', render: (r: WorkflowRule) => r.requiredRoleCode ?? '—' },
-              { header: 'Description', render: (r: WorkflowRule) => r.description ?? '—' },
-            ]}
-            rows={definition.rules}
-            keyOf={(r) => r.id}
-            emptyMessage="No workflow-level rules."
-          />
+          <WorkflowRulesTable rows={definition.rules} />
         </section>
       )}
     </PageContainer>

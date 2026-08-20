@@ -3,6 +3,7 @@ import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../../lib/api';
 import { ActOnWorkflowForm } from '../ActOnWorkflowForm';
 import { ResubmitInstanceButton } from '../ResubmitInstanceButton';
+import { WorkflowInstanceStagesTable, WorkflowActionHistoryTable } from '../../WorkflowTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -203,37 +204,12 @@ export default async function WorkflowInstanceDetailPage({ params }: { params: {
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Stages" />
-        <DataTable
-          columns={[
-            { header: '#', align: 'right', render: (s: WorkflowStageInstanceDetail) => String(s.sequence) },
-            { header: 'Name', render: (s: WorkflowStageInstanceDetail) => s.stageDefinition.name },
-            { header: 'Status', render: (s: WorkflowStageInstanceDetail) => <Badge tone={STAGE_STATUS_TONE[s.status] ?? 'neutral'}>{s.status}</Badge> },
-            { header: 'Required role', render: (s: WorkflowStageInstanceDetail) => s.requiredRoleCode ?? '—' },
-            {
-              header: 'Approvals',
-              align: 'right',
-              render: (s: WorkflowStageInstanceDetail) => `${s.approvalsReceived}/${s.requiredApprovals}`,
-            },
-          ]}
-          rows={instance.stageInstances}
-          keyOf={(s) => s.id}
-          emptyMessage="This instance has no stages."
-        />
+        <WorkflowInstanceStagesTable rows={instance.stageInstances} />
       </section>
 
       <section>
         <PageHeader title="Action history" />
-        <DataTable
-          columns={[
-            { header: 'When', render: (a: WorkflowActionRecord & { stageSequence: number }) => new Date(a.actedAt).toLocaleString() },
-            { header: 'Stage', align: 'right', render: (a: WorkflowActionRecord & { stageSequence: number }) => `#${a.stageSequence}` },
-            { header: 'Action', render: (a: WorkflowActionRecord) => a.action },
-            { header: 'Comments', render: (a: WorkflowActionRecord) => a.comments ?? '—' },
-          ]}
-          rows={instance.stageInstances.flatMap((s) => s.actions.map((a) => ({ ...a, stageSequence: s.sequence })))}
-          keyOf={(a) => a.id}
-          emptyMessage="No actions recorded yet."
-        />
+        <WorkflowActionHistoryTable rows={instance.stageInstances.flatMap((s) => s.actions.map((a) => ({ ...a, stageSequence: s.sequence })))} />
       </section>
     </PageContainer>
   );

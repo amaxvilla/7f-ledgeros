@@ -1,8 +1,9 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { HandoverActions } from './HandoverActions';
 import { AddSnagForm } from './AddSnagForm';
 import { SnagActions } from './SnagActions';
+import { HandoverSnagsTable } from './HandoverDetailTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,19 +117,7 @@ export default async function HandoverRecordPage({ params }: { params: { id: str
       <section>
         <PageHeader title="Snags" />
         <AddSnagForm handoverRecordId={record.id} />
-        <DataTable
-          columns={[
-            { header: 'Description', render: (s: Snag) => s.description },
-            { header: 'Category', render: (s: Snag) => s.category ?? '—' },
-            { header: 'Severity', render: (s: Snag) => <Badge tone={SNAG_SEVERITY_TONE[s.severity] ?? 'neutral'}>{s.severity}</Badge> },
-            { header: 'Status', render: (s: Snag) => <Badge tone={SNAG_STATUS_TONE[s.status] ?? 'neutral'}>{s.status}</Badge> },
-            { header: 'Due', render: (s: Snag) => (s.dueDate ? new Date(s.dueDate).toLocaleDateString() : '—') },
-            { header: 'Actions', render: (s: Snag) => <SnagActions id={s.id} status={s.status} handoverRecordId={record!.id} /> },
-          ]}
-          rows={record.snags}
-          keyOf={(s) => s.id}
-          emptyMessage="No snags logged for this handover yet."
-        />
+        <HandoverSnagsTable rows={record.snags} handoverRecordId={record.id} />
       </section>
     </PageContainer>
   );

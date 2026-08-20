@@ -1,6 +1,7 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../lib/api';
 import { EntitySelector } from './EntitySelector';
+import { DashboardProjectVarianceTable, DashboardBankReconciliationTable } from './DashboardTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,44 +130,12 @@ export default async function DashboardPage({
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Top projects by variance" />
-            <DataTable
-              columns={[
-                { header: 'Project', render: (r: ProjectVariance) => r.projectName },
-                { header: 'Budgeted', align: 'right', render: (r: ProjectVariance) => formatCurrency(r.budgeted) },
-                { header: 'Actual', align: 'right', render: (r: ProjectVariance) => formatCurrency(r.actual) },
-                {
-                  header: 'Variance',
-                  align: 'right',
-                  render: (r: ProjectVariance) => (
-                    <Badge tone={r.variance >= 0 ? 'positive' : 'negative'}>{formatCurrency(r.variance)}</Badge>
-                  ),
-                },
-              ]}
-              rows={data.topProjects}
-              keyOf={(r) => r.projectId}
-              emptyMessage="No approved budgets with project-level lines yet."
-            />
+            <DashboardProjectVarianceTable rows={data.topProjects} />
           </section>
 
           <section>
             <PageHeader title="Bank reconciliation status" />
-            <DataTable
-              columns={[
-                { header: 'Account', render: (r: BankReconStatus['bankAccounts'][number]) => r.accountName },
-                {
-                  header: 'Status',
-                  render: (r: BankReconStatus['bankAccounts'][number]) => (
-                    <Badge tone={r.status === 'APPROVED' ? 'positive' : r.status === 'NOT_STARTED' ? 'neutral' : 'warning'}>
-                      {r.status}
-                    </Badge>
-                  ),
-                },
-                { header: 'Unmatched lines', align: 'right', render: (r: BankReconStatus['bankAccounts'][number]) => String(r.unmatchedCount) },
-              ]}
-              rows={data.bankRecon.bankAccounts}
-              keyOf={(r) => r.bankAccountId}
-              emptyMessage="No active bank accounts for this entity."
-            />
+            <DashboardBankReconciliationTable rows={data.bankRecon.bankAccounts} />
           </section>
         </>
       )}

@@ -1,6 +1,7 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { DeclineEnvelopeButton } from './DeclineEnvelopeButton';
+import { SignaturesTable } from './SignaturesTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,18 +96,7 @@ export default async function SignaturesPage() {
 
           <section>
             <PageHeader title="Envelope register" />
-            <DataTable
-              columns={[
-                { header: 'Document', render: (e: ManualSignatureEnvelope) => e.documentName },
-                { header: 'Subject', render: (e: ManualSignatureEnvelope) => e.subject ?? '—' },
-                { header: 'Status', render: (e: ManualSignatureEnvelope) => <Badge tone={STATUS_TONE[e.status] ?? 'neutral'}>{e.status}</Badge> },
-                { header: 'Created', render: (e: ManualSignatureEnvelope) => new Date(e.createdAt).toLocaleDateString() },
-                { header: 'Actions', align: 'right', render: (e: ManualSignatureEnvelope) => <DeclineEnvelopeButton id={e.id} status={e.status} /> },
-              ]}
-              rows={data.envelopes}
-              keyOf={(e) => e.id}
-              emptyMessage="No signature envelopes yet."
-            />
+            <SignaturesTable rows={data.envelopes} />
           </section>
         </>
       )}

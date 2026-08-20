@@ -1,4 +1,4 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateVacancyForm } from './CreateVacancyForm';
@@ -6,6 +6,7 @@ import { CreateRequisitionForm } from './CreateRequisitionForm';
 import { VacancyActions } from './VacancyActions';
 import { RequisitionActions } from './RequisitionActions';
 import { RetrySyncButton } from './RetrySyncButton';
+import { RecruitmentRequisitionsTable, RecruitmentVacanciesTable, RecruitmentPipelineTable, RecruitmentCalendarSyncTable, RecruitmentTeamsSyncTable, RecruitmentContactSyncTable, RecruitmentSignatureSyncTable } from './RecruitmentTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,41 +219,7 @@ export default async function RecruitmentPage({
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Job requisitions" />
             <CreateRequisitionForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Requisition', render: (r: JobRequisition) => r.jobTitle },
-                {
-                  header: 'Status',
-                  render: (r: JobRequisition) => (
-                    <Badge
-                      tone={
-                        r.status === 'APPROVED'
-                          ? 'positive'
-                          : r.status === 'REJECTED'
-                            ? 'negative'
-                            : r.status === 'CLOSED'
-                              ? 'neutral'
-                              : 'warning'
-                      }
-                    >
-                      {r.status}
-                    </Badge>
-                  ),
-                },
-                { header: 'Headcount', align: 'right', render: (r: JobRequisition) => String(r.headcount) },
-                { header: 'Vacancies', align: 'right', render: (r: JobRequisition) => String(r.vacancies.length) },
-                {
-                  header: 'Actions',
-                  align: 'right',
-                  render: (r: JobRequisition) => (
-                    <RequisitionActions id={r.id} status={r.status} hasWorkflowInstance={r.workflowInstanceId !== null} />
-                  ),
-                },
-              ]}
-              rows={data.requisitions}
-              keyOf={(r) => r.id}
-              emptyMessage="No job requisitions for this entity yet."
-            />
+            <RecruitmentRequisitionsTable rows={data.requisitions} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
@@ -263,42 +230,12 @@ export default async function RecruitmentPage({
                 .filter((r) => r.status === 'APPROVED')
                 .map((r) => ({ id: r.id, jobTitle: r.jobTitle }))}
             />
-            <DataTable
-              columns={[
-                { header: 'Vacancy', render: (r: Vacancy) => r.title },
-                {
-                  header: 'Status',
-                  render: (r: Vacancy) => (
-                    <Badge tone={r.status === 'OPEN' ? 'positive' : r.status === 'CLOSED' ? 'neutral' : 'warning'}>{r.status}</Badge>
-                  ),
-                },
-                { header: 'Applications', align: 'right', render: (r: Vacancy) => String(r._count.applications) },
-                { header: 'Actions', align: 'right', render: (r: Vacancy) => <VacancyActions id={r.id} status={r.status} /> },
-              ]}
-              rows={data.vacancies}
-              keyOf={(r) => r.id}
-              emptyMessage="No vacancies for this entity yet."
-            />
+            <RecruitmentVacanciesTable rows={data.vacancies} />
           </section>
 
           <section>
             <PageHeader title="Time-to-hire & conversion" />
-            <DataTable
-              columns={[
-                { header: 'Vacancy', render: (r: PipelineReportRow) => r.title },
-                { header: 'Applications', align: 'right', render: (r: PipelineReportRow) => String(r.totalApplications) },
-                { header: 'Hired', align: 'right', render: (r: PipelineReportRow) => String(r.hired) },
-                { header: 'Rejected', align: 'right', render: (r: PipelineReportRow) => String(r.rejected) },
-                {
-                  header: 'Avg. time to hire',
-                  align: 'right',
-                  render: (r: PipelineReportRow) => (r.avgTimeToHireDays === null ? '—' : `${r.avgTimeToHireDays}d`),
-                },
-              ]}
-              rows={data.pipeline}
-              keyOf={(r) => r.vacancyId}
-              emptyMessage="No vacancies for this entity yet."
-            />
+            <RecruitmentPipelineTable rows={data.pipeline} />
           </section>
 
           <section>
@@ -306,69 +243,22 @@ export default async function RecruitmentPage({
 
             <div style={{ marginBottom: tokens.space(6) }}>
               <PageHeader title="Calendar sync" />
-              <DataTable
-                columns={[
-                  {
-                    header: 'Interview',
-                    render: (r: InterviewSyncFailure) =>
-                      r.jobApplication?.candidate ? `${r.title} — ${r.jobApplication.candidate.firstName} ${r.jobApplication.candidate.lastName}` : r.title,
-                  },
-                  { header: 'Scheduled', render: (r: InterviewSyncFailure) => new Date(r.scheduledAt).toLocaleString() },
-                  { header: 'Status', render: (r: InterviewSyncFailure) => <Badge tone="warning">{r.status}</Badge> },
-                  { header: 'Actions', align: 'right', render: (r: InterviewSyncFailure) => <RetrySyncButton id={r.id} kind="calendar" /> },
-                ]}
-                rows={data.calendarSyncFailures}
-                keyOf={(r) => r.id}
-                emptyMessage="No calendar sync failures."
-              />
+              <RecruitmentCalendarSyncTable rows={data.calendarSyncFailures} />
             </div>
 
             <div style={{ marginBottom: tokens.space(6) }}>
               <PageHeader title="Teams sync" />
-              <DataTable
-                columns={[
-                  {
-                    header: 'Interview',
-                    render: (r: InterviewSyncFailure) =>
-                      r.jobApplication?.candidate ? `${r.title} — ${r.jobApplication.candidate.firstName} ${r.jobApplication.candidate.lastName}` : r.title,
-                  },
-                  { header: 'Scheduled', render: (r: InterviewSyncFailure) => new Date(r.scheduledAt).toLocaleString() },
-                  { header: 'Status', render: (r: InterviewSyncFailure) => <Badge tone="warning">{r.status}</Badge> },
-                  { header: 'Actions', align: 'right', render: (r: InterviewSyncFailure) => <RetrySyncButton id={r.id} kind="teams" /> },
-                ]}
-                rows={data.teamsSyncFailures}
-                keyOf={(r) => r.id}
-                emptyMessage="No Teams sync failures."
-              />
+              <RecruitmentTeamsSyncTable rows={data.teamsSyncFailures} />
             </div>
 
             <div style={{ marginBottom: tokens.space(6) }}>
               <PageHeader title="Contact sync" />
-              <DataTable
-                columns={[
-                  { header: 'Candidate', render: (r: CandidateSyncFailure) => `${r.firstName} ${r.lastName}` },
-                  { header: 'Email', render: (r: CandidateSyncFailure) => r.email },
-                  { header: 'Actions', align: 'right', render: (r: CandidateSyncFailure) => <RetrySyncButton id={r.id} kind="contact" /> },
-                ]}
-                rows={data.contactSyncFailures}
-                keyOf={(r) => r.id}
-                emptyMessage="No contact sync failures."
-              />
+              <RecruitmentContactSyncTable rows={data.contactSyncFailures} />
             </div>
 
             <div>
               <PageHeader title="Signature sync" />
-              <DataTable
-                columns={[
-                  { header: 'Offer', render: (r: OfferSyncFailure) => r.jobTitle },
-                  { header: 'Status', render: (r: OfferSyncFailure) => <Badge tone="warning">{r.status}</Badge> },
-                  { header: 'Sent', render: (r: OfferSyncFailure) => (r.sentAt ? new Date(r.sentAt).toLocaleString() : '—') },
-                  { header: 'Actions', align: 'right', render: (r: OfferSyncFailure) => <RetrySyncButton id={r.id} kind="signature" /> },
-                ]}
-                rows={data.signatureSyncFailures}
-                keyOf={(r) => r.id}
-                emptyMessage="No signature sync failures."
-              />
+              <RecruitmentSignatureSyncTable rows={data.signatureSyncFailures} />
             </div>
           </section>
         </>

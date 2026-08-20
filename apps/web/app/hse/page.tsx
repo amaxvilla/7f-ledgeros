@@ -1,4 +1,4 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
@@ -12,6 +12,7 @@ import { CreateInspectionChecklistForm } from './CreateInspectionChecklistForm';
 import { RecordItemResultForm } from './RecordItemResultForm';
 import { FinalizeChecklistButton } from './FinalizeChecklistButton';
 import { NearMissStatusActions } from './NearMissStatusActions';
+import { HseIncidentsTable, HseNearMissesTable, HseCorrectiveActionsTable, HseExpiringPpeTable, HseToolboxTalksTable, HseInspectionChecklistsTable } from './HseTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -353,129 +354,36 @@ export default async function HseDashboardPage({ searchParams }: { searchParams:
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Incidents" />
             <CreateIncidentReportForm entityId={entityId} projectOptions={data.projectOptions} />
-            <DataTable
-              columns={[
-                { header: 'Date', render: (r: IncidentReport) => new Date(r.incidentDate).toLocaleDateString() },
-                { header: 'Location', render: (r: IncidentReport) => r.location ?? '—' },
-                { header: 'Description', render: (r: IncidentReport) => r.description },
-                { header: 'Severity', render: (r: IncidentReport) => <Badge tone={SEVERITY_TONE[r.severity]}>{r.severity}</Badge> },
-                { header: 'Status', render: (r: IncidentReport) => <Badge tone={CASE_STATUS_TONE[r.status]}>{r.status}</Badge> },
-                { header: 'Actions', align: 'right', render: (r: IncidentReport) => <IncidentStatusActions id={r.id} status={r.status} /> },
-              ]}
-              rows={data.incidents}
-              keyOf={(r) => r.id}
-              emptyMessage="No incidents reported for this entity."
-            />
+            <HseIncidentsTable rows={data.incidents} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Near misses" />
-            <DataTable
-              columns={[
-                { header: 'Date', render: (r: NearMiss) => new Date(r.occurredAt).toLocaleDateString() },
-                { header: 'Location', render: (r: NearMiss) => r.location ?? '—' },
-                { header: 'Description', render: (r: NearMiss) => r.description },
-                { header: 'Status', render: (r: NearMiss) => <Badge tone={CASE_STATUS_TONE[r.status]}>{r.status}</Badge> },
-                { header: 'Actions', align: 'right', render: (r: NearMiss) => <NearMissStatusActions id={r.id} status={r.status} /> },
-              ]}
-              rows={data.nearMisses}
-              keyOf={(r) => r.id}
-              emptyMessage="No near misses reported for this entity."
-            />
+            <HseNearMissesTable rows={data.nearMisses} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Corrective actions" />
             <CreateCorrectiveActionForm linkOptions={data.linkOptions} />
-            <DataTable
-              columns={[
-                { header: 'Description', render: (r: CorrectiveActionRow) => r.description },
-                { header: 'Due', render: (r: CorrectiveActionRow) => new Date(r.dueDate).toLocaleDateString() },
-                { header: 'Status', render: (r: CorrectiveActionRow) => <Badge tone={ACTION_STATUS_TONE[r.status]}>{r.status}</Badge> },
-                { header: 'Actions', align: 'right', render: (r: CorrectiveActionRow) => <CorrectiveActionActions id={r.id} status={r.status} /> },
-              ]}
-              rows={data.correctiveActions}
-              keyOf={(r) => r.id}
-              emptyMessage="No corrective actions linked to this entity's incidents or near misses."
-            />
+            <HseCorrectiveActionsTable rows={data.correctiveActions} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="PPE expiring within 30 days" />
             <CreatePpeIssuanceForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Employee', render: (r: ExpiringPpeIssuance) => `${r.employee.firstName} ${r.employee.lastName}` },
-                { header: 'Item', render: (r: ExpiringPpeIssuance) => r.itemName },
-                { header: 'Quantity', align: 'right', render: (r: ExpiringPpeIssuance) => String(r.quantity) },
-                {
-                  header: 'Expires',
-                  render: (r: ExpiringPpeIssuance) => (r.expiryDate ? new Date(r.expiryDate).toLocaleDateString() : '—'),
-                },
-              ]}
-              rows={data.expiringPpe}
-              keyOf={(r) => r.id}
-              emptyMessage="No PPE items expiring in the next 30 days."
-            />
+            <HseExpiringPpeTable rows={data.expiringPpe} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Toolbox talks" subtitle={`${data.toolboxTalks.length} logged, ${data.toolboxTalks.reduce((sum, t) => sum + t.attendeeCount, 0)} total attendees`} />
             <CreateToolboxTalkForm entityId={entityId} projectOptions={data.projectOptions} />
-            <DataTable
-              columns={[
-                { header: 'Date', render: (r: ToolboxTalk) => new Date(r.talkDate).toLocaleDateString() },
-                { header: 'Topic', render: (r: ToolboxTalk) => r.topic },
-                { header: 'Attendees', align: 'right', render: (r: ToolboxTalk) => String(r.attendeeCount) },
-              ]}
-              rows={data.toolboxTalks}
-              keyOf={(r) => r.id}
-              emptyMessage="No toolbox talks logged for this entity."
-            />
+            <HseToolboxTalksTable rows={data.toolboxTalks} />
           </section>
 
           <section>
             <PageHeader title="Inspection checklists" />
             <CreateInspectionChecklistForm entityId={entityId} projectOptions={data.projectOptions} />
-            <DataTable
-              columns={[
-                { header: 'Date', render: (r: InspectionChecklist) => new Date(r.inspectionDate).toLocaleDateString() },
-                { header: 'Type', render: (r: InspectionChecklist) => r.checklistType },
-                {
-                  header: 'Items',
-                  render: (r: InspectionChecklist) => (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space(1), minWidth: '360px' }}>
-                      {r.items.map((item) => (
-                        <RecordItemResultForm
-                          key={item.id}
-                          itemId={item.id}
-                          itemDescription={item.itemDescription}
-                          isCompliant={item.isCompliant}
-                          remarks={item.remarks}
-                        />
-                      ))}
-                    </div>
-                  ),
-                },
-                {
-                  header: 'Result',
-                  render: (r: InspectionChecklist) =>
-                    r.result ? (
-                      <Badge tone={r.result === 'PASS' ? 'positive' : r.result === 'FAIL' ? 'negative' : 'warning'}>{r.result}</Badge>
-                    ) : (
-                      <Badge tone="neutral">PENDING</Badge>
-                    ),
-                },
-                {
-                  header: 'Finalize',
-                  align: 'right',
-                  render: (r: InspectionChecklist) => <FinalizeChecklistButton id={r.id} result={r.result} />,
-                },
-              ]}
-              rows={data.checklists}
-              keyOf={(r) => r.id}
-              emptyMessage="No inspection checklists logged for this entity."
-            />
+            <HseInspectionChecklistsTable rows={data.checklists} />
           </section>
         </>
       )}

@@ -1,7 +1,8 @@
-import { ActionForm, Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { ActionForm, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { markNotificationRead, markAllNotificationsRead } from '../actions';
 import { NotificationFilterForm } from './NotificationFilterForm';
+import { NotificationsTable } from './NotificationsTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,35 +141,7 @@ export default async function NotificationsPage({
         </div>
       )}
 
-      <DataTable
-        columns={[
-          { header: 'Title', render: (n: NotificationRow) => n.title },
-          { header: 'Body', render: (n: NotificationRow) => n.body },
-          { header: 'Channel', render: (n: NotificationRow) => n.channel },
-          { header: 'Status', render: (n: NotificationRow) => <Badge tone={STATUS_TONE[n.status] ?? 'neutral'}>{n.status}</Badge> },
-          { header: 'Received', render: (n: NotificationRow) => new Date(n.createdAt).toLocaleString() },
-          {
-            header: 'Actions',
-            align: 'right',
-            render: (n: NotificationRow) =>
-              n.readAt ? (
-                <span style={{ fontFamily: tokens.font.body, fontSize: '12px', color: tokens.color.textMuted }}>Read</span>
-              ) : (
-                <ActionForm action={() => markNotificationRead(n.id)}>
-                  <button
-                    type="submit"
-                    style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '12px', background: 'none', border: 'none', cursor: 'pointer' }}
-                  >
-                    Mark read
-                  </button>
-                </ActionForm>
-              ),
-          },
-        ]}
-        rows={notifications}
-        keyOf={(n) => n.id}
-        emptyMessage="No notifications match these filters."
-      />
+      <NotificationsTable rows={notifications} />
     </PageContainer>
   );
 }

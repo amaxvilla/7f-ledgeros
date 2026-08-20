@@ -1,9 +1,10 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { CreateIpRuleForm } from './CreateIpRuleForm';
 import { DeactivateIpRuleButton } from './DeactivateIpRuleButton';
 import { PasswordPolicyForm } from './PasswordPolicyForm';
 import type { PasswordPolicyValues } from './PasswordPolicyForm';
+import { SecurityIpRulesTable, SecurityPasswordPoliciesTable } from './SecurityTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,7 +96,7 @@ async function loadSecurity() {
     fetchApi<UserSummary[]>('/users'),
     fetchApi<PasswordPolicy[]>('/security/password-policy'),
   ]);
-  const userLabelById = new Map(users.map((u) => [u.id, `${u.firstName} ${u.lastName} — ${u.email}`]));
+  const userLabelById: Record<string, string> = Object.fromEntries(users.map((u) => [u.id, `${u.firstName} ${u.lastName} — ${u.email}`]),);
   const globalPolicy = passwordPolicies.find((p) => p.entityId === null);
   const currentPasswordPolicy: PasswordPolicyValues = globalPolicy
     ? {
@@ -241,39 +242,14 @@ export default async function SecurityPage() {
                 </>
               )}
             </div>
-            <DataTable
-              columns={[
-                { header: 'Scope', render: (r: IpRule) => <Badge tone={r.scope === 'GLOBAL' ? 'neutral' : 'warning'}>{r.scope}</Badge> },
-                { header: 'User', render: (r: IpRule) => (r.userId ? (data!.userLabelById.get(r.userId) ?? r.userId) : '—') },
-                { header: 'CIDR', render: (r: IpRule) => r.cidr },
-                { header: 'Label', render: (r: IpRule) => r.label ?? '—' },
-                { header: 'Status', render: (r: IpRule) => <Badge tone={r.isActive ? 'positive' : 'neutral'}>{r.isActive ? 'Active' : 'Inactive'}</Badge> },
-                { header: 'Created', render: (r: IpRule) => new Date(r.createdAt).toLocaleDateString() },
-                { header: 'Actions', align: 'right', render: (r: IpRule) => <DeactivateIpRuleButton id={r.id} isActive={r.isActive} /> },
-              ]}
-              rows={data.ipRules}
-              keyOf={(r) => r.id}
-              emptyMessage="No IP restriction rules configured."
-            />
+            <SecurityIpRulesTable rows={data.ipRules} userLabelById={data.userLabelById} />
           </section>
 
           <section>
             <PageHeader title="Password policy" subtitle="Applies globally — enforced at login and password change" />
             <PasswordPolicyForm current={data.currentPasswordPolicy} />
             {data.passwordPolicies.length > 0 && (
-              <DataTable
-                columns={[
-                  { header: 'Scope', render: (p: PasswordPolicy) => <Badge tone={p.entityId === null ? 'neutral' : 'warning'}>{p.entityId === null ? 'GLOBAL' : 'ENTITY'}</Badge> },
-                  { header: 'Min length', render: (p: PasswordPolicy) => String(p.minLength) },
-                  { header: 'Expiry', render: (p: PasswordPolicy) => (p.expiryDays ? `${p.expiryDays} days` : 'Never') },
-                  { header: 'History', render: (p: PasswordPolicy) => String(p.historyCount) },
-                  { header: 'Lockout', render: (p: PasswordPolicy) => `${p.maxFailedLoginAttempts} attempts / ${p.lockoutDurationMinutes}m` },
-                  { header: 'Updated', render: (p: PasswordPolicy) => new Date(p.updatedAt).toLocaleDateString() },
-                ]}
-                rows={data.passwordPolicies}
-                keyOf={(p) => p.id}
-                emptyMessage="No password policy configured yet — defaults are in effect."
-              />
+              <SecurityPasswordPoliciesTable rows={data.passwordPolicies} />
             )}
           </section>
         </>

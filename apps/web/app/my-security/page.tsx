@@ -1,8 +1,9 @@
-import { ActionForm, Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { ActionForm, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { revokeSession, revokeDevice, revokeOtherSessions, renameDevice } from './actions';
 import { EnrollMfaForm } from './EnrollMfaForm';
 import { ChangePasswordForm } from './ChangePasswordForm';
+import { MySecuritySessionsTable, MySecurityTrustedDevicesTable, MySecurityLoginHistoryTable } from './MySecurityTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -192,27 +193,7 @@ export default async function MySecurityPage() {
         </div>
         {sessionsError && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{sessionsError}</div>}
         {sessions && (
-          <DataTable
-            columns={[
-              { header: 'IP address', render: (s: Session) => s.ipAddress ?? '—' },
-              { header: 'Device', render: (s: Session) => s.userAgent ?? '—' },
-              { header: 'Started', render: (s: Session) => new Date(s.createdAt).toLocaleString() },
-              { header: 'Last used', render: (s: Session) => (s.lastUsedAt ? new Date(s.lastUsedAt).toLocaleString() : '—') },
-              {
-                header: '',
-                render: (s: Session) => (
-                  <ActionForm action={revokeSession.bind(null, s.id)}>
-                    <button type="submit" style={{ color: tokens.color.negative, fontFamily: tokens.font.body, background: 'none', border: 'none', cursor: 'pointer' }}>
-                      Revoke
-                    </button>
-                  </ActionForm>
-                ),
-              },
-            ]}
-            rows={sessions}
-            keyOf={(s) => s.id}
-            emptyMessage="No active sessions."
-          />
+          <MySecuritySessionsTable rows={sessions} />
         )}
       </section>
 
@@ -220,63 +201,7 @@ export default async function MySecurityPage() {
         <PageHeader title="Trusted devices" />
         {devicesError && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{devicesError}</div>}
         {devices && (
-          <DataTable
-            columns={[
-              { header: 'Device', render: (d: TrustedDevice) => d.deviceName ?? d.userAgent ?? 'Unnamed device' },
-              { header: 'IP address', render: (d: TrustedDevice) => d.ipAddress ?? '—' },
-              { header: 'Trusted since', render: (d: TrustedDevice) => new Date(d.trustedAt).toLocaleString() },
-              { header: 'Last used', render: (d: TrustedDevice) => (d.lastUsedAt ? new Date(d.lastUsedAt).toLocaleString() : '—') },
-              {
-                header: '',
-                render: (d: TrustedDevice) => (
-                  <ActionForm
-                    action={renameDevice.bind(null, d.id)}
-                    style={{ display: 'flex', gap: tokens.space(2), alignItems: 'center' }}
-                  >
-                    <input
-                      name="deviceName"
-                      defaultValue={d.deviceName ?? ''}
-                      placeholder="Name this device"
-                      style={{
-                        fontFamily: tokens.font.body,
-                        fontSize: '13px',
-                        padding: `${tokens.space(1)} ${tokens.space(2)}`,
-                        border: `1px solid ${tokens.color.border}`,
-                        borderRadius: tokens.radius.sm,
-                        width: '140px',
-                      }}
-                    />
-                    <button
-                      type="submit"
-                      style={{
-                        color: tokens.color.textMuted,
-                        fontFamily: tokens.font.body,
-                        fontSize: '13px',
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Save
-                    </button>
-                  </ActionForm>
-                ),
-              },
-              {
-                header: '',
-                render: (d: TrustedDevice) => (
-                  <ActionForm action={revokeDevice.bind(null, d.id)}>
-                    <button type="submit" style={{ color: tokens.color.negative, fontFamily: tokens.font.body, background: 'none', border: 'none', cursor: 'pointer' }}>
-                      Revoke
-                    </button>
-                  </ActionForm>
-                ),
-              },
-            ]}
-            rows={devices}
-            keyOf={(d) => d.id}
-            emptyMessage="No trusted devices."
-          />
+          <MySecurityTrustedDevicesTable rows={devices} />
         )}
       </section>
 
@@ -286,18 +211,7 @@ export default async function MySecurityPage() {
           <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{loginHistoryError}</div>
         )}
         {loginHistory && (
-          <DataTable
-            columns={[
-              { header: 'Event', render: (h: LoginHistoryEvent) => <Badge tone={EVENT_TONE[h.eventType] ?? 'neutral'}>{h.eventType}</Badge> },
-              { header: 'IP address', render: (h: LoginHistoryEvent) => h.ipAddress ?? '—' },
-              { header: 'Device', render: (h: LoginHistoryEvent) => h.userAgent ?? '—' },
-              { header: 'Reason', render: (h: LoginHistoryEvent) => h.failureReason ?? '—' },
-              { header: 'When', render: (h: LoginHistoryEvent) => new Date(h.createdAt).toLocaleString() },
-            ]}
-            rows={loginHistory}
-            keyOf={(h) => h.id}
-            emptyMessage="No login events recorded yet."
-          />
+          <MySecurityLoginHistoryTable rows={loginHistory} />
         )}
       </section>
 

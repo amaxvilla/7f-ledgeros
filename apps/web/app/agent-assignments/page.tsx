@@ -1,4 +1,4 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import type { ProjectOption } from '../ProjectSelector';
@@ -7,6 +7,7 @@ import type { AgentOption } from './AgentSelector';
 import { TargetLookupForm } from './TargetLookupForm';
 import { CreateAssignmentForm } from './CreateAssignmentForm';
 import { EndAssignmentButton } from './EndAssignmentButton';
+import { AgentAssignmentsTable } from './AgentAssignmentsTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,17 +26,6 @@ interface AgentAssignmentRow {
   notes: string | null;
 }
 
-const SCOPE_TONE: Record<AgentAssignmentRow['scope'], 'neutral' | 'positive' | 'warning'> = {
-  PROJECT: 'neutral',
-  UNIT: 'positive',
-  SALE: 'warning',
-};
-
-function targetLabel(row: AgentAssignmentRow): string {
-  if (row.scope === 'PROJECT') return row.projectId ?? '—';
-  if (row.scope === 'UNIT') return row.unitId ?? '—';
-  return row.allocationId ?? '—';
-}
 
 /**
  * Agent Management, RE-AGENT.2 (frontend) — Agent Assignment. Verified
@@ -129,18 +119,6 @@ export default async function AgentAssignmentsPage({
     }
   }
 
-  const columns = [
-    { header: 'Agent', render: (r: AgentAssignmentRow) => agents.find((a) => a.id === r.agentId)?.displayName ?? r.agentId },
-    { header: 'Scope', render: (r: AgentAssignmentRow) => <Badge tone={SCOPE_TONE[r.scope]}>{r.scope}</Badge> },
-    { header: 'Role', render: (r: AgentAssignmentRow) => r.role.replace('_', ' ') },
-    { header: 'Target', render: (r: AgentAssignmentRow) => targetLabel(r) },
-    { header: 'Assigned', render: (r: AgentAssignmentRow) => new Date(r.assignedAt).toLocaleDateString() },
-    {
-      header: 'Status',
-      render: (r: AgentAssignmentRow) => (r.isActive ? <Badge tone="positive">Active</Badge> : <Badge tone="neutral">Ended{r.endedReason ? `: ${r.endedReason}` : ''}</Badge>),
-    },
-    { header: 'Actions', align: 'right' as const, render: (r: AgentAssignmentRow) => <EndAssignmentButton id={r.id} isActive={r.isActive} /> },
-  ];
 
   return (
     <PageContainer>
@@ -182,7 +160,7 @@ export default async function AgentAssignmentsPage({
           {agentHistoryError && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{agentHistoryError}</div>}
           {agentHistory && (
             <div style={{ marginBottom: tokens.space(8) }}>
-              <DataTable columns={columns} rows={agentHistory} keyOf={(r) => r.id} emptyMessage="No assignments recorded for this agent." />
+              <AgentAssignmentsTable rows={agentHistory} agents={agents} emptyMessage="No assignments recorded for this agent." />
             </div>
           )}
 
@@ -197,7 +175,7 @@ export default async function AgentAssignmentsPage({
           />
           {targetHistoryError && <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{targetHistoryError}</div>}
           {targetHistory && (
-            <DataTable columns={columns} rows={targetHistory} keyOf={(r) => r.id} emptyMessage="No assignments recorded for this target." />
+            <AgentAssignmentsTable rows={targetHistory} agents={agents} emptyMessage="No assignments recorded for this target." />
           )}
         </>
       )}

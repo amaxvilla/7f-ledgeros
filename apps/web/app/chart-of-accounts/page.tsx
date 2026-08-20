@@ -1,17 +1,11 @@
-﻿import {
-  Badge,
-  DataTable,
-  PageContainer,
-  PageHeader,
-  Select,
-  tokens,
-} from "@7f/ui";
+import { PageContainer, PageHeader, Select, tokens } from "@7f/ui";
 import type { SelectOption } from "@7f/ui";
 import { fetchApi, ApiError } from "../../lib/api";
 import { EntitySelector } from "../EntitySelector";
 import { CreateAccountForm } from "./CreateAccountForm";
 import { ActivateAccountForm } from "./ActivateAccountForm";
 import { AccountActions } from "./AccountActions";
+import { EntityAccountActivationTable, AccountRegisterTable } from "./ChartOfAccountsTables";
 
 export const dynamic = "force-dynamic";
 
@@ -124,46 +118,7 @@ export default async function ChartOfAccountsPage({
         <EntitySelector initialValue={entityId} />
 
         {entityId && accounts && (
-          <DataTable
-            columns={[
-              {
-                header: "Code",
-                render: (a: Account) => a.code,
-              },
-              {
-                header: "Name",
-                render: (a: Account) => a.name,
-              },
-              {
-                header: "Type",
-                render: (a: Account) => a.accountType,
-              },
-              {
-                header: "Category",
-                render: (a: Account) => a.accountCategory,
-              },
-              {
-                header: "Action",
-                align: "right",
-                render: (a: Account) =>
-                  a.isActive ? (
-                    <ActivateAccountForm
-                      accountId={a.id}
-                      entityId={entityId}
-                    />
-                  ) : (
-                    <Badge tone="neutral">Inactive</Badge>
-                  ),
-              },
-            ]}
-            rows={accounts}
-            keyOf={(a) => `entity-${a.id}`}
-            emptyMessage="No accounts available for activation."
-            search={{
-              getText: (a) => `${a.code} ${a.name} ${a.accountCategory}`,
-              placeholder: "Search accounts...",
-            }}
-          />
+          <EntityAccountActivationTable rows={accounts} entityId={entityId} />
         )}
       </section>
 
@@ -186,64 +141,7 @@ export default async function ChartOfAccountsPage({
         )}
 
         {accounts && (
-          <DataTable
-            columns={[
-              {
-                header: "Code",
-                render: (a: Account) => a.code,
-              },
-              {
-                header: "Name",
-                render: (a: Account) => a.name,
-              },
-              {
-                header: "Type",
-                render: (a: Account) => a.accountType,
-              },
-              {
-                header: "Category",
-                render: (a: Account) => a.accountCategory,
-              },
-              {
-                header: "Parent",
-                render: (a: Account) =>
-                  a.parentAccount
-                    ? `${a.parentAccount.code} — ${a.parentAccount.name}`
-                    : "—",
-              },
-              {
-                header: "Postable",
-                render: (a: Account) => (
-                  <Badge tone={a.isPostable ? "positive" : "neutral"}>
-                    {a.isPostable ? "Yes" : "No"}
-                  </Badge>
-                ),
-              },
-              {
-                header: "Status",
-                render: (a: Account) => (
-                  <Badge tone={a.isActive ? "positive" : "neutral"}>
-                    {a.isActive ? "Active" : "Inactive"}
-                  </Badge>
-                ),
-              },
-              {
-                header: "Actions",
-                align: "right",
-                render: (a: Account) => (
-                  <AccountActions id={a.id} isActive={a.isActive} />
-                ),
-              },
-            ]}
-            rows={accounts}
-            keyOf={(a) => a.id}
-            emptyMessage="No accounts configured yet."
-            search={{
-              getText: (a) =>
-                `${a.code} ${a.name} ${a.accountType} ${a.accountCategory} ${a.ifrsMapping ?? ""}`,
-              placeholder: "Search by code, name, type or category...",
-            }}
-          />
+          <AccountRegisterTable rows={accounts} />
         )}
       </section>
     </PageContainer>

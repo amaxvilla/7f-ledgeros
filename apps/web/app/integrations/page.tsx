@@ -1,8 +1,8 @@
-import Link from 'next/link';
-import { ActionForm, Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { ActionForm, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { CreateIntegrationForm } from './CreateIntegrationForm';
 import { runHealthCheck, runHealthCheckAll } from './actions';
+import { IntegrationsTable } from './IntegrationsTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,40 +131,7 @@ export default async function IntegrationsPage() {
         <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{providersError}</div>
       )}
 
-      <DataTable
-        columns={[
-          { header: 'Category', render: (p: IntegrationProvider) => p.category },
-          { header: 'Provider', render: (p: IntegrationProvider) => `${p.providerCode} — ${p.name}` },
-          { header: 'Status', render: (p: IntegrationProvider) => <Badge tone={STATUS_TONE[p.status] ?? 'neutral'}>{p.status}</Badge> },
-          { header: 'Credentials', render: (p: IntegrationProvider) => (p.hasCredentials ? <Badge tone="positive">Configured</Badge> : <Badge tone="neutral">None</Badge>) },
-          {
-            header: 'Last checked',
-            render: (p: IntegrationProvider) =>
-              p.lastHealthCheckAt ? `${new Date(p.lastHealthCheckAt).toLocaleString()} (${p.lastHealthCheckOk ? 'OK' : p.lastHealthCheckError ?? 'failed'})` : 'Never checked',
-          },
-          {
-            header: '',
-            render: (p: IntegrationProvider) => (
-              <ActionForm action={runHealthCheck.bind(null, p.id)}>
-                <button type="submit" style={{ color: tokens.color.accent, fontFamily: tokens.font.body, background: 'none', border: 'none', cursor: 'pointer' }}>
-                  Run health check
-                </button>
-              </ActionForm>
-            ),
-          },
-          {
-            header: 'Manage',
-            render: (p: IntegrationProvider) => (
-              <Link href={`/integrations/${p.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                Configure →
-              </Link>
-            ),
-          },
-        ]}
-        rows={providers}
-        keyOf={(p) => p.id}
-        emptyMessage="No integrations configured yet."
-      />
+      <IntegrationsTable rows={providers} />
     </PageContainer>
   );
 }

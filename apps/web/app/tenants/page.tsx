@@ -1,7 +1,8 @@
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateTenantForm } from './CreateTenantForm';
+import { TenantsTable } from './TenantsTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,18 +89,7 @@ export default async function TenantsPage({
             <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{tenantsError}</div>
           )}
           {tenants && (
-            <DataTable
-              columns={[
-                { header: 'Customer', render: (r: Tenant) => `${r.customer.name} (${r.customer.code})` },
-                { header: 'Unit', render: (r: Tenant) => r.unit.name ?? r.unit.code },
-                { header: 'Status', render: (r: Tenant) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-                { header: 'Move-in', render: (r: Tenant) => new Date(r.moveInDate).toLocaleDateString() },
-                { header: 'Move-out', render: (r: Tenant) => (r.moveOutDate ? new Date(r.moveOutDate).toLocaleDateString() : '—') },
-              ]}
-              rows={tenants}
-              keyOf={(r) => r.id}
-              emptyMessage="No tenants for this entity."
-            />
+            <TenantsTable rows={tenants} />
           )}
         </section>
       )}

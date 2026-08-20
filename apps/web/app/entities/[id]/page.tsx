@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../../lib/api';
 import { EditEntityForm } from './EditEntityForm';
+import { EntitySubsidiariesTable } from './EntityDetailTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,24 +136,7 @@ export default async function EntityDetailPage({ params }: { params: { id: strin
       />
 
       <PageHeader title="Subsidiaries" />
-      <DataTable
-        columns={[
-          { header: 'Code', render: (e: EntitySummary) => e.code },
-          { header: 'Name', render: (e: EntitySummary) => e.name },
-          {
-            header: '',
-            align: 'right',
-            render: (e: EntitySummary) => (
-              <Link href={`/entities/${e.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                View →
-              </Link>
-            ),
-          },
-        ]}
-        rows={entity.subsidiaries}
-        keyOf={(e) => e.id}
-        emptyMessage="No subsidiaries under this entity."
-      />
+      <EntitySubsidiariesTable rows={entity.subsidiaries} />
     </PageContainer>
   );
 }

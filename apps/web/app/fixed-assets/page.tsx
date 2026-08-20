@@ -1,7 +1,8 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateFixedAssetForm } from './CreateFixedAssetForm';
+import { FixedAssetsTable } from './FixedAssetsTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -130,19 +131,7 @@ export default async function FixedAssetsPage({
           <section>
             <PageHeader title="Asset register" />
             <CreateFixedAssetForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Tag', render: (r: FixedAsset) => r.assetTag },
-                { header: 'Name', render: (r: FixedAsset) => r.name },
-                { header: 'Category', render: (r: FixedAsset) => r.assetCategory.name },
-                { header: 'Acquired', render: (r: FixedAsset) => new Date(r.acquisitionDate).toLocaleDateString() },
-                { header: 'Cost', render: (r: FixedAsset) => formatCurrency(r.acquisitionCost) },
-                { header: 'Status', render: (r: FixedAsset) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-              ]}
-              rows={data.assets}
-              keyOf={(r) => r.id}
-              emptyMessage="No fixed assets for this entity yet."
-            />
+            <FixedAssetsTable rows={data.assets} />
           </section>
         </>
       )}

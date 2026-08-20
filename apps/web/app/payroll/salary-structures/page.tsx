@@ -7,6 +7,7 @@ import {
 import { fetchApi, ApiError } from '../../../lib/api';
 import { EntitySelector } from '../../EntitySelector';
 import { SalaryStructureEditor } from './SalaryStructureEditor';
+import { SalaryStructuresTable } from './SalaryStructureTables';
 
 interface SalaryStructure {
   id: string;
@@ -71,45 +72,7 @@ export default async function SalaryStructuresPage({
       />
 
       <section style={{ marginBottom: tokens.space(8) }}>
-        <DataTable
-          columns={[
-            { header: 'Code', render: (row: SalaryStructure) => row.code },
-            { header: 'Name', render: (row: SalaryStructure) => row.name },
-            {
-              header: 'Basic salary',
-              align: 'right',
-              render: (row: SalaryStructure) =>
-                row.basicSalary == null ? 'Masked' : String(row.basicSalary),
-            },
-            {
-              header: 'Housing',
-              align: 'right',
-              render: (row: SalaryStructure) =>
-                row.housingAllowance == null
-                  ? 'Masked'
-                  : String(row.housingAllowance),
-            },
-            {
-              header: 'Transport',
-              align: 'right',
-              render: (row: SalaryStructure) =>
-                row.transportAllowance == null
-                  ? 'Masked'
-                  : String(row.transportAllowance),
-            },
-            {
-              header: 'Other',
-              align: 'right',
-              render: (row: SalaryStructure) =>
-                row.otherAllowances == null
-                  ? 'Masked'
-                  : String(row.otherAllowances),
-            },
-          ]}
-          rows={structures}
-          keyOf={(row) => row.id}
-          emptyMessage="No salary structures exist for this entity."
-        />
+        <SalaryStructuresTable rows={structures} />
       </section>
 
       <section>

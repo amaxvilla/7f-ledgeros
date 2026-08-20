@@ -1,7 +1,8 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateMaintenanceRequestForm } from './CreateMaintenanceRequestForm';
+import { FacilityMaintenanceRequestsTable } from './FacilityManagementTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -138,19 +139,7 @@ export default async function FacilityManagementPage({
             <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{requestsError}</div>
           )}
           {requests && (
-            <DataTable
-              columns={[
-                { header: 'Description', render: (r: MaintenanceRequest) => r.description },
-                { header: 'Category', render: (r: MaintenanceRequest) => r.category },
-                { header: 'Priority', render: (r: MaintenanceRequest) => <Badge tone={PRIORITY_TONE[r.priority] ?? 'neutral'}>{r.priority}</Badge> },
-                { header: 'Status', render: (r: MaintenanceRequest) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-                { header: 'Target resolution', render: (r: MaintenanceRequest) => (r.targetResolutionDate ? new Date(r.targetResolutionDate).toLocaleDateString() : '—') },
-                { header: 'Raised', render: (r: MaintenanceRequest) => new Date(r.createdAt).toLocaleDateString() },
-              ]}
-              rows={requests}
-              keyOf={(r) => r.id}
-              emptyMessage="No maintenance requests for this entity."
-            />
+            <FacilityMaintenanceRequestsTable rows={requests} />
           )}
         </section>
       )}

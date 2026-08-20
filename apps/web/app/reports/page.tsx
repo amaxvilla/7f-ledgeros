@@ -1,4 +1,5 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { ReportsTable } from './ReportsTables';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 
@@ -228,19 +229,6 @@ function formatMinorUnits(amount: number, currency: string): string {
   return formatCurrency(amount / 100, currency);
 }
 
-function agingColumns<T extends AgingRow>(counterpartyLabel: string, counterpartyName: (r: T) => string) {
-  return [
-    { header: counterpartyLabel, render: counterpartyName },
-    { header: 'Invoice #', render: (r: T) => r.invoice_number },
-    { header: 'Invoice date', render: (r: T) => new Date(r.invoice_date).toLocaleDateString() },
-    { header: 'Due date', render: (r: T) => (r.due_date ? new Date(r.due_date).toLocaleDateString() : '—') },
-    { header: 'Invoice total', align: 'right' as const, render: (r: T) => formatCurrency(r.invoice_total) },
-    { header: 'Open balance', align: 'right' as const, render: (r: T) => formatCurrency(r.open_balance) },
-    { header: 'Days past due', align: 'right' as const, render: (r: T) => String(r.days_past_due) },
-    { header: 'Bucket', render: (r: T) => <Badge tone={BUCKET_TONE[r.aging_bucket]}>{r.aging_bucket}</Badge> },
-  ];
-}
-
 function agingTotals(rows: AgingRow[]) {
   const totalOpen = rows.reduce((sum, r) => sum + r.open_balance, 0);
   const overdueOpen = rows.filter((r) => r.aging_bucket !== 'current').reduce((sum, r) => sum + r.open_balance, 0);
@@ -271,8 +259,8 @@ function agingTotals(rows: AgingRow[]) {
  * own bucket assignment rather than recomputing it from `days_past_due`
  * client-side.
  *
- * `agingColumns()`/`agingTotals()` are shared, GENERIC helpers
- * (parameterized by which counterparty-name field to render) rather
+ * `agingTotals()` is the shared server-side helper
+ * while table columns and cell rendering now live in the client table component,
  * than two near-duplicate column/total sets — `VendorAgingRow`/
  * `CustomerAgingRow` both extend the same `AgingRow` shape, which is
  * genuinely identical between the two views apart from the vendor/
@@ -568,12 +556,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Overdue balance" value={formatCurrency(vTotals.overdueOpen)} tone={vTotals.overdueOpen > 0 ? 'warning' : 'positive'} />
                 <KpiCard label="90+ days balance" value={formatCurrency(vTotals.over90)} tone={vTotals.over90 > 0 ? 'negative' : 'positive'} />
               </section>
-              <DataTable
-                columns={agingColumns<VendorAgingRow>('Vendor', (r) => r.vendor_name)}
-                rows={data.vendorAging}
-                keyOf={(r: VendorAgingRow) => r.vendor_invoice_id}
-                emptyMessage="No open vendor invoices."
-              />
+              <ReportsTable type="vendor-aging" rows={data.vendorAging} />
             </section>
           );
         })()}
@@ -597,12 +580,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Overdue balance" value={formatCurrency(cTotals.overdueOpen)} tone={cTotals.overdueOpen > 0 ? 'warning' : 'positive'} />
                 <KpiCard label="90+ days balance" value={formatCurrency(cTotals.over90)} tone={cTotals.over90 > 0 ? 'negative' : 'positive'} />
               </section>
-              <DataTable
-                columns={agingColumns<CustomerAgingRow>('Customer', (r) => r.customer_name)}
-                rows={data.customerAging}
-                keyOf={(r: CustomerAgingRow) => r.ar_invoice_id}
-                emptyMessage="No open customer invoices."
-              />
+              <ReportsTable type="customer-aging" rows={data.customerAging} />
             </section>
           );
         })()}
@@ -629,30 +607,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Total cost" value={formatCurrency(totalCost)} />
                 <KpiCard label="Total profit" value={formatCurrency(totalProfit)} tone={totalProfit >= 0 ? 'positive' : 'negative'} />
               </section>
-              <DataTable
-                columns={[
-                  { header: 'Project', render: (r: ProjectProfitabilityRow) => `${r.project_code} — ${r.project_name}` },
-                  { header: 'Revenue', align: 'right' as const, render: (r: ProjectProfitabilityRow) => formatCurrency(r.revenue_amount) },
-                  { header: 'Cost', align: 'right' as const, render: (r: ProjectProfitabilityRow) => formatCurrency(r.cost_amount) },
-                  {
-                    header: 'Profit',
-                    align: 'right' as const,
-                    render: (r: ProjectProfitabilityRow) => (
-                      <span style={{ color: r.profit_amount >= 0 ? undefined : tokens.color.negative }}>
-                        {formatCurrency(r.profit_amount)}
-                      </span>
-                    ),
-                  },
-                  {
-                    header: 'Margin',
-                    align: 'right' as const,
-                    render: (r: ProjectProfitabilityRow) => (r.margin_pct === null ? '—' : `${(r.margin_pct * 100).toFixed(1)}%`),
-                  },
-                ]}
-                rows={rows}
-                keyOf={(r) => r.project_id}
-                emptyMessage="No projects with posted revenue or cost yet."
-              />
+              <ReportsTable type="project-profitability" rows={rows} />
             </section>
           );
         })()}
@@ -679,31 +634,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Accounts with unmatched lines" value={String(withUnmatched)} tone={withUnmatched > 0 ? 'warning' : 'positive'} />
                 <KpiCard label="Total unmatched lines" value={String(totalUnmatched)} tone={totalUnmatched > 0 ? 'negative' : 'positive'} />
               </section>
-              <DataTable
-                columns={[
-                  { header: 'Account', render: (r: BankReconciliationSummaryRow) => r.account_name },
-                  { header: 'Account number', render: (r: BankReconciliationSummaryRow) => r.account_number },
-                  {
-                    header: 'Latest session',
-                    render: (r: BankReconciliationSummaryRow) => (r.session_date ? new Date(r.session_date).toLocaleDateString() : 'No sessions yet'),
-                  },
-                  {
-                    header: 'Session status',
-                    render: (r: BankReconciliationSummaryRow) =>
-                      r.session_status ? <Badge tone={r.session_status === 'APPROVED' ? 'positive' : 'neutral'}>{r.session_status}</Badge> : '—',
-                  },
-                  {
-                    header: 'Unmatched lines',
-                    align: 'right' as const,
-                    render: (r: BankReconciliationSummaryRow) => (
-                      <span style={{ color: r.unmatched_count > 0 ? tokens.color.negative : undefined }}>{r.unmatched_count}</span>
-                    ),
-                  },
-                ]}
-                rows={rows}
-                keyOf={(r) => r.bank_account_id}
-                emptyMessage="No active bank accounts."
-              />
+              <ReportsTable type="bank-reconciliation" rows={rows} />
             </section>
           );
         })()}
@@ -712,23 +643,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
         (() => (
           <section style={{ marginBottom: tokens.space(8) }}>
             <PageHeader title="Cash Forecast" subtitle="Cumulative AP/AR due within each horizon — not discrete windows" />
-            <DataTable
-              columns={[
-                { header: 'Horizon', render: (r: CashForecastRow) => `${r.horizon_days} days` },
-                { header: 'Outflow due (AP)', align: 'right' as const, render: (r: CashForecastRow) => formatCurrency(r.outflow_due) },
-                { header: 'Inflow due (AR)', align: 'right' as const, render: (r: CashForecastRow) => formatCurrency(r.inflow_due) },
-                {
-                  header: 'Net',
-                  align: 'right' as const,
-                  render: (r: CashForecastRow) => (
-                    <span style={{ color: r.net_due >= 0 ? undefined : tokens.color.negative }}>{formatCurrency(r.net_due)}</span>
-                  ),
-                },
-              ]}
-              rows={evenMoreData.cashForecast}
-              keyOf={(r) => String(r.horizon_days)}
-              emptyMessage="No forecast data."
-            />
+            <ReportsTable type="cash-forecast" rows={evenMoreData.cashForecast} />
           </section>
         ))()}
 
@@ -754,24 +669,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Total net book value" value={formatCurrency(totalNbv)} />
                 <KpiCard label="Total accumulated depreciation" value={formatCurrency(totalAccumDep)} />
               </section>
-              <DataTable
-                columns={[
-                  { header: 'Asset tag', render: (r: FixedAssetRegisterRow) => r.asset_tag },
-                  { header: 'Name', render: (r: FixedAssetRegisterRow) => r.asset_name },
-                  { header: 'Category', render: (r: FixedAssetRegisterRow) => r.category_name },
-                  { header: 'Status', render: (r: FixedAssetRegisterRow) => <Badge tone={FIXED_ASSET_STATUS_TONE[r.status]}>{r.status}</Badge> },
-                  { header: 'Acquisition date', render: (r: FixedAssetRegisterRow) => new Date(r.acquisition_date).toLocaleDateString() },
-                  { header: 'Acquisition cost', align: 'right' as const, render: (r: FixedAssetRegisterRow) => formatCurrency(r.acquisition_cost) },
-                  {
-                    header: 'Last depreciated',
-                    render: (r: FixedAssetRegisterRow) => (r.last_depreciated_period ? new Date(r.last_depreciated_period).toLocaleDateString() : '—'),
-                  },
-                  { header: 'Net book value', align: 'right' as const, render: (r: FixedAssetRegisterRow) => formatCurrency(r.net_book_value) },
-                ]}
-                rows={rows}
-                keyOf={(r) => r.fixed_asset_id}
-                emptyMessage="No fixed assets recorded."
-              />
+              <ReportsTable type="fixed-assets" rows={rows} />
             </section>
           );
         })()}
@@ -798,20 +696,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Net received (successful)" value={rows.length > 0 ? formatMinorUnits(totalNet, rows[0].currency) : formatCurrency(0)} />
                 <KpiCard label="Total refunded" value={rows.length > 0 ? formatMinorUnits(totalRefunded, rows[0].currency) : formatCurrency(0)} tone={totalRefunded > 0 ? 'warning' : 'neutral'} />
               </section>
-              <DataTable
-                columns={[
-                  { header: 'Reference', render: (r: PaymentTransactionRegisterRow) => r.reference },
-                  { header: 'Provider', render: (r: PaymentTransactionRegisterRow) => r.provider_code },
-                  { header: 'Status', render: (r: PaymentTransactionRegisterRow) => <Badge tone={PAYMENT_STATUS_TONE[r.status]}>{r.status}</Badge> },
-                  { header: 'Amount', align: 'right' as const, render: (r: PaymentTransactionRegisterRow) => formatMinorUnits(r.amount, r.currency) },
-                  { header: 'Refunded', align: 'right' as const, render: (r: PaymentTransactionRegisterRow) => formatMinorUnits(r.total_refunded, r.currency) },
-                  { header: 'Net', align: 'right' as const, render: (r: PaymentTransactionRegisterRow) => formatMinorUnits(r.net_amount, r.currency) },
-                  { header: 'Paid at', render: (r: PaymentTransactionRegisterRow) => (r.paid_at ? new Date(r.paid_at).toLocaleDateString() : '—') },
-                ]}
-                rows={rows}
-                keyOf={(r) => r.payment_transaction_id}
-                emptyMessage="No payment transactions recorded."
-              />
+              <ReportsTable type="payments" rows={rows} />
             </section>
           );
         })()}
@@ -836,19 +721,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Active" value={String(activeCount)} tone="positive" />
                 <KpiCard label="Needs reauth" value={String(needsReauthCount)} tone={needsReauthCount > 0 ? 'warning' : 'positive'} />
               </section>
-              <DataTable
-                columns={[
-                  { header: 'Institution', render: (r: MonoLinkedAccountRegisterRow) => r.institution_name ?? '—' },
-                  { header: 'Account', render: (r: MonoLinkedAccountRegisterRow) => r.account_number_masked ?? '—' },
-                  { header: 'Currency', render: (r: MonoLinkedAccountRegisterRow) => r.currency ?? '—' },
-                  { header: 'Status', render: (r: MonoLinkedAccountRegisterRow) => <Badge tone={MONO_LINK_STATUS_TONE[r.status]}>{r.status}</Badge> },
-                  { header: 'Linked', render: (r: MonoLinkedAccountRegisterRow) => new Date(r.linked_at).toLocaleDateString() },
-                  { header: 'Last synced', render: (r: MonoLinkedAccountRegisterRow) => (r.last_synced_at ? new Date(r.last_synced_at).toLocaleDateString() : 'Never') },
-                ]}
-                rows={rows}
-                keyOf={(r) => r.mono_linked_account_id}
-                emptyMessage="No linked bank accounts."
-              />
+              <ReportsTable type="mono-linked-accounts" rows={rows} />
             </section>
           );
         })()}
@@ -880,42 +753,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
       {commissionData && (
         <section style={{ marginBottom: tokens.space(8) }}>
           <PageHeader title="Commission by Agent" />
-          <DataTable
-            columns={[
-              { header: 'Agent', render: (r: CommissionByAgentRow) => `${r.agentCode} — ${r.agentName}` },
-              { header: 'Calculations', align: 'right' as const, render: (r: CommissionByAgentRow) => String(r.count) },
-              { header: 'Earned', align: 'right' as const, render: (r: CommissionByAgentRow) => formatCurrency(r.earned) },
-              { header: 'Paid', align: 'right' as const, render: (r: CommissionByAgentRow) => formatCurrency(r.paid) },
-              {
-                header: 'Outstanding',
-                align: 'right' as const,
-                render: (r: CommissionByAgentRow) => (
-                  <span style={{ color: r.outstanding > 0 ? tokens.color.warning : undefined }}>{formatCurrency(r.outstanding)}</span>
-                ),
-              },
-            ]}
-            rows={commissionData.byAgent}
-            keyOf={(r: CommissionByAgentRow) => r.agentId}
-            emptyMessage="No commission calculations yet."
-          />
+          <ReportsTable type="commission-by-agent" rows={commissionData.byAgent} />
         </section>
       )}
 
       {commissionData && (
         <section style={{ marginBottom: tokens.space(8) }}>
           <PageHeader title="Commission by Project" />
-          <DataTable
-            columns={[
-              { header: 'Project', render: (r: CommissionByProjectRow) => r.projectCode },
-              { header: 'Calculations', align: 'right' as const, render: (r: CommissionByProjectRow) => String(r.count) },
-              { header: 'Earned', align: 'right' as const, render: (r: CommissionByProjectRow) => formatCurrency(r.earned) },
-              { header: 'Paid', align: 'right' as const, render: (r: CommissionByProjectRow) => formatCurrency(r.paid) },
-              { header: 'Outstanding', align: 'right' as const, render: (r: CommissionByProjectRow) => formatCurrency(r.outstanding) },
-            ]}
-            rows={commissionData.byProject}
-            keyOf={(r: CommissionByProjectRow) => r.projectId}
-            emptyMessage="No commission calculations tied to a project yet."
-          />
+          <ReportsTable type="commission-by-project" rows={commissionData.byProject} />
         </section>
       )}
 
@@ -938,17 +783,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 <KpiCard label="Overdue" value={formatCurrency(overdue)} tone={overdue > 0 ? 'warning' : 'positive'} />
                 <KpiCard label="90+ days" value={formatCurrency(totals['90+'])} tone={totals['90+'] > 0 ? 'negative' : 'positive'} />
               </section>
-              <DataTable
-                columns={[
-                  { header: 'Agent', render: (r: CommissionAgingRow) => `${r.agentCode} — ${r.agentName}` },
-                  { header: 'Net commission', align: 'right' as const, render: (r: CommissionAgingRow) => formatCurrency(r.netCommission) },
-                  { header: 'Days outstanding', align: 'right' as const, render: (r: CommissionAgingRow) => String(r.daysOutstanding) },
-                  { header: 'Bucket', render: (r: CommissionAgingRow) => <Badge tone={BUCKET_TONE[r.bucket]}>{r.bucket}</Badge> },
-                ]}
-                rows={commissionData.aging.rows}
-                keyOf={(r: CommissionAgingRow) => r.commissionCalculationId}
-                emptyMessage="No commission currently marked payable."
-              />
+              <ReportsTable type="commission-aging" rows={commissionData.aging.rows} />
             </section>
           );
         })()}
@@ -956,16 +791,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
       {commissionData && (
         <section>
           <PageHeader title="Commission Forecast" subtitle="Unpaid pipeline by lifecycle stage — nearest to payment first" />
-          <DataTable
-            columns={[
-              { header: 'Stage', render: (r: CommissionForecastStage) => r.label },
-              { header: 'Calculations', align: 'right' as const, render: (r: CommissionForecastStage) => String(r.count) },
-              { header: 'Amount', align: 'right' as const, render: (r: CommissionForecastStage) => formatCurrency(r.amount) },
-            ]}
-            rows={commissionData.forecast.pipeline}
-            keyOf={(r: CommissionForecastStage) => r.status}
-            emptyMessage="No unpaid commission in the pipeline."
-          />
+          <ReportsTable type="commission-forecast" rows={commissionData.forecast.pipeline} />
         </section>
       )}
     </PageContainer>

@@ -1,8 +1,9 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { LinkMonoAccountForm } from './LinkMonoAccountForm';
 import { RevokeLinkedAccountButton } from './RevokeLinkedAccountButton';
+import { BankIntegrationLinkedAccountsTable } from './BankIntegrationTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,22 +155,7 @@ export default async function BankIntegrationPage({
           <section>
             <PageHeader title="Linked accounts" />
             <LinkMonoAccountForm bankAccounts={data.bankAccounts.map((a) => ({ id: a.id, accountName: a.accountName, bankName: a.bankName }))} />
-            <DataTable
-              columns={[
-                { header: 'Institution', render: (r: BankIntegrationRow) => r.institutionName ?? '—' },
-                { header: 'Bank account', render: (r: BankIntegrationRow) => r.bankAccountName },
-                { header: 'Account', render: (r: BankIntegrationRow) => r.accountNumberMasked ?? '—' },
-                { header: 'Status', render: (r: BankIntegrationRow) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-                {
-                  header: 'Last synced',
-                  render: (r: BankIntegrationRow) => (r.lastSyncedAt ? new Date(r.lastSyncedAt).toLocaleString() : 'Never'),
-                },
-                { header: 'Actions', align: 'right', render: (r: BankIntegrationRow) => <RevokeLinkedAccountButton id={r.id} status={r.status} /> },
-              ]}
-              rows={data.linkedAccounts}
-              keyOf={(r) => r.id}
-              emptyMessage="No linked bank accounts for this entity yet."
-            />
+            <BankIntegrationLinkedAccountsTable rows={data.linkedAccounts} />
           </section>
         </>
       )}

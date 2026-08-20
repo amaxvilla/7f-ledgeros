@@ -1,7 +1,8 @@
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { CreateFeatureFlagForm } from './CreateFeatureFlagForm';
 import { FeatureFlagRow } from './FeatureFlagRow';
+import { FeatureFlagsTable } from './FeatureFlagsTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,23 +52,7 @@ export default async function FeatureFlagsPage() {
       <CreateFeatureFlagForm />
 
       {flags && (
-        <DataTable
-          columns={[
-            { header: 'Key', render: (f: FeatureFlag) => f.key },
-            { header: 'Status', render: (f: FeatureFlag) => <Badge tone={f.enabled ? 'positive' : 'neutral'}>{f.enabled ? 'Enabled' : 'Disabled'}</Badge> },
-            { header: 'Rollout', align: 'right', render: (f: FeatureFlag) => (f.rolloutPercent === null ? '—' : `${f.rolloutPercent}%`) },
-            {
-              header: 'Edit',
-              align: 'right',
-              render: (f: FeatureFlag) => (
-                <FeatureFlagRow flagKey={f.key} initialEnabled={f.enabled} initialDescription={f.description} initialRolloutPercent={f.rolloutPercent} />
-              ),
-            },
-          ]}
-          rows={flags}
-          keyOf={(f) => f.key}
-          emptyMessage="No feature flags configured yet."
-        />
+        <FeatureFlagsTable rows={flags} />
       )}
     </PageContainer>
   );

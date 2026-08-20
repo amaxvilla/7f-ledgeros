@@ -1,9 +1,10 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../../lib/api';
 import { ReviseBudgetForm } from './ReviseBudgetForm';
 import { TransferBudgetForm } from './TransferBudgetForm';
+import { BudgetVarianceTable, BudgetRevisionHistoryTable, BudgetTransferHistoryTable, BudgetApprovalTrailTable } from '../BudgetingTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -243,31 +244,7 @@ export default async function BudgetDetailPage({ params }: { params: { id: strin
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Line items" />
-        <DataTable
-          columns={[
-            { header: 'Account', render: (l: VarianceLine) => `${l.account.code} — ${l.account.name}` },
-            { header: 'Period', align: 'right', render: (l: VarianceLine) => `Month ${l.period}` },
-            { header: 'Original', align: 'right', render: (l: VarianceLine) => formatCurrency(l.originalAmount) },
-            { header: 'Budgeted', align: 'right', render: (l: VarianceLine) => formatCurrency(l.budgeted) },
-            { header: 'Actual', align: 'right', render: (l: VarianceLine) => formatCurrency(l.actual) },
-            { header: 'Committed', align: 'right', render: (l: VarianceLine) => formatCurrency(l.committed) },
-            {
-              header: 'Available',
-              align: 'right',
-              render: (l: VarianceLine) => (
-                <span style={{ color: l.available < 0 ? tokens.color.negative : undefined }}>{formatCurrency(l.available)}</span>
-              ),
-            },
-            {
-              header: 'Utilization',
-              align: 'right',
-              render: (l: VarianceLine) => (l.utilizationPercent === null ? '—' : `${l.utilizationPercent}%`),
-            },
-          ]}
-          rows={variance.lines}
-          keyOf={(l) => l.budgetLineId}
-          emptyMessage="This budget has no lines."
-        />
+        <BudgetVarianceTable rows={variance.lines} />
       </section>
 
       {budget.status === 'APPROVED' && (
@@ -286,63 +263,17 @@ export default async function BudgetDetailPage({ params }: { params: { id: strin
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Revision history" />
-        <DataTable
-          columns={[
-            { header: '#', render: (r: BudgetRevisionRaw) => String(r.revisionNumber) },
-            { header: 'Reason', render: (r: BudgetRevisionRaw) => r.reason },
-            { header: 'Status', render: (r: BudgetRevisionRaw) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-            {
-              header: 'Lines changed',
-              render: (r: BudgetRevisionRaw) => (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.space(1) }}>
-                  {r.lines.map((rl) => (
-                    <span key={rl.budgetLineId} style={{ fontSize: '12px' }}>
-                      {lineLabels.get(rl.budgetLineId) ?? rl.budgetLineId}: {formatCurrency(rl.previousAmount)} →{' '}
-                      {formatCurrency(rl.newAmount)}
-                    </span>
-                  ))}
-                </div>
-              ),
-            },
-            {
-              header: 'Approved',
-              render: (r: BudgetRevisionRaw) => (r.approvedAt ? new Date(r.approvedAt).toLocaleDateString() : '—'),
-            },
-          ]}
-          rows={budget.revisions}
-          keyOf={(r) => r.id}
-          emptyMessage="No revisions yet."
-        />
+        <BudgetRevisionHistoryTable rows={budget.revisions} lineLabels={Object.fromEntries(lineLabels)} />
       </section>
 
       <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Transfer history" />
-        <DataTable
-          columns={[
-            { header: 'From', render: (t: BudgetTransferRaw) => lineLabels.get(t.fromLineId) ?? t.fromLineId },
-            { header: 'To', render: (t: BudgetTransferRaw) => lineLabels.get(t.toLineId) ?? t.toLineId },
-            { header: 'Amount', align: 'right', render: (t: BudgetTransferRaw) => formatCurrency(t.amount) },
-            { header: 'Reason', render: (t: BudgetTransferRaw) => t.reason },
-            { header: 'Status', render: (t: BudgetTransferRaw) => <Badge tone={STATUS_TONE[t.status] ?? 'neutral'}>{t.status}</Badge> },
-          ]}
-          rows={budget.transfers}
-          keyOf={(t) => t.id}
-          emptyMessage="No transfers yet."
-        />
+        <BudgetTransferHistoryTable rows={budget.transfers} lineLabels={Object.fromEntries(lineLabels)} />
       </section>
 
       <section>
         <PageHeader title="Approval trail" />
-        <DataTable
-          columns={[
-            { header: 'Action', render: (a: BudgetApprovalRaw) => a.action },
-            { header: 'Comments', render: (a: BudgetApprovalRaw) => a.comments ?? '—' },
-            { header: 'When', render: (a: BudgetApprovalRaw) => new Date(a.createdAt).toLocaleString() },
-          ]}
-          rows={budget.approvals}
-          keyOf={(a) => a.id}
-          emptyMessage="No approval events yet."
-        />
+        <BudgetApprovalTrailTable rows={budget.approvals} />
       </section>
     </PageContainer>
   );

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
@@ -7,6 +7,7 @@ import { SubmitBudgetButton } from './SubmitBudgetButton';
 import { BudgetDecisionActions } from './BudgetDecisionActions';
 import { CloseBudgetButton } from './CloseBudgetButton';
 import { CreateBudgetForm } from './CreateBudgetForm';
+import { BudgetRegisterTable } from './BudgetingTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -187,34 +188,7 @@ export default async function BudgetingPage({ searchParams }: { searchParams: { 
           <section>
             <PageHeader title="Budget register" />
             <CreateBudgetForm entityId={entityId} accountOptions={data.accountOptions} />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (b: Budget) => <Link href={`/budgeting/${b.id}`} style={{ color: tokens.color.accent }}>{b.code}</Link> },
-                { header: 'Name', render: (b: Budget) => b.name },
-                { header: 'Fiscal year', align: 'right', render: (b: Budget) => String(b.fiscalYear) },
-                { header: 'Status', render: (b: Budget) => <Badge tone={STATUS_TONE[b.status] ?? 'neutral'}>{b.status}</Badge> },
-                {
-                  header: 'Submitted',
-                  render: (b: Budget) => (b.submittedAt ? new Date(b.submittedAt).toLocaleDateString() : '—'),
-                },
-                {
-                  header: 'Approved',
-                  render: (b: Budget) => (b.approvedAt ? new Date(b.approvedAt).toLocaleDateString() : '—'),
-                },
-                {
-                  header: 'Actions',
-                  align: 'right',
-                  render: (b: Budget) => {
-                    if (b.status === 'SUBMITTED') return <BudgetDecisionActions id={b.id} status={b.status} />;
-                    if (b.status === 'APPROVED') return <CloseBudgetButton id={b.id} status={b.status} />;
-                    return <SubmitBudgetButton id={b.id} status={b.status} />;
-                  },
-                },
-              ]}
-              rows={data.budgets}
-              keyOf={(b) => b.id}
-              emptyMessage="No budgets for this entity yet."
-            />
+            <BudgetRegisterTable rows={data.budgets} />
           </section>
         </>
       )}

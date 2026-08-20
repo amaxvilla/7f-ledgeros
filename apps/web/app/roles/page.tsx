@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { CreateRoleForm } from './CreateRoleForm';
+import { RolesTable } from './RolesTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -92,27 +92,7 @@ export default async function RolesPage() {
           <section>
             <PageHeader title="Roles" />
             <CreateRoleForm />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (r: RoleSummary) => r.code },
-                { header: 'Name', render: (r: RoleSummary) => r.name },
-                { header: 'Description', render: (r: RoleSummary) => r.description ?? '—' },
-                { header: 'Type', render: (r: RoleSummary) => <Badge tone={r.isSystem ? 'neutral' : 'positive'}>{r.isSystem ? 'System' : 'Custom'}</Badge> },
-                { header: 'Permissions', align: 'right', render: (r: RoleSummary) => String(r.permissionCount) },
-                { header: 'Users', align: 'right', render: (r: RoleSummary) => String(r.userCount) },
-                {
-                  header: 'Manage',
-                  render: (r: RoleSummary) => (
-                    <Link href={`/roles/${r.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                      Permissions →
-                    </Link>
-                  ),
-                },
-              ]}
-              rows={data.roles}
-              keyOf={(r) => r.id}
-              emptyMessage="No roles yet."
-            />
+            <RolesTable rows={data.roles} />
           </section>
         </>
       )}

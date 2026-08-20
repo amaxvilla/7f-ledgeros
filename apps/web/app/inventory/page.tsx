@@ -1,10 +1,11 @@
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateWarehouseForm } from './CreateWarehouseForm';
 import { CreateStockItemForm } from './CreateStockItemForm';
 import { StockBalanceLookup } from './StockBalanceLookup';
+import { InventoryWarehousesTable, InventoryStockItemsTable } from './InventoryTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,16 +100,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
         {warehouseData && (
           <>
             <CreateWarehouseForm entityId={warehouseData.entityId} />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (w: Warehouse) => w.code },
-                { header: 'Name', render: (w: Warehouse) => w.name },
-                { header: 'Status', render: (w: Warehouse) => <Badge tone={w.isActive ? 'positive' : 'neutral'}>{w.isActive ? 'Active' : 'Inactive'}</Badge> },
-              ]}
-              rows={warehouseData.warehouses}
-              keyOf={(w) => w.id}
-              emptyMessage="No warehouses for this entity yet."
-            />
+            <InventoryWarehousesTable rows={warehouseData.warehouses} />
           </>
         )}
       </section>
@@ -123,18 +115,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
         {stockItemData && (
           <>
             <CreateStockItemForm entityId={stockItemData.entityId} />
-            <DataTable
-              columns={[
-                { header: 'Code', render: (s: StockItem) => s.code },
-                { header: 'Name', render: (s: StockItem) => s.name },
-                { header: 'Domain', render: (s: StockItem) => s.domain },
-                { header: 'UoM', render: (s: StockItem) => s.unitOfMeasure },
-                { header: 'Status', render: (s: StockItem) => <Badge tone={s.isActive ? 'positive' : 'neutral'}>{s.isActive ? 'Active' : 'Inactive'}</Badge> },
-              ]}
-              rows={stockItemData.stockItems}
-              keyOf={(s) => s.id}
-              emptyMessage="No stock items for this entity yet."
-            />
+            <InventoryStockItemsTable rows={stockItemData.stockItems} />
           </>
         )}
       </section>

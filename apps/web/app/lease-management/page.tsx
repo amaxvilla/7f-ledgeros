@@ -1,7 +1,8 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateLeaseForm } from './CreateLeaseForm';
+import { LeaseManagementTable } from './LeaseManagementTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -120,18 +121,7 @@ export default async function LeaseManagementPage({
             <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>{leasesError}</div>
           )}
           {leases && (
-            <DataTable
-              columns={[
-                { header: 'Lease #', render: (r: Lease) => r.leaseNumber },
-                { header: 'Status', render: (r: Lease) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-                { header: 'Rent', render: (r: Lease) => `${formatCurrency(r.rentAmount)} / ${r.rentFrequency.toLowerCase()}` },
-                { header: 'Start', render: (r: Lease) => new Date(r.startDate).toLocaleDateString() },
-                { header: 'End', render: (r: Lease) => new Date(r.endDate).toLocaleDateString() },
-              ]}
-              rows={leases}
-              keyOf={(r) => r.id}
-              emptyMessage="No leases for this entity."
-            />
+            <LeaseManagementTable rows={leases} />
           )}
         </section>
       )}

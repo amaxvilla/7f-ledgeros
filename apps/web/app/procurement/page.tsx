@@ -1,4 +1,4 @@
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
@@ -6,6 +6,7 @@ import { CreateRequisitionForm } from './CreateRequisitionForm';
 import { CreatePurchaseOrderForm } from './CreatePurchaseOrderForm';
 import { RequisitionStatusActions } from './RequisitionStatusActions';
 import { PurchaseOrderStatusActions } from './PurchaseOrderStatusActions';
+import { ProcurementRequisitionsTable, ProcurementPurchaseOrdersTable } from './ProcurementTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -164,18 +165,7 @@ export default async function ProcurementPage({ searchParams }: { searchParams: 
         {requisitionData && (
           <>
             <CreateRequisitionForm entityId={requisitionData.entityId} accountOptions={accountOptions} projectOptions={projectOptions} />
-            <DataTable
-              columns={[
-                { header: 'PR #', render: (r: Requisition) => r.prNumber },
-                { header: 'Justification', render: (r: Requisition) => r.justification ?? '—' },
-                { header: 'Created', render: (r: Requisition) => new Date(r.createdAt).toLocaleDateString() },
-                { header: 'Status', render: (r: Requisition) => <Badge tone={PR_STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-                { header: 'Actions', align: 'right', render: (r: Requisition) => <RequisitionStatusActions id={r.id} status={r.status} /> },
-              ]}
-              rows={requisitionData.requisitions}
-              keyOf={(r) => r.id}
-              emptyMessage="No requisitions for this entity yet."
-            />
+            <ProcurementRequisitionsTable rows={requisitionData.requisitions} />
           </>
         )}
       </section>
@@ -200,18 +190,7 @@ export default async function ProcurementPage({ searchParams }: { searchParams: 
         {poData && (
           <>
             <CreatePurchaseOrderForm entityId={poData.entityId} accountOptions={accountOptions} vendorOptions={vendorOptions} />
-            <DataTable
-              columns={[
-                { header: 'PO #', render: (p: PurchaseOrder) => p.poNumber },
-                { header: 'Vendor', render: (p: PurchaseOrder) => vendorLabel(p.vendorId) },
-                { header: 'Order date', render: (p: PurchaseOrder) => new Date(p.orderDate).toLocaleDateString() },
-                { header: 'Status', render: (p: PurchaseOrder) => <Badge tone={PO_STATUS_TONE[p.status] ?? 'neutral'}>{p.status}</Badge> },
-                { header: 'Actions', align: 'right', render: (p: PurchaseOrder) => <PurchaseOrderStatusActions id={p.id} status={p.status} /> },
-              ]}
-              rows={poData.purchaseOrders}
-              keyOf={(p) => p.id}
-              emptyMessage="No purchase orders for this entity yet."
-            />
+            <ProcurementPurchaseOrdersTable rows={poData.purchaseOrders} vendors={vendors ?? []} />
           </>
         )}
       </section>

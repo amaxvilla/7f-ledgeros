@@ -4,6 +4,7 @@ import { fetchApi, ApiError } from '../../../lib/api';
 import { UserRolesForm, type RoleOption } from './UserRolesForm';
 import { SecurityAdminActions } from './SecurityAdminActions';
 import { RevokeDeviceButton } from './RevokeDeviceButton';
+import { UserSessionsTable, UserTrustedDevicesTable, UserLoginHistoryTable } from '../UsersTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -186,46 +187,13 @@ export default async function UserDetailPage({ params }: { params: { id: string 
         <SecurityAdminActions userId={user.id} locked={isCurrentlyLocked(user.lockedUntil)} />
 
         <PageHeader title="Active sessions" subtitle={`${sessions.length}`} />
-        <DataTable
-          columns={[
-            { header: 'IP address', render: (s: Session) => s.ipAddress ?? '—' },
-            { header: 'User agent', render: (s: Session) => s.userAgent ?? '—' },
-            { header: 'Created', render: (s: Session) => new Date(s.createdAt).toLocaleString() },
-            { header: 'Last used', render: (s: Session) => (s.lastUsedAt ? new Date(s.lastUsedAt).toLocaleString() : '—') },
-            { header: 'Expires', render: (s: Session) => new Date(s.expiresAt).toLocaleString() },
-          ]}
-          rows={sessions}
-          keyOf={(s) => s.id}
-          emptyMessage="No active sessions."
-        />
+        <UserSessionsTable rows={sessions} />
 
         <PageHeader title="Trusted devices" subtitle={`${devices.length}`} />
-        <DataTable
-          columns={[
-            { header: 'Device', render: (d: TrustedDevice) => d.deviceName ?? '—' },
-            { header: 'IP address', render: (d: TrustedDevice) => d.ipAddress ?? '—' },
-            { header: 'User agent', render: (d: TrustedDevice) => d.userAgent ?? '—' },
-            { header: 'Trusted since', render: (d: TrustedDevice) => new Date(d.trustedAt).toLocaleString() },
-            { header: 'Last used', render: (d: TrustedDevice) => (d.lastUsedAt ? new Date(d.lastUsedAt).toLocaleString() : '—') },
-            { header: 'Actions', align: 'right', render: (d: TrustedDevice) => <RevokeDeviceButton userId={user!.id} deviceId={d.id} /> },
-          ]}
-          rows={devices}
-          keyOf={(d) => d.id}
-          emptyMessage="No trusted devices."
-        />
+        <UserTrustedDevicesTable rows={devices} userId={user.id} />
 
         <PageHeader title="Login history" subtitle={`${loginHistory.length}`} />
-        <DataTable
-          columns={[
-            { header: 'Event', render: (h: LoginHistoryEntry) => <Badge tone={loginEventTone(h.eventType)}>{h.eventType}</Badge> },
-            { header: 'IP address', render: (h: LoginHistoryEntry) => h.ipAddress ?? '—' },
-            { header: 'Failure reason', render: (h: LoginHistoryEntry) => h.failureReason ?? '—' },
-            { header: 'When', render: (h: LoginHistoryEntry) => new Date(h.createdAt).toLocaleString() },
-          ]}
-          rows={loginHistory}
-          keyOf={(h) => h.id}
-          emptyMessage="No login history."
-        />
+        <UserLoginHistoryTable rows={loginHistory} />
       </section>
     </PageContainer>
   );

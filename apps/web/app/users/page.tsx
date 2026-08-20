@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
+import { UsersTable } from './UsersTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,47 +109,7 @@ export default async function UsersPage() {
 
           <section>
             <PageHeader title="Users" />
-            <DataTable
-              columns={[
-                { header: 'Name', render: (u: UserSummary) => `${u.firstName} ${u.lastName}` },
-                { header: 'Email', render: (u: UserSummary) => u.email },
-                { header: 'Phone', render: (u: UserSummary) => u.phone ?? '—' },
-                {
-                  header: 'Roles',
-                  render: (u: UserSummary) =>
-                    u.roles.length === 0 ? (
-                      '—'
-                    ) : (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.space(1) }}>
-                        {u.roles.map((r) => (
-                          <Badge key={r.id} tone="neutral">
-                            {r.code}
-                          </Badge>
-                        ))}
-                      </div>
-                    ),
-                },
-                { header: 'MFA', render: (u: UserSummary) => <Badge tone={u.mfaEnabled ? 'positive' : 'neutral'}>{u.mfaEnabled ? 'Enabled' : 'Off'}</Badge> },
-                {
-                  header: 'Status',
-                  render: (u: UserSummary) => {
-                    if (isCurrentlyLocked(u.lockedUntil)) return <Badge tone="negative">Locked</Badge>;
-                    return <Badge tone={u.isActive ? 'positive' : 'neutral'}>{u.isActive ? 'Active' : 'Inactive'}</Badge>;
-                  },
-                },
-                {
-                  header: 'Manage',
-                  render: (u: UserSummary) => (
-                    <Link href={`/users/${u.id}`} style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}>
-                      Manage roles →
-                    </Link>
-                  ),
-                },
-              ]}
-              rows={users}
-              keyOf={(u) => u.id}
-              emptyMessage="No users yet."
-            />
+            <UsersTable rows={users} />
           </section>
         </>
       )}

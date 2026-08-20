@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InventoryDocStatus, InventoryDomain, Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RowLevelSecurityService } from '../security/row-level-security.service';
@@ -73,16 +73,35 @@ export class InventoryService {
     });
   }
 
-  getBalance(stockItemId: string, warehouseId: string) {
-    return this.prisma.stockBalance.findUnique({
-      where: { stockItemId_warehouseId: { stockItemId, warehouseId } },
+  getBalance(stockItemId: string, warehouseId: string, scope: SecurityScope) {
+    return this.assertWarehouseAccess(scope, warehouseId, 'view').then(async (warehouse) => {
+      await this.assertStockItemsBelongToEntity(
+        scope,
+        [stockItemId],
+        warehouse.entityId,
+        'view',
+      );
+
+      return this.prisma.stockBalance.findUnique({
+        where: { stockItemId_warehouseId: { stockItemId, warehouseId } },
+      });
     });
   }
 
   // ---- Goods Receipt (increases stock at the receipt's own unit cost) ----
 
-  async createGoodsReceipt(dto: CreateGoodsReceiptDto) {
+  async createGoodsReceipt(dto: CreateGoodsReceiptDto, scope: SecurityScope) {
     if (dto.lines.length === 0) throw new BadRequestException('Goods receipt needs at least one line');
+
+    const warehouse = await this.assertWarehouseAccess(scope, dto.warehouseId, 'post');
+
+    await this.assertStockItemsBelongToEntity(
+      scope,
+      dto.lines.map((line) => line.stockItemId),
+      warehouse.entityId,
+      'post',
+    );
+
     return this.prisma.goodsReceipt.create({
       data: {
         warehouseId: dto.warehouseId,
@@ -97,13 +116,28 @@ export class InventoryService {
     });
   }
 
-  async postGoodsReceipt(id: string) {
+  async postGoodsReceipt(id: string, scope: SecurityScope) {
     return this.prisma.$transaction(async (tx) => {
       const receipt = await tx.goodsReceipt.findUnique({ where: { id }, include: { lines: true } });
       if (!receipt) throw new NotFoundException(`Goods receipt ${id} not found`);
       if (receipt.status !== InventoryDocStatus.DRAFT) {
         throw new ConflictException(`Goods receipt is already ${receipt.status}`);
       }
+
+      const warehouse = await this.assertWarehouseAccess(
+        scope,
+        receipt.warehouseId,
+        'post',
+        tx,
+      );
+
+      await this.assertStockItemsBelongToEntity(
+        scope,
+        receipt.lines.map((line) => line.stockItemId),
+        warehouse.entityId,
+        'post',
+        tx,
+      );
 
       for (const line of receipt.lines) {
         await this.applyMovement(tx, {
@@ -124,8 +158,18 @@ export class InventoryService {
 
   // ---- Material Issue (decreases stock at current weighted-average cost) ----
 
-  async createMaterialIssue(dto: CreateMaterialIssueDto) {
+  async createMaterialIssue(dto: CreateMaterialIssueDto, scope: SecurityScope) {
     if (dto.lines.length === 0) throw new BadRequestException('Material issue needs at least one line');
+
+    const warehouse = await this.assertWarehouseAccess(scope, dto.warehouseId, 'post');
+
+    await this.assertStockItemsBelongToEntity(
+      scope,
+      dto.lines.map((line) => line.stockItemId),
+      warehouse.entityId,
+      'post',
+    );
+
     return this.prisma.materialIssue.create({
       data: {
         warehouseId: dto.warehouseId,
@@ -141,13 +185,28 @@ export class InventoryService {
     });
   }
 
-  async postMaterialIssue(id: string) {
+  async postMaterialIssue(id: string, scope: SecurityScope) {
     return this.prisma.$transaction(async (tx) => {
       const issue = await tx.materialIssue.findUnique({ where: { id }, include: { lines: true } });
       if (!issue) throw new NotFoundException(`Material issue ${id} not found`);
       if (issue.status !== InventoryDocStatus.DRAFT) {
         throw new ConflictException(`Material issue is already ${issue.status}`);
       }
+
+      const warehouse = await this.assertWarehouseAccess(
+        scope,
+        issue.warehouseId,
+        'post',
+        tx,
+      );
+
+      await this.assertStockItemsBelongToEntity(
+        scope,
+        issue.lines.map((line) => line.stockItemId),
+        warehouse.entityId,
+        'post',
+        tx,
+      );
 
       for (const line of issue.lines) {
         const balance = await tx.stockBalance.findUnique({
@@ -178,11 +237,40 @@ export class InventoryService {
 
   // ---- Stock Transfer (issue from source at its avg cost, receive into destination at that cost) ----
 
-  async createStockTransfer(dto: CreateStockTransferDto) {
+  async createStockTransfer(dto: CreateStockTransferDto, scope: SecurityScope) {
     if (dto.fromWarehouseId === dto.toWarehouseId) {
       throw new BadRequestException('Source and destination warehouse must differ');
     }
-    if (dto.lines.length === 0) throw new BadRequestException('Stock transfer needs at least one line');
+
+    if (dto.lines.length === 0) {
+      throw new BadRequestException('Stock transfer needs at least one line');
+    }
+
+    const sourceWarehouse = await this.assertWarehouseAccess(
+      scope,
+      dto.fromWarehouseId,
+      'post',
+    );
+
+    const destinationWarehouse = await this.assertWarehouseAccess(
+      scope,
+      dto.toWarehouseId,
+      'post',
+    );
+
+    if (sourceWarehouse.entityId !== destinationWarehouse.entityId) {
+      throw new BadRequestException(
+        'Source and destination warehouse must belong to the same entity',
+      );
+    }
+
+    await this.assertStockItemsBelongToEntity(
+      scope,
+      dto.lines.map((line) => line.stockItemId),
+      sourceWarehouse.entityId,
+      'post',
+    );
+
     return this.prisma.stockTransfer.create({
       data: {
         fromWarehouseId: dto.fromWarehouseId,
@@ -196,13 +284,41 @@ export class InventoryService {
     });
   }
 
-  async postStockTransfer(id: string) {
+  async postStockTransfer(id: string, scope: SecurityScope) {
     return this.prisma.$transaction(async (tx) => {
       const transfer = await tx.stockTransfer.findUnique({ where: { id }, include: { lines: true } });
       if (!transfer) throw new NotFoundException(`Stock transfer ${id} not found`);
       if (transfer.status !== InventoryDocStatus.DRAFT) {
         throw new ConflictException(`Stock transfer is already ${transfer.status}`);
       }
+
+      const sourceWarehouse = await this.assertWarehouseAccess(
+        scope,
+        transfer.fromWarehouseId,
+        'post',
+        tx,
+      );
+
+      const destinationWarehouse = await this.assertWarehouseAccess(
+        scope,
+        transfer.toWarehouseId,
+        'post',
+        tx,
+      );
+
+      if (sourceWarehouse.entityId !== destinationWarehouse.entityId) {
+        throw new BadRequestException(
+          'Source and destination warehouse must belong to the same entity',
+        );
+      }
+
+      await this.assertStockItemsBelongToEntity(
+        scope,
+        transfer.lines.map((line) => line.stockItemId),
+        sourceWarehouse.entityId,
+        'post',
+        tx,
+      );
 
       for (const line of transfer.lines) {
         const sourceBalance = await tx.stockBalance.findUnique({
@@ -247,8 +363,21 @@ export class InventoryService {
 
   // ---- Stock Count (adjusts quantity to the counted figure at current avg cost) ----
 
-  async createStockCount(dto: CreateStockCountDto) {
+  async createStockCount(dto: CreateStockCountDto, scope: SecurityScope) {
     if (dto.lines.length === 0) throw new BadRequestException('Stock count needs at least one line');
+
+    const warehouse = await this.assertWarehouseAccess(
+      scope,
+      dto.warehouseId,
+      'post',
+    );
+
+    await this.assertStockItemsBelongToEntity(
+      scope,
+      dto.lines.map((line) => line.stockItemId),
+      warehouse.entityId,
+      'post',
+    );
 
     const linesWithSystemQty = await Promise.all(
       dto.lines.map(async (line) => {
@@ -277,13 +406,28 @@ export class InventoryService {
     });
   }
 
-  async postStockCount(id: string) {
+  async postStockCount(id: string, scope: SecurityScope) {
     return this.prisma.$transaction(async (tx) => {
       const count = await tx.stockCount.findUnique({ where: { id }, include: { lines: true } });
       if (!count) throw new NotFoundException(`Stock count ${id} not found`);
       if (count.status !== InventoryDocStatus.DRAFT) {
         throw new ConflictException(`Stock count is already ${count.status}`);
       }
+
+      const warehouse = await this.assertWarehouseAccess(
+        scope,
+        count.warehouseId,
+        'post',
+        tx,
+      );
+
+      await this.assertStockItemsBelongToEntity(
+        scope,
+        count.lines.map((line) => line.stockItemId),
+        warehouse.entityId,
+        'post',
+        tx,
+      );
 
       for (const line of count.lines) {
         if (Math.abs(Number(line.varianceQuantity)) < QTY_TOLERANCE) continue;
@@ -309,6 +453,82 @@ export class InventoryService {
     });
   }
 
+  // --------------------------------------------------
+  // Inventory authorization / integrity helpers
+  // --------------------------------------------------
+
+  private async assertWarehouseAccess(
+    scope: SecurityScope,
+    warehouseId: string,
+    mode: 'view' | 'post',
+    client: PrismaService | Prisma.TransactionClient = this.prisma,
+  ) {
+    const warehouse = await client.warehouse.findUnique({
+      where: { id: warehouseId },
+      select: { id: true, entityId: true, isActive: true },
+    });
+
+    if (!warehouse || !warehouse.isActive) {
+      throw new NotFoundException(`Warehouse ${warehouseId} not found or inactive`);
+    }
+
+    const allowed = this.rowLevelSecurity.canAccess(
+      scope,
+      { entityId: warehouse.entityId },
+      { dimensions: ['entity'], mode },
+    );
+
+    if (!allowed) {
+      throw new ForbiddenException(
+        `No ${mode === 'post' ? 'post' : 'view'} access to warehouse ${warehouseId}`,
+      );
+    }
+
+    return warehouse;
+  }
+
+  private async assertStockItemsBelongToEntity(
+    scope: SecurityScope,
+    stockItemIds: string[],
+    entityId: string,
+    mode: 'view' | 'post',
+    client: PrismaService | Prisma.TransactionClient = this.prisma,
+  ) {
+    const uniqueIds = [...new Set(stockItemIds)];
+
+    const stockItems = await client.stockItem.findMany({
+      where: { id: { in: uniqueIds } },
+      select: { id: true, entityId: true, isActive: true },
+    });
+
+    const byId = new Map(stockItems.map((item) => [item.id, item]));
+
+    for (const id of uniqueIds) {
+      const item = byId.get(id);
+
+      if (!item || !item.isActive) {
+        throw new NotFoundException(`Stock item ${id} not found or inactive`);
+      }
+
+      if (item.entityId !== entityId) {
+        throw new BadRequestException(
+          `Stock item ${id} does not belong to entity ${entityId}`,
+        );
+      }
+
+      const allowed = this.rowLevelSecurity.canAccess(
+        scope,
+        { entityId: item.entityId },
+        { dimensions: ['entity'], mode },
+      );
+
+      if (!allowed) {
+        throw new ForbiddenException(
+          `No ${mode === 'post' ? 'post' : 'view'} access to stock item ${id}`,
+        );
+      }
+    }
+  }
   // ---- External receipts (e.g. Procurement's ProcurementGRN posting) ----
   // Public, transaction-composable wrapper around applyMovement so other
   // modules can record a stock receipt against their own reference

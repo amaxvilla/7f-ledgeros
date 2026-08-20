@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const createRiskMock = vi.fn();
@@ -59,47 +59,51 @@ describe('CreateRiskForm', () => {
 
   it('submits with optional fields, including probability/impact, as undefined when left blank', async () => {
     createRiskMock.mockResolvedValue({ ok: true });
-    const user = userEvent.setup();
     render(<CreateRiskForm entityId="ent-1" projectOptions={PROJECT_OPTIONS} />);
 
-    await fillRequiredFields(user);
-    await user.click(screen.getByRole('button', { name: 'Log risk' }));
+    fireEvent.change(screen.getByLabelText('Project'), { target: { value: 'proj-1' } });
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Contractor delay on Phase 2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log risk' }));
 
-    expect(createRiskMock).toHaveBeenCalledWith({
-      entityId: 'ent-1',
-      projectId: 'proj-1',
-      title: 'Contractor delay on Phase 2',
-      description: undefined,
-      category: undefined,
-      probability: undefined,
-      impact: undefined,
-      ownerId: undefined,
-    });
+    await vi.waitFor(() =>
+      expect(createRiskMock).toHaveBeenCalledWith({
+        entityId: 'ent-1',
+        projectId: 'proj-1',
+        title: 'Contractor delay on Phase 2',
+        description: undefined,
+        category: undefined,
+        probability: undefined,
+        impact: undefined,
+        ownerId: undefined,
+      }),
+    );
   });
 
   it('includes optional fields, including the selected probability/impact, when filled in', async () => {
     createRiskMock.mockResolvedValue({ ok: true });
-    const user = userEvent.setup();
     render(<CreateRiskForm entityId="ent-1" projectOptions={PROJECT_OPTIONS} />);
 
-    await fillRequiredFields(user);
-    await user.type(screen.getByLabelText('Category (optional)'), 'Schedule');
-    await user.selectOptions(screen.getByLabelText('Probability'), 'HIGH');
-    await user.selectOptions(screen.getByLabelText('Impact'), 'MEDIUM');
-    await user.type(screen.getByLabelText('Owner ID (optional)'), 'user-9');
-    await user.type(screen.getByLabelText('Description (optional)'), 'Delay may cascade to Phase 3');
-    await user.click(screen.getByRole('button', { name: 'Log risk' }));
+    fireEvent.change(screen.getByLabelText('Project'), { target: { value: 'proj-1' } });
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Contractor delay on Phase 2' } });
+    fireEvent.change(screen.getByLabelText('Category (optional)'), { target: { value: 'Schedule' } });
+    fireEvent.change(screen.getByLabelText('Probability'), { target: { value: 'HIGH' } });
+    fireEvent.change(screen.getByLabelText('Impact'), { target: { value: 'MEDIUM' } });
+    fireEvent.change(screen.getByLabelText('Owner ID (optional)'), { target: { value: 'user-9' } });
+    fireEvent.change(screen.getByLabelText('Description (optional)'), { target: { value: 'Delay may cascade to Phase 3' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log risk' }));
 
-    expect(createRiskMock).toHaveBeenCalledWith({
-      entityId: 'ent-1',
-      projectId: 'proj-1',
-      title: 'Contractor delay on Phase 2',
-      description: 'Delay may cascade to Phase 3',
-      category: 'Schedule',
-      probability: 'HIGH',
-      impact: 'MEDIUM',
-      ownerId: 'user-9',
-    });
+    await vi.waitFor(() =>
+      expect(createRiskMock).toHaveBeenCalledWith({
+        entityId: 'ent-1',
+        projectId: 'proj-1',
+        title: 'Contractor delay on Phase 2',
+        description: 'Delay may cascade to Phase 3',
+        category: 'Schedule',
+        probability: 'HIGH',
+        impact: 'MEDIUM',
+        ownerId: 'user-9',
+      }),
+    );
   });
 
   it('shows the action-returned error message on failure', async () => {

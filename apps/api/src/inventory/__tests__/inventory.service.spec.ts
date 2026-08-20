@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InventoryDocStatus, StockMovementType } from '@prisma/client';
 import { InventoryService } from '../inventory.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -29,6 +29,8 @@ function buildTxMock(prisma: {
   materialIssue: any;
   stockTransfer: any;
   stockCount: any;
+  warehouse: any;
+  stockItem: any;
 }) {
   const balances = new Map<string, { quantityOnHand: number; averageUnitCost: number; totalValue: number }>();
   const movements: any[] = [];
@@ -46,6 +48,8 @@ function buildTxMock(prisma: {
     materialIssue: prisma.materialIssue,
     stockTransfer: prisma.stockTransfer,
     stockCount: prisma.stockCount,
+    warehouse: prisma.warehouse,
+    stockItem: prisma.stockItem,
     stockBalance: {
       findUnique: jest.fn(({ where }: any) => {
         const { stockItemId, warehouseId } = where.stockItemId_warehouseId;
@@ -92,8 +96,21 @@ describe('InventoryService — weighted-average valuation', () => {
       materialIssue: { findUnique: jest.fn(), update: jest.fn() },
       stockTransfer: { findUnique: jest.fn(), update: jest.fn() },
       stockCount: { findUnique: jest.fn(), update: jest.fn() },
-      warehouse: { findMany: jest.fn() },
-      stockItem: { findMany: jest.fn() },
+      warehouse: {
+        findMany: jest.fn(),
+        findUnique: jest.fn(({ where }: any) =>
+          Promise.resolve({
+            id: where.id,
+            entityId: 'ent-1',
+            isActive: true,
+          }),
+        ),
+      },
+      stockItem: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'item-1', entityId: 'ent-1', isActive: true },
+        ]),
+      },
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -114,7 +131,7 @@ describe('InventoryService — weighted-average valuation', () => {
       lines: [{ stockItemId: 'item-1', quantity: 100, unitCost: 10 }],
     });
     prisma.goodsReceipt.update.mockResolvedValue({});
-    await service.postGoodsReceipt('gr-1');
+    await service.postGoodsReceipt('gr-1', buildUnrestrictedScope());
 
     // Second receipt: 100 more units at 20 each.
     prisma.goodsReceipt.findUnique.mockResolvedValueOnce({
@@ -124,7 +141,7 @@ describe('InventoryService — weighted-average valuation', () => {
       status: InventoryDocStatus.DRAFT,
       lines: [{ stockItemId: 'item-1', quantity: 100, unitCost: 20 }],
     });
-    await service.postGoodsReceipt('gr-2');
+    await service.postGoodsReceipt('gr-2', buildUnrestrictedScope());
 
     const balance = tx.balances.get('item-1:wh-1')!;
     expect(balance.quantityOnHand).toBe(200);
@@ -147,7 +164,7 @@ describe('InventoryService — weighted-average valuation', () => {
     });
     prisma.materialIssue.update.mockResolvedValue({});
 
-    await service.postMaterialIssue('mi-1');
+    await service.postMaterialIssue('mi-1', buildUnrestrictedScope());
 
     const balance = tx.balances.get('item-1:wh-1')!;
     expect(balance.quantityOnHand).toBe(150);
@@ -172,7 +189,7 @@ describe('InventoryService — weighted-average valuation', () => {
       lines: [{ stockItemId: 'item-1', quantity: 50 }],
     });
 
-    await expect(service.postMaterialIssue('mi-2')).rejects.toThrow(BadRequestException);
+    await expect(service.postMaterialIssue('mi-2', buildUnrestrictedScope())).rejects.toThrow(BadRequestException);
   });
 
   it('refuses to re-post an already-posted document', async () => {
@@ -182,7 +199,7 @@ describe('InventoryService — weighted-average valuation', () => {
       status: InventoryDocStatus.POSTED,
       lines: [],
     });
-    await expect(service.postGoodsReceipt('gr-3')).rejects.toThrow(ConflictException);
+    await expect(service.postGoodsReceipt('gr-3', buildUnrestrictedScope())).rejects.toThrow(ConflictException);
   });
 
   it('carries the source average cost through a stock transfer', async () => {
@@ -200,7 +217,7 @@ describe('InventoryService — weighted-average valuation', () => {
     });
     prisma.stockTransfer.update.mockResolvedValue({});
 
-    await service.postStockTransfer('st-1');
+    await service.postStockTransfer('st-1', buildUnrestrictedScope());
 
     const source = tx.balances.get('item-1:wh-1')!;
     const dest = tx.balances.get('item-1:wh-2')!;
@@ -212,9 +229,41 @@ describe('InventoryService — weighted-average valuation', () => {
   it('throws NotFoundException for a nonexistent goods receipt', async () => {
     prisma.$transaction.mockImplementation((fn: any) => fn(buildTxMock(prisma)));
     prisma.goodsReceipt.findUnique.mockResolvedValue(null);
-    await expect(service.postGoodsReceipt('missing')).rejects.toThrow(NotFoundException);
+    await expect(service.postGoodsReceipt('missing', buildUnrestrictedScope())).rejects.toThrow(NotFoundException);
   });
 
+  it('refuses to post a material issue for an entity the caller cannot post to', async () => {
+    const tx = buildTxMock(prisma);
+    prisma.$transaction.mockImplementation((fn: any) => fn(tx));
+
+    prisma.materialIssue.findUnique.mockResolvedValue({
+      id: 'mi-sec-1',
+      warehouseId: 'wh-2',
+      issueDate: new Date('2026-07-10'),
+      status: InventoryDocStatus.DRAFT,
+      lines: [{ stockItemId: 'item-1', quantity: 1 }],
+    });
+
+    prisma.warehouse.findUnique.mockResolvedValue({
+      id: 'wh-2',
+      entityId: 'ent-2',
+      isActive: true,
+    });
+
+    const restrictedScope: SecurityScope = {
+      ...buildUnrestrictedScope(),
+      isSystemAdmin: false,
+      entity: {
+        unrestricted: false,
+        viewableIds: ['ent-1'],
+        postableIds: ['ent-1'],
+      },
+    };
+
+    await expect(
+      service.postMaterialIssue('mi-sec-1', restrictedScope),
+    ).rejects.toThrow(ForbiddenException);
+  });
   describe('Row Level Security (Phase 2)', () => {
     it('findWarehouses scopes results to the caller\'s viewable entities', async () => {
       prisma.warehouse.findMany.mockResolvedValue([]);

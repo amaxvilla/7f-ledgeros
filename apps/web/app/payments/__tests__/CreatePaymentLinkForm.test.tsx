@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 // Same reasoning as CreateVacancyForm.test.tsx's own ../actions mock.
@@ -61,35 +61,42 @@ describe('CreatePaymentLinkForm', () => {
 
   it('rounds a fractional major-unit amount to the nearest minor unit', async () => {
     createPaymentLinkMock.mockResolvedValue({ ok: true });
-    const user = userEvent.setup();
     render(<CreatePaymentLinkForm entityId="ent-1" />);
 
-    await user.selectOptions(screen.getByLabelText('Provider'), 'PAYSTACK');
-    await user.type(screen.getByLabelText('Reference'), 'invoice-1');
-    await user.type(screen.getByLabelText('Amount'), '19.999');
-    await user.type(screen.getByLabelText('Customer email'), 'c@example.com');
-    await user.click(screen.getByRole('button', { name: 'Generate payment link' }));
+    fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'PAYSTACK' } });
+    fireEvent.change(screen.getByLabelText('Reference'), { target: { value: 'invoice-1' } });
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '19.999' } });
+    fireEvent.change(screen.getByLabelText('Customer email'), { target: { value: 'c@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate payment link' }));
 
-    expect(createPaymentLinkMock).toHaveBeenCalledWith(expect.objectContaining({ amount: 2000 })); // Math.round(19.999 * 100)
+    await vi.waitFor(() =>
+      expect(createPaymentLinkMock).toHaveBeenCalledWith(
+        expect.objectContaining({ amount: 2000 }),
+      ),
+    );
   });
 
   it('passes entityId and providerCode through as entered, and omits description when blank', async () => {
     createPaymentLinkMock.mockResolvedValue({ ok: true });
-    const user = userEvent.setup();
     render(<CreatePaymentLinkForm entityId="ent-42" />);
 
-    await fillRequiredFields(user);
-    await user.click(screen.getByRole('button', { name: 'Generate payment link' }));
+    fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'PAYSTACK' } });
+    fireEvent.change(screen.getByLabelText('Reference'), { target: { value: 'invoice-2026-0042' } });
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '500' } });
+    fireEvent.change(screen.getByLabelText('Customer email'), { target: { value: 'customer@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate payment link' }));
 
-    expect(createPaymentLinkMock).toHaveBeenCalledWith({
-      entityId: 'ent-42',
-      providerCode: 'PAYSTACK',
-      reference: 'invoice-2026-0042',
-      amount: 50000,
-      currency: 'NGN',
-      customerEmail: 'customer@example.com',
-      description: undefined,
-    });
+    await vi.waitFor(() =>
+      expect(createPaymentLinkMock).toHaveBeenCalledWith({
+        entityId: 'ent-42',
+        providerCode: 'PAYSTACK',
+        reference: 'invoice-2026-0042',
+        amount: 50000,
+        currency: 'NGN',
+        customerEmail: 'customer@example.com',
+        description: undefined,
+      }),
+    );
   });
 
   it('uppercases the currency as it is typed', async () => {
@@ -137,11 +144,13 @@ describe('CreatePaymentLinkForm', () => {
   it('disables the submit button and shows the pending label while the action is in flight', async () => {
     let resolveAction: (value: { ok: boolean }) => void = () => {};
     createPaymentLinkMock.mockReturnValue(new Promise((resolve) => (resolveAction = resolve)));
-    const user = userEvent.setup();
     render(<CreatePaymentLinkForm entityId="ent-1" />);
 
-    await fillRequiredFields(user);
-    await user.click(screen.getByRole('button', { name: 'Generate payment link' }));
+    fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'PAYSTACK' } });
+    fireEvent.change(screen.getByLabelText('Reference'), { target: { value: 'invoice-2026-0042' } });
+    fireEvent.change(screen.getByLabelText('Amount'), { target: { value: '500' } });
+    fireEvent.change(screen.getByLabelText('Customer email'), { target: { value: 'customer@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate payment link' }));
 
     const pendingButton = screen.getByRole('button', { name: 'Initializing…' });
     expect(pendingButton).toBeDisabled();

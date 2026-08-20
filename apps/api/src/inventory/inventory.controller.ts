@@ -59,8 +59,13 @@ export class InventoryController {
   @Get('balance')
   @ApiOperation({ summary: 'Get on-hand quantity and average unit cost for one item at one warehouse' })
   @RequirePermissions('inventory.view')
-  getBalance(@Query('stockItemId') stockItemId: string, @Query('warehouseId') warehouseId: string) {
-    return this.inventory.getBalance(stockItemId, warehouseId);
+  async getBalance(
+    @Query('stockItemId') stockItemId: string,
+    @Query('warehouseId') warehouseId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.getBalance(stockItemId, warehouseId, scope);
   }
 
   // ---- Goods Receipt ----
@@ -68,18 +73,23 @@ export class InventoryController {
   @Post('goods-receipts')
   @ApiOperation({ summary: 'Create a draft goods receipt' })
   @RequirePermissions('inventory.transact')
-  createGoodsReceipt(
+  async createGoodsReceipt(
     @Body() body: Omit<Parameters<InventoryService['createGoodsReceipt']>[0], 'createdById'>,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.inventory.createGoodsReceipt({ ...body, createdById: user.id });
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.createGoodsReceipt({ ...body, createdById: user.id }, scope);
   }
 
   @Post('goods-receipts/:id/post')
   @ApiOperation({ summary: 'Post a draft goods receipt', description: 'Increases on-hand quantity for every line and recomputes each item\'s weighted-average unit cost.' })
   @RequirePermissions('inventory.post')
-  postGoodsReceipt(@Param('id') id: string) {
-    return this.inventory.postGoodsReceipt(id);
+  async postGoodsReceipt(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.postGoodsReceipt(id, scope);
   }
 
   // ---- Material Issue ----
@@ -87,18 +97,23 @@ export class InventoryController {
   @Post('material-issues')
   @ApiOperation({ summary: 'Create a draft material issue' })
   @RequirePermissions('inventory.transact')
-  createMaterialIssue(
+  async createMaterialIssue(
     @Body() body: Omit<Parameters<InventoryService['createMaterialIssue']>[0], 'createdById'>,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.inventory.createMaterialIssue({ ...body, createdById: user.id });
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.createMaterialIssue({ ...body, createdById: user.id }, scope);
   }
 
   @Post('material-issues/:id/post')
   @ApiOperation({ summary: 'Post a draft material issue', description: 'Rejects with 400 if any line would take on-hand quantity negative — there is no backorder/negative-stock concept.' })
   @RequirePermissions('inventory.post')
-  postMaterialIssue(@Param('id') id: string) {
-    return this.inventory.postMaterialIssue(id);
+  async postMaterialIssue(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.postMaterialIssue(id, scope);
   }
 
   // ---- Stock Transfer ----
@@ -106,18 +121,23 @@ export class InventoryController {
   @Post('stock-transfers')
   @ApiOperation({ summary: 'Create a draft transfer between two warehouses' })
   @RequirePermissions('inventory.transact')
-  createStockTransfer(
+  async createStockTransfer(
     @Body() body: Omit<Parameters<InventoryService['createStockTransfer']>[0], 'createdById'>,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.inventory.createStockTransfer({ ...body, createdById: user.id });
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.createStockTransfer({ ...body, createdById: user.id }, scope);
   }
 
   @Post('stock-transfers/:id/post')
   @ApiOperation({ summary: 'Post a draft stock transfer', description: 'Same insufficient-stock rejection as posting a material issue applies to the source warehouse.' })
   @RequirePermissions('inventory.post')
-  postStockTransfer(@Param('id') id: string) {
-    return this.inventory.postStockTransfer(id);
+  async postStockTransfer(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.postStockTransfer(id, scope);
   }
 
   // ---- Stock Count ----
@@ -125,17 +145,22 @@ export class InventoryController {
   @Post('stock-counts')
   @ApiOperation({ summary: 'Create a draft physical stock count' })
   @RequirePermissions('inventory.transact')
-  createStockCount(
+  async createStockCount(
     @Body() body: Omit<Parameters<InventoryService['createStockCount']>[0], 'createdById'>,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.inventory.createStockCount({ ...body, createdById: user.id });
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.createStockCount({ ...body, createdById: user.id }, scope);
   }
 
   @Post('stock-counts/:id/post')
   @ApiOperation({ summary: 'Post a draft stock count', description: 'Only lines whose counted-vs-system variance exceeds a small tolerance produce an adjustment movement — negligible variances are silently skipped, not adjusted to zero.' })
   @RequirePermissions('inventory.post')
-  postStockCount(@Param('id') id: string) {
-    return this.inventory.postStockCount(id);
+  async postStockCount(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scope = await this.securityContext.buildScope(user);
+    return this.inventory.postStockCount(id, scope);
   }
 }

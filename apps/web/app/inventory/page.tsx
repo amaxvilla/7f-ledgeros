@@ -6,6 +6,7 @@ import { CreateWarehouseForm } from './CreateWarehouseForm';
 import { CreateStockItemForm } from './CreateStockItemForm';
 import { StockBalanceLookup } from './StockBalanceLookup';
 import { InventoryWarehousesTable, InventoryStockItemsTable } from './InventoryTables';
+import { InventoryTransactionForms } from './InventoryTransactionForms';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,7 +106,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
         )}
       </section>
 
-      <section>
+      <section style={{ marginBottom: tokens.space(8) }}>
         <PageHeader title="Stock items" />
         {stockItemsError && (
           <div style={{ color: tokens.color.negative, fontFamily: tokens.font.body, marginBottom: tokens.space(4) }}>
@@ -119,6 +120,19 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
           </>
         )}
       </section>
+
+      {entityId && warehouseData && stockItemData && (
+        <section>
+          <PageHeader
+            title="Inventory transactions"
+            subtitle="Create and post goods receipts, material issues, stock transfers, and physical stock counts."
+          />
+          <InventoryTransactionForms
+            warehouseOptions={warehouseOptions}
+            stockItemOptions={stockItemOptions}
+          />
+        </section>
+      )}
     </PageContainer>
   );
 }

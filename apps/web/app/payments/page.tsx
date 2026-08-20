@@ -1,7 +1,8 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreatePaymentLinkForm } from './CreatePaymentLinkForm';
+import { PaymentsTable } from './PaymentsTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -151,21 +152,7 @@ export default async function PaymentsPage({
           <section>
             <PageHeader title="Recent transactions" />
             <CreatePaymentLinkForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Reference', render: (r: PaymentTransaction) => r.reference },
-                { header: 'Provider', render: (r: PaymentTransaction) => <Badge tone="neutral">{r.providerCode}</Badge> },
-                { header: 'Customer', render: (r: PaymentTransaction) => r.customerEmail },
-                { header: 'Amount', align: 'right', render: (r: PaymentTransaction) => formatMinorUnits(r.amount, r.currency) },
-                {
-                  header: 'Status',
-                  render: (r: PaymentTransaction) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge>,
-                },
-              ]}
-              rows={data.transactions}
-              keyOf={(r) => r.id}
-              emptyMessage="No payment transactions for this entity yet."
-            />
+            <PaymentsTable rows={data.transactions} />
           </section>
         </>
       )}

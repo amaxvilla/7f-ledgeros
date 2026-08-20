@@ -1,7 +1,8 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateMortgageApplicationForm } from './CreateMortgageApplicationForm';
+import { MortgageApplicationsTable } from './MortgageTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,29 +138,7 @@ export default async function MortgagePage({
           <section>
             <PageHeader title="Applications" />
             <CreateMortgageApplicationForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Lender', render: (r: MortgageApplication) => r.lenderName },
-                { header: 'Applied', align: 'right', render: (r: MortgageApplication) => formatCurrency(r.amountApplied) },
-                {
-                  header: 'Approved',
-                  align: 'right',
-                  render: (r: MortgageApplication) => (r.amountApproved !== null ? formatCurrency(r.amountApproved) : '—'),
-                },
-                {
-                  header: 'Disbursed',
-                  align: 'right',
-                  render: (r: MortgageApplication) => (r.disbursedAmount !== null ? formatCurrency(r.disbursedAmount) : '—'),
-                },
-                {
-                  header: 'Status',
-                  render: (r: MortgageApplication) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge>,
-                },
-              ]}
-              rows={data.applications}
-              keyOf={(r) => r.id}
-              emptyMessage="No mortgage applications for this entity yet."
-            />
+            <MortgageApplicationsTable rows={data.applications} />
           </section>
         </>
       )}

@@ -1,9 +1,10 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CalculateCommissionForm } from './CalculateCommissionForm';
 import { CalculationLifecycleControls } from './CalculationLifecycleControls';
+import { CommissionCalculationsTable } from './CommissionCalculationsTables';
 
 interface Account {
   id: string;
@@ -137,25 +138,7 @@ export default async function CommissionCalculationsPage({ searchParams }: { sea
 
           <CalculateCommissionForm />
 
-          <DataTable
-            columns={[
-              { header: 'Agent', render: (c: CommissionCalculation) => c.agentId },
-              { header: 'Assignment', render: (c: CommissionCalculation) => c.agentAssignmentId },
-              { header: 'Sale allocation', render: (c: CommissionCalculation) => c.allocationId },
-              { header: 'Basis', render: (c: CommissionCalculation) => `${c.basisType}${c.collectionBasis === 'COLLECTED' ? ` (${c.collectedPercent != null ? `${(Number(c.collectedPercent) * 100).toFixed(1)}% collected` : 'collected'})` : ''}` },
-              { header: 'Gross commission', render: (c: CommissionCalculation) => money(c.grossCommission) },
-              { header: 'WHT', render: (c: CommissionCalculation) => (c.whtApplied ? money(c.whtAmount) : '—') },
-              { header: 'Net commission', render: (c: CommissionCalculation) => money(c.netCommission) },
-              { header: 'Calculated', render: (c: CommissionCalculation) => new Date(c.calculatedAt).toLocaleString() },
-              { header: 'Status', render: (c: CommissionCalculation) => <Badge tone={STATUS_TONE[c.status]}>{c.status}</Badge> },
-              { header: 'Actions', render: (c: CommissionCalculation) => <CalculationLifecycleControls id={c.id} status={c.status} accountOptions={accountOptions} /> },
-            ]}
-            rows={calculations}
-            keyOf={(c) => c.id}
-            emptyMessage="No commissions calculated for this entity yet."
-            search={{ placeholder: 'Search agent, assignment, allocation…', getText: (c) => `${c.agentId} ${c.agentAssignmentId} ${c.allocationId}` }}
-            filters={[{ label: 'Status', options: STATUS_FILTER_OPTIONS, getValue: (c: CommissionCalculation) => c.status }]}
-          />
+          <CommissionCalculationsTable rows={calculations} accountOptions={accountOptions} />
         </>
       )}
     </PageContainer>

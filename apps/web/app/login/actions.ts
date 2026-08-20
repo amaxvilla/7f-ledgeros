@@ -148,7 +148,7 @@ export async function login(input: { email: string; password: string }): Promise
   }
 
   setSessionCookies(result.accessToken, result.refreshToken, result.expiresIn);
-  redirect('/');
+  return { ok: true };
 }
 
 /**
@@ -191,7 +191,7 @@ export async function verifyMfa(input: { challengeToken: string; token: string; 
   }
 
   setSessionCookies(result.accessToken, result.refreshToken, result.expiresIn);
-  redirect('/');
+  return { ok: true };
 }
 
 /**

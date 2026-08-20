@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, TextField, tokens } from '@7f/ui';
 import { login, verifyMfa } from './actions';
 
@@ -38,6 +39,7 @@ import { login, verifyMfa } from './actions';
  * plain `<button>` below already takes.
  */
 export function LoginForm() {
+  const router = useRouter();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [challengeToken, setChallengeToken] = React.useState<string | null>(null);
@@ -54,10 +56,17 @@ export function LoginForm() {
     const result = await login({ email, password });
 
     setPending(false);
+
     if (result.mfaRequired && result.challengeToken) {
       setChallengeToken(result.challengeToken);
       return;
     }
+
+    if (result.ok) {
+      router.push('/');
+      return;
+    }
+
     setError(result.error ?? 'Login failed.');
   }
 
@@ -68,9 +77,13 @@ export function LoginForm() {
 
     const result = await verifyMfa({ challengeToken: challengeToken!, token: code, rememberDevice });
 
-    // Only reached on failure — a successful verifyMfa() redirects
-    // before this promise resolves, same as login()'s own success path.
     setPending(false);
+
+    if (result.ok) {
+      router.push('/');
+      return;
+    }
+
     setError(result.error ?? 'Verification failed.');
   }
 

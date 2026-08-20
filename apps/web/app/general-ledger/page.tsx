@@ -1,10 +1,11 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateAccountForm } from './CreateAccountForm';
 import { CreateJournalEntryForm } from './CreateJournalEntryForm';
 import { JournalEntryStatusActions } from './JournalEntryStatusActions';
+import { GeneralLedgerJournalEntriesTable, GeneralLedgerAccountsTable } from './GeneralLedgerTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -177,20 +178,7 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
           <section>
             <PageHeader title="Journal entries" />
             <CreateJournalEntryForm entityId={data.entityId} accountOptions={accountOptions} />
-            <DataTable
-              columns={[
-                { header: 'Journal #', render: (r: JournalEntry) => r.journalNumber },
-                { header: 'Date', render: (r: JournalEntry) => new Date(r.entryDate).toLocaleDateString() },
-                { header: 'Description', render: (r: JournalEntry) => r.description },
-                { header: 'Debit', align: 'right', render: (r: JournalEntry) => formatCurrency(lineTotal(r.lines, 'debit')) },
-                { header: 'Credit', align: 'right', render: (r: JournalEntry) => formatCurrency(lineTotal(r.lines, 'credit')) },
-                { header: 'Status', render: (r: JournalEntry) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-                { header: 'Actions', align: 'right', render: (r: JournalEntry) => <JournalEntryStatusActions id={r.id} status={r.status} /> },
-              ]}
-              rows={data.journalEntries}
-              keyOf={(r) => r.id}
-              emptyMessage="No journal entries for this entity yet."
-            />
+            <GeneralLedgerJournalEntriesTable rows={data.journalEntries} />
           </section>
         </>
       )}
@@ -204,19 +192,7 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
           </div>
         )}
         {accounts && (
-          <DataTable
-            columns={[
-              { header: 'Code', render: (a: Account) => a.code },
-              { header: 'Name', render: (a: Account) => a.name },
-              { header: 'Type', render: (a: Account) => a.accountType },
-              { header: 'Category', render: (a: Account) => a.accountCategory },
-              { header: 'Status', render: (a: Account) => <Badge tone={a.isActive ? 'positive' : 'neutral'}>{a.isActive ? 'Active' : 'Inactive'}</Badge> },
-            ]}
-            rows={accounts}
-            keyOf={(a) => a.id}
-            emptyMessage="No accounts configured yet."
-            search={{ getText: (a) => `${a.code} ${a.name}`, placeholder: 'Search by code or name…' }}
-          />
+          <GeneralLedgerAccountsTable rows={accounts} />
         )}
       </section>
     </PageContainer>

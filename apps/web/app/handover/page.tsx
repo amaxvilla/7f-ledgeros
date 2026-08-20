@@ -1,8 +1,8 @@
-import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { ScheduleHandoverForm } from './ScheduleHandoverForm';
+import { HandoverRecordsTable } from './HandoverTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -146,22 +146,7 @@ export default async function HandoverPage({
 
       <ScheduleHandoverForm entityId={entityId} />
 
-      <DataTable
-        columns={[
-          { header: 'Unit', render: (r: HandoverRecord) => <Link href={`/handover/${r.id}`} style={{ color: tokens.color.accent }}>{r.unit.code}</Link> },
-          { header: 'Customer', render: (r: HandoverRecord) => r.customer.name },
-          { header: 'Scheduled', render: (r: HandoverRecord) => new Date(r.scheduledDate).toLocaleDateString() },
-          { header: 'Status', render: (r: HandoverRecord) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-          {
-            header: 'Open snags',
-            align: 'right',
-            render: (r: HandoverRecord) => String(r.snags.filter((s) => s.status === 'OPEN' || s.status === 'IN_PROGRESS').length),
-          },
-        ]}
-        rows={records}
-        keyOf={(r) => r.id}
-        emptyMessage="No handover records for this entity yet."
-      />
+      <HandoverRecordsTable rows={records} />
 
       {snagOverview && (
         <section style={{ marginTop: tokens.space(8) }}>

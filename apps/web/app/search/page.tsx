@@ -1,6 +1,7 @@
-import { DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
+import { SearchResultsTables } from './SearchTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -117,40 +118,9 @@ export default async function SearchPage({
         </p>
       )}
 
-      {data &&
-        (Object.keys(CATEGORY_LABELS) as (keyof SearchResults['categories'])[]).map((key) => {
-          const rows = data!.categories[key];
-          if (rows.length === 0) return null;
-          return (
-            <section key={key} style={{ marginBottom: tokens.space(8) }}>
-              <h2
-                style={{
-                  fontFamily: tokens.font.display,
-                  fontSize: '15px',
-                  color: tokens.color.textPrimary,
-                  marginBottom: tokens.space(2),
-                }}
-              >
-                {CATEGORY_LABELS[key]}
-              </h2>
-              <DataTable
-                columns={[
-                  {
-                    header: 'Name',
-                    render: (row: SearchResultItem) => (
-                      <a href={row.href} style={{ color: tokens.color.accent, textDecoration: 'none' }}>
-                        {row.title}
-                      </a>
-                    ),
-                  },
-                  { header: 'Code', render: (row: SearchResultItem) => row.subtitle ?? '—' },
-                ]}
-                rows={rows}
-                keyOf={(row) => row.id}
-              />
-            </section>
-          );
-        })}
+      {data && (
+        <SearchResultsTables categories={data.categories} />
+      )}
     </PageContainer>
   );
 }

@@ -1,11 +1,12 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../../lib/api';
 import { EntitySelector } from '../../EntitySelector';
 import { ProjectSelector } from '../../ProjectSelector';
 import type { ProjectOption } from '../../ProjectSelector';
 import { ReserveUnitForm } from './ReserveUnitForm';
+import { RealEstateUnitsTable } from '../RealEstateTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -259,30 +260,7 @@ export default async function PropertySalesPage({
 
           <section>
             <PageHeader title="Units" subtitle={`${data.units.length} total`} />
-            <DataTable
-              columns={[
-                { header: 'Unit', render: (u: UnitRow) => u.name ? `${u.code} — ${u.name}` : u.code },
-                { header: 'Phase / Block / Floor', render: (u: UnitRow) => `${u.phaseLabel} / ${u.blockLabel} / ${u.floorLabel}` },
-                { header: 'Type', render: (u: UnitRow) => u.unitType ?? '—' },
-                { header: 'Size (sqm)', align: 'right', render: (u: UnitRow) => (u.sizeSqm === null ? '—' : String(u.sizeSqm)) },
-                { header: 'List price', align: 'right', render: (u: UnitRow) => formatCurrency(u.listPrice) },
-                { header: 'Status', render: (u: UnitRow) => <Badge tone={UNIT_STATUS_TONE[u.status] ?? 'neutral'}>{u.status}</Badge> },
-                {
-                  header: 'View',
-                  render: (u: UnitRow) => (
-                    <Link
-                      href={`/real-estate/sales/${u.id}?entityId=${entityId}&projectId=${projectId}`}
-                      style={{ color: tokens.color.accent, fontFamily: tokens.font.body, fontSize: '13px' }}
-                    >
-                      View
-                    </Link>
-                  ),
-                },
-              ]}
-              rows={data.units}
-              keyOf={(u) => u.id}
-              emptyMessage="This project has no units yet."
-            />
+            <RealEstateUnitsTable rows={data.units} entityId={entityId} projectId={projectId} />
           </section>
         </>
       )}

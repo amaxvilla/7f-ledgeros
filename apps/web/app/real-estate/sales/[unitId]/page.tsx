@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../../../lib/api';
 import { CancelCurrentForm } from './CancelCurrentForm';
@@ -7,6 +7,7 @@ import { ConvertReservationForm } from './ConvertReservationForm';
 import { TransferAllocationForm } from './TransferAllocationForm';
 import { SwapUnitForm } from './SwapUnitForm';
 import { CreateInstallmentScheduleForm } from './CreateInstallmentScheduleForm';
+import { UnitInstallmentsTable, AllocationHistoryTable } from '../../RealEstateTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -414,20 +415,7 @@ export default async function UnitDetailPage({
                   subtitle={data.schedule ? `${data.schedule.lines.length} installment${data.schedule.lines.length === 1 ? '' : 's'}` : undefined}
                 />
                 {data.schedule ? (
-                  <DataTable
-                    columns={[
-                      { header: 'Due date', render: (l: InstallmentLine) => new Date(l.dueDate).toLocaleDateString() },
-                      { header: 'Amount due', align: 'right', render: (l: InstallmentLine) => formatCurrency(l.amountDue) },
-                      { header: 'Amount paid', align: 'right', render: (l: InstallmentLine) => formatCurrency(l.amountPaid) },
-                      {
-                        header: 'Status',
-                        render: (l: InstallmentLine) => <Badge tone={l.paidAt ? 'positive' : 'neutral'}>{l.paidAt ? 'Paid' : 'Outstanding'}</Badge>,
-                      },
-                    ]}
-                    rows={data.schedule.lines}
-                    keyOf={(l) => l.id}
-                    emptyMessage="This schedule has no installments."
-                  />
+                  <UnitInstallmentsTable rows={data.schedule.lines} />
                 ) : (
                   <CreateInstallmentScheduleForm unitId={unitId} allocationId={data.allocationId} />
                 )}
@@ -441,19 +429,7 @@ export default async function UnitDetailPage({
 
           <section>
             <PageHeader title="Allocation history" subtitle={`${data.events.length} event${data.events.length === 1 ? '' : 's'}`} />
-            <DataTable
-              columns={[
-                { header: 'Event', render: (e: AllocationEvent) => <Badge tone={EVENT_TYPE_TONE[e.eventType] ?? 'neutral'}>{e.eventType}</Badge> },
-                { header: 'From', render: (e: AllocationEvent) => e.fromCustomer?.name ?? '—' },
-                { header: 'To', render: (e: AllocationEvent) => e.toCustomer?.name ?? '—' },
-                { header: 'By', render: (e: AllocationEvent) => `${e.createdBy.firstName} ${e.createdBy.lastName}` },
-                { header: 'Notes', render: (e: AllocationEvent) => e.notes ?? '—' },
-                { header: 'When', render: (e: AllocationEvent) => new Date(e.createdAt).toLocaleString() },
-              ]}
-              rows={data.events}
-              keyOf={(e) => e.id}
-              emptyMessage="No allocation events for this unit yet."
-            />
+            <AllocationHistoryTable rows={data.events} />
           </section>
         </>
       )}

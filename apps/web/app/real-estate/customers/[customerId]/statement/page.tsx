@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../../../../lib/api';
+import { CustomerStatementInstallmentsTable } from '../../../RealEstateTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,20 +153,7 @@ export default async function CustomerStatementPage({ params }: { params: { cust
               {formatCurrency(position.outstandingBalance)}
             </span>
           </div>
-          <DataTable
-            columns={[
-              { header: 'Due date', render: (l: InstallmentLine) => new Date(l.dueDate).toLocaleDateString() },
-              { header: 'Amount due', align: 'right', render: (l: InstallmentLine) => formatCurrency(l.amountDue) },
-              { header: 'Amount paid', align: 'right', render: (l: InstallmentLine) => formatCurrency(l.amountPaid) },
-              {
-                header: 'Status',
-                render: (l: InstallmentLine) => <Badge tone={l.paidAt ? 'positive' : 'neutral'}>{l.paidAt ? 'Paid' : 'Outstanding'}</Badge>,
-              },
-            ]}
-            rows={position.installments}
-            keyOf={(l) => l.id}
-            emptyMessage="No installment schedule for this allocation yet."
-          />
+          <CustomerStatementInstallmentsTable rows={position.installments} />
         </section>
       ))}
     </PageContainer>

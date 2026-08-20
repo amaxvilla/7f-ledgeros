@@ -1,9 +1,10 @@
-import { DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { PeriodSelector } from './PeriodSelector';
 import { ExportCsvButton } from './ExportCsvButton';
 import { PrintButton } from './PrintButton';
+import { FinancialLineItemsTable, FinancialEquityTable } from './FinancialStatementsTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,41 +100,10 @@ const EQUITY_COMPONENT_LABELS: Record<EquityComponent, string> = {
   otherReserves: 'Other reserves',
 };
 
-function equityColumns(components: EquityComponent[]) {
-  return [
-    { header: 'Movement', render: (r: { label: string; row: EquityRow }) => r.label },
-    ...components.map((c) => ({
-      header: EQUITY_COMPONENT_LABELS[c],
-      align: 'right' as const,
-      render: (r: { label: string; row: EquityRow }) => formatCurrency(r.row[c]),
-    })),
-    { header: 'Total', align: 'right' as const, render: (r: { label: string; row: EquityRow }) => formatCurrency(r.row.total) },
-  ];
-}
-
-function equityRows(equity: ChangesInEquity): { label: string; row: EquityRow }[] {
-  return [
-    { label: 'Opening balance', row: equity.opening },
-    { label: 'Profit for the year', row: equity.profitForYear },
-    { label: 'Other comprehensive income', row: equity.oci },
-    { label: 'Dividends', row: equity.dividends },
-    { label: 'Other movements', row: equity.otherMovements },
-    { label: 'Closing balance', row: equity.closing },
-  ];
-}
-
 function allLineItems(...sections: LineItemRow[][]): LineItemRow[] {
   return sections.flat();
 }
 
-function lineItemColumns() {
-  return [
-    { header: 'Section', render: (r: LineItemRow) => r.statement_section.replace(/_/g, ' ') },
-    { header: 'Code', render: (r: LineItemRow) => r.account_code },
-    { header: 'Account', render: (r: LineItemRow) => r.account_name },
-    { header: 'Amount', align: 'right' as const, render: (r: LineItemRow) => formatCurrency(r.amount ?? r.closing_balance ?? 0) },
-  ];
-}
 
 /**
  * Frontend Completion, FE-9.2 — the three primary IFRS financial
@@ -320,10 +290,8 @@ export default async function FinancialStatementsPage({
             <KpiCard label="Operating profit" value={formatCurrency(pl.operatingProfit)} />
             <KpiCard label="Net profit" value={formatCurrency(pl.netProfit)} tone={pl.netProfit >= 0 ? 'positive' : 'negative'} />
           </section>
-          <DataTable
-            columns={lineItemColumns()}
+          <FinancialLineItemsTable
             rows={allLineItems(pl.revenue, pl.costOfSales, pl.operatingExpense, pl.financeExpense, pl.taxExpense)}
-            keyOf={(r: LineItemRow) => r.account_id}
             emptyMessage="No postings for this period."
           />
         </section>
@@ -349,10 +317,8 @@ export default async function FinancialStatementsPage({
             <KpiCard label="Total equity" value={formatCurrency(sofp.totalEquity)} />
             <KpiCard label="Balances" value={sofp.balances ? 'Yes' : 'No'} tone={sofp.balances ? 'positive' : 'warning'} />
           </section>
-          <DataTable
-            columns={lineItemColumns()}
+          <FinancialLineItemsTable
             rows={allLineItems(sofp.currentAssets, sofp.nonCurrentAssets, sofp.currentLiabilities, sofp.nonCurrentLiabilities, sofp.equity)}
-            keyOf={(r: LineItemRow) => r.account_id}
             emptyMessage="No balances for this period."
           />
         </section>
@@ -397,10 +363,8 @@ export default async function FinancialStatementsPage({
               tone={ci.totalComprehensiveIncome >= 0 ? 'positive' : 'negative'}
             />
           </section>
-          <DataTable
-            columns={lineItemColumns()}
+          <FinancialLineItemsTable
             rows={allLineItems(ci.revenue, ci.costOfSales, ci.operatingExpense, ci.financeExpense, ci.taxExpense)}
-            keyOf={(r: LineItemRow) => r.account_id}
             emptyMessage="No postings for this period."
           />
         </section>
@@ -418,11 +382,16 @@ export default async function FinancialStatementsPage({
               tone={equity.reconcilesToBalanceSheet ? 'positive' : 'warning'}
             />
           </section>
-          <DataTable
-            columns={equityColumns(equity.components)}
-            rows={equityRows(equity)}
-            keyOf={(r: { label: string; row: EquityRow }) => r.label}
-            emptyMessage="No equity movements for this period."
+          <FinancialEquityTable
+            rows={[
+              { label: "Opening balance", row: equity.opening },
+              { label: "Profit for the year", row: equity.profitForYear },
+              { label: "Other comprehensive income", row: equity.oci },
+              { label: "Dividends", row: equity.dividends },
+              { label: "Other movements", row: equity.otherMovements },
+              { label: "Closing balance", row: equity.closing },
+            ]}
+            components={equity.components}
           />
         </section>
       )}

@@ -1,4 +1,4 @@
-import { Badge, DataTable, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, PageContainer, PageHeader, tokens } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
@@ -8,6 +8,7 @@ import { SessionSelector } from './SessionSelector';
 import { SessionActions } from './SessionActions';
 import { ManualMatchForm } from './ManualMatchForm';
 import { RecordAdjustmentForm } from './RecordAdjustmentForm';
+import { UnmatchedStatementLinesTable, UnmatchedBookLinesTable } from './BankReconciliationTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -152,31 +153,11 @@ export default async function BankReconciliationPage({ searchParams }: { searchP
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: tokens.space(6) }}>
               <div>
                 <PageHeader title="Unmatched statement lines" />
-                <DataTable
-                  columns={[
-                    { header: 'Date', render: (l: UnmatchedStatementLine) => new Date(l.transactionDate).toLocaleDateString() },
-                    { header: 'Description', render: (l: UnmatchedStatementLine) => l.description },
-                    { header: 'Amount', align: 'right', render: (l: UnmatchedStatementLine) => String(l.amount) },
-                    { header: 'Classification', render: (l: UnmatchedStatementLine) => l.classification.replace(/_/g, ' ') },
-                  ]}
-                  rows={summary.unmatchedStatementLines}
-                  keyOf={(l) => l.id}
-                  emptyMessage="No unmatched statement lines."
-                />
+                <UnmatchedStatementLinesTable rows={summary.unmatchedStatementLines} />
               </div>
               <div>
                 <PageHeader title="Unmatched book lines" />
-                <DataTable
-                  columns={[
-                    { header: 'Date', render: (l: UnmatchedBookLine) => new Date(l.entryDate).toLocaleDateString() },
-                    { header: 'Debit', align: 'right', render: (l: UnmatchedBookLine) => String(l.debit) },
-                    { header: 'Credit', align: 'right', render: (l: UnmatchedBookLine) => String(l.credit) },
-                    { header: 'Classification', render: (l: UnmatchedBookLine) => l.classification.replace(/_/g, ' ') },
-                  ]}
-                  rows={summary.unmatchedBookLines}
-                  keyOf={(l) => l.id}
-                  emptyMessage="No unmatched book lines."
-                />
+                <UnmatchedBookLinesTable rows={summary.unmatchedBookLines} />
               </div>
             </div>
           </>

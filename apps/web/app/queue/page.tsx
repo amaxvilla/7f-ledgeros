@@ -1,8 +1,9 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, ApiError } from '../../lib/api';
 import { TriggerDashboardRefreshForm } from './TriggerDashboardRefreshForm';
 import { TriggerBudgetRecalculationForm } from './TriggerBudgetRecalculationForm';
 import { TriggerReportGenerationForm } from './TriggerReportGenerationForm';
+import { QueueRunsTable } from './QueueTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -114,30 +115,7 @@ export default async function QueuePage() {
       <TriggerBudgetRecalculationForm />
       <TriggerReportGenerationForm />
 
-      <DataTable
-        columns={[
-          { header: 'Queue', render: (j: JobRun) => j.queueName },
-          { header: 'Job', render: (j: JobRun) => j.jobName },
-          { header: 'Status', render: (j: JobRun) => <Badge tone={STATUS_TONE[j.status] ?? 'neutral'}>{j.status}</Badge> },
-          { header: 'Attempts', align: 'right', render: (j: JobRun) => String(j.attemptsMade) },
-          { header: 'Error', render: (j: JobRun) => j.errorMessage ?? '—' },
-          {
-            header: 'Result',
-            render: (j: JobRun) =>
-              j.result?.url ? (
-                <a href={resolveResultUrl(j.result.url)} style={{ color: tokens.color.accent }} target="_blank" rel="noreferrer">
-                  Download
-                </a>
-              ) : (
-                '—'
-              ),
-          },
-          { header: 'Created', render: (j: JobRun) => new Date(j.createdAt).toLocaleString() },
-        ]}
-        rows={jobRuns}
-        keyOf={(j) => j.id}
-        emptyMessage="No job runs recorded yet."
-      />
+      <QueueRunsTable rows={jobRuns} />
     </PageContainer>
   );
 }

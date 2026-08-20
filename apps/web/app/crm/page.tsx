@@ -1,7 +1,8 @@
-import { Badge, DataTable, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
+import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateLeadForm } from './CreateLeadForm';
+import { CrmLeadsTable } from './CrmTables';
 
 export const dynamic = 'force-dynamic';
 
@@ -209,17 +210,7 @@ export default async function CrmPage({
           <section>
             <PageHeader title="Leads" />
             <CreateLeadForm entityId={entityId} />
-            <DataTable
-              columns={[
-                { header: 'Name', render: (r: Lead) => `${r.firstName} ${r.lastName}` },
-                { header: 'Email', render: (r: Lead) => r.email ?? '—' },
-                { header: 'Source', render: (r: Lead) => <Badge tone="neutral">{r.source}</Badge> },
-                { header: 'Status', render: (r: Lead) => <Badge tone={STATUS_TONE[r.status] ?? 'neutral'}>{r.status}</Badge> },
-              ]}
-              rows={data.leads}
-              keyOf={(r) => r.id}
-              emptyMessage="No leads for this entity yet."
-            />
+            <CrmLeadsTable rows={data.leads} />
           </section>
         </>
       )}

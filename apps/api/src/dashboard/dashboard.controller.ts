@@ -4,6 +4,7 @@ import { DashboardService } from './dashboard.service';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { SecurityContextService } from '../security/security-context.service';
+import { MaskFields } from '../security/decorators/mask-fields.decorator';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
@@ -82,6 +83,7 @@ export class DashboardController {
   @Get('loan-exposure')
   @ApiOperation({ summary: 'Loan/borrowing exposure dashboard widget for an entity' })
   @RequirePermissions('treasury.view')
+  @MaskFields({ group: 'loanValues', fields: ['totalOutstanding', 'facilityAmount', 'drawn', 'principalRepaid', 'outstanding'] })
   getLoanExposure(@Query('entityId') entityId: string) {
     return this.dashboard.getLoanExposure(entityId);
   }

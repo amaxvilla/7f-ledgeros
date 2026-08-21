@@ -65,7 +65,7 @@ describe('ReportingService', () => {
     });
 
     it('rejects budgetVsActual for an entity outside the caller\'s scope', async () => {
-      await expect(service.budgetVsActual(restrictedScope, 'ent-2')).rejects.toThrow(ForbiddenException);
+      await expect(async () => service.budgetVsActual(restrictedScope, 'ent-2')).rejects.toThrow(ForbiddenException);
       expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 

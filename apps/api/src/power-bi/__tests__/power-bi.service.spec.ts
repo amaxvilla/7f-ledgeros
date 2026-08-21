@@ -72,7 +72,7 @@ describe('PowerBiService', () => {
       throw new Error('No Power BI provider registered for providerCode "TABLEAU"');
     });
 
-    await expect(
+    await expect(async () =>
       service.publishDataset({ providerCode: 'TABLEAU', datasetName: 'x', tables: [] }),
     ).rejects.toThrow('No Power BI provider registered for providerCode "TABLEAU"');
   });

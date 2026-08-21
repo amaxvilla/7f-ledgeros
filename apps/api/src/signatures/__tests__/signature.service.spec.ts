@@ -84,6 +84,6 @@ describe('SignatureService', () => {
       throw new Error('No signature provider registered for providerCode "HELLOSIGN"');
     });
 
-    await expect(service.getStatus('env1', 'HELLOSIGN')).rejects.toThrow('No signature provider registered for providerCode "HELLOSIGN"');
+    await expect(async () => service.getStatus('env1', 'HELLOSIGN')).rejects.toThrow('No signature provider registered for providerCode "HELLOSIGN"');
   });
 });

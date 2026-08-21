@@ -24,7 +24,7 @@ describe('PresenceService', () => {
       throw new Error('No presence provider registered for providerCode "SLACK"');
     });
 
-    await expect(service.getPresence('SLACK', 'a@b.com')).rejects.toThrow(
+    await expect(async () => service.getPresence('SLACK', 'a@b.com')).rejects.toThrow(
       'No presence provider registered for providerCode "SLACK"',
     );
   });

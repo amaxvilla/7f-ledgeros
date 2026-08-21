@@ -212,7 +212,7 @@ describe('OfferService', () => {
           signatureProviderCode: ADOBE_SIGN_PROVIDER_CODE,
           jobApplication: { candidate: { firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.com' }, vacancy: {} },
         });
-        prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', ...data }));
+        prisma.offer.update.mockImplementation(({ data }: any) => ({ id: 'off1', signatureProviderCode: ADOBE_SIGN_PROVIDER_CODE, ...data }));
         prisma.jobApplication.update.mockResolvedValue({});
         signatureProviders.isRegistered.mockReturnValue(true);
         const sendForSignature = jest.fn().mockResolvedValue({ providerEnvelopeId: 'env-adobe' });

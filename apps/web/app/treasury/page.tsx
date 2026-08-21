@@ -114,12 +114,12 @@ export default async function TreasuryPage({
             <KpiCard label="Active facilities" value={String(data.loanExposure.facilities.length)} />
             <KpiCard
               label="Total facility value"
-              value={formatCurrency(data.loanExposure.facilities.reduce((sum, f) => sum + f.facilityAmount, 0))}
+              value={typeof data.loanExposure.totalOutstanding === 'number' ? formatCurrency(data.loanExposure.facilities.reduce((sum, f) => sum + (f.facilityAmount as number), 0)) : data.loanExposure.totalOutstanding}
             />
             <KpiCard
               label="Outstanding"
-              value={formatCurrency(data.loanExposure.totalOutstanding)}
-              tone={data.loanExposure.totalOutstanding > 0 ? 'warning' : 'neutral'}
+              value={typeof data.loanExposure.totalOutstanding === 'number' ? formatCurrency(data.loanExposure.totalOutstanding) : data.loanExposure.totalOutstanding}
+              tone={typeof data.loanExposure.totalOutstanding === 'number' && data.loanExposure.totalOutstanding > 0 ? 'warning' : 'neutral'}
             />
           </section>
 

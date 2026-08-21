@@ -40,9 +40,10 @@ describe('RateLimitService', () => {
   let service: RateLimitService;
   let fakeRedis: ReturnType<typeof buildFakeRedis>;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     fakeRedis = buildFakeRedis();
     service = new RateLimitService();
+    await (service as any).redis.quit();
     (service as any).redis = fakeRedis;
   });
 

@@ -78,7 +78,7 @@ describe('CalendarService', () => {
       throw new Error('No calendar provider registered for providerCode "GOOGLE"');
     });
 
-    await expect(
+    await expect(async () =>
       service.createEvent({ providerCode: 'GOOGLE', title: 'x', startTime: '2026-01-01T00:00:00.000Z', endTime: '2026-01-01T01:00:00.000Z' }),
     ).rejects.toThrow('No calendar provider registered for providerCode "GOOGLE"');
   });

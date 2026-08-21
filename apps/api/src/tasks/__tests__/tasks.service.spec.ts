@@ -71,7 +71,7 @@ describe('TasksService', () => {
       throw new Error('No tasks provider registered for providerCode "SALESFORCE"');
     });
 
-    await expect(service.createTask({ providerCode: 'SALESFORCE', title: 'x' })).rejects.toThrow(
+    await expect(async () => service.createTask({ providerCode: 'SALESFORCE', title: 'x' })).rejects.toThrow(
       'No tasks provider registered for providerCode "SALESFORCE"',
     );
   });

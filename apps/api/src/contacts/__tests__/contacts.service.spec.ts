@@ -57,7 +57,7 @@ describe('ContactsService', () => {
       throw new Error('No contacts provider registered for providerCode "SALESFORCE"');
     });
 
-    await expect(service.createContact({ providerCode: 'SALESFORCE', displayName: 'x' })).rejects.toThrow(
+    await expect(async () => service.createContact({ providerCode: 'SALESFORCE', displayName: 'x' })).rejects.toThrow(
       'No contacts provider registered for providerCode "SALESFORCE"',
     );
   });

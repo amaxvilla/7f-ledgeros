@@ -82,7 +82,7 @@ describe('WorkspaceAdminService', () => {
       throw new Error('No workspace-admin provider registered for providerCode "ENTRA_ID"');
     });
 
-    await expect(
+    await expect(async () =>
       service.createUser({ providerCode: 'ENTRA_ID', primaryEmail: 'x@example.com', givenName: 'X', familyName: 'Y', password: 'p' }),
     ).rejects.toThrow('No workspace-admin provider registered for providerCode "ENTRA_ID"');
   });

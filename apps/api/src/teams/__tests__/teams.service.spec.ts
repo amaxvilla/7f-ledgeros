@@ -52,7 +52,7 @@ describe('TeamsService', () => {
       throw new Error('No teams provider registered for providerCode "ZOOM"');
     });
 
-    await expect(
+    await expect(async () =>
       service.createMeeting({
         providerCode: 'ZOOM',
         subject: 'x',

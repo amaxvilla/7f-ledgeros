@@ -66,7 +66,7 @@ describe('PaystackBankProvider', () => {
   });
 
   it('fetchStatement throws a clear not-supported error naming Mono as the alternative', async () => {
-    await expect(provider.fetchStatement({ accountNumber: '0123456789', bankCode: '058', fromDate: '2026-01-01', toDate: '2026-01-31' })).rejects.toThrow(
+    await expect(async () => provider.fetchStatement({ accountNumber: '0123456789', bankCode: '058', fromDate: '2026-01-01', toDate: '2026-01-31' })).rejects.toThrow(
       /does not support fetchStatement.*MonoProvider/s,
     );
   });

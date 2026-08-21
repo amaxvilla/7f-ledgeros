@@ -9,7 +9,7 @@ export default async function IntercompanyPage({ searchParams }: { searchParams:
   const query = new URLSearchParams();
   if (searchParams.entityId) query.set('entityId', searchParams.entityId);
   if (searchParams.status) query.set('status', searchParams.status);
-  
+
   const [transactions, entitiesResponse] = await Promise.all([
     fetchApi<any[]>('/intercompany?' + query.toString()),
     fetchApi<any[]>('/entities')

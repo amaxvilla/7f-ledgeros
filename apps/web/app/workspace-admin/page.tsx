@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function WorkspaceAdminPage({ searchParams }: { searchParams: { providerCode?: string } }) {
   const providerCode = searchParams.providerCode || 'GOOGLE_WORKSPACE';
-  
+
   const users = await fetchApi<any[]>('/workspace-admin/users?providerCode=' + providerCode);
 
   return (

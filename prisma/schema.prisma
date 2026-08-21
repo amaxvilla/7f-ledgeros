@@ -58,6 +58,7 @@ enum JournalEntryStatus {
 }
 
 enum JournalSourceType {
+  INVENTORY
   MANUAL
   PAYROLL
   REVENUE_RECOGNITION
@@ -200,56 +201,56 @@ model User {
   // application-level secrets (distinct from passwordHash, which is a
   // one-way bcrypt hash and doesn't need one). Flagged explicitly in
   // the release report rather than silently accepted.
-  mfaEnabled     Boolean   @default(false)
-  mfaSecret      String?
-  mfaEnrolledAt  DateTime?
+  mfaEnabled       Boolean           @default(false)
+  mfaSecret        String?
+  mfaEnrolledAt    DateTime?
   mfaRecoveryCodes MfaRecoveryCode[]
 
-  roles         UserRole[]
-  entityAccess  UserEntityAccess[]
-  departmentAccess  UserDepartmentAccess[]
-  costCenterAccess  UserCostCenterAccess[]
-  projectAccess     UserProjectAccess[]
-  businessUnitAccess UserBusinessUnitAccess[]
-  journalEntriesCreated  JournalEntry[] @relation("JournalCreatedBy")
-  journalEntriesApproved JournalEntry[] @relation("JournalApprovedBy")
-  journalEntriesPosted   JournalEntry[] @relation("JournalPostedBy")
-  auditLogs     AuditLog[]
-  refreshTokens RefreshToken[]
-  trustedDevices TrustedDevice[]
-  ipAllowlistRules        IpAllowlistRule[] @relation("IpAllowlistRuleUser")
-  ipAllowlistRulesCreated IpAllowlistRule[] @relation("IpAllowlistRuleCreatedBy")
+  roles                      UserRole[]
+  entityAccess               UserEntityAccess[]
+  departmentAccess           UserDepartmentAccess[]
+  costCenterAccess           UserCostCenterAccess[]
+  projectAccess              UserProjectAccess[]
+  businessUnitAccess         UserBusinessUnitAccess[]
+  journalEntriesCreated      JournalEntry[]           @relation("JournalCreatedBy")
+  journalEntriesApproved     JournalEntry[]           @relation("JournalApprovedBy")
+  journalEntriesPosted       JournalEntry[]           @relation("JournalPostedBy")
+  auditLogs                  AuditLog[]
+  refreshTokens              RefreshToken[]
+  trustedDevices             TrustedDevice[]
+  ipAllowlistRules           IpAllowlistRule[]        @relation("IpAllowlistRuleUser")
+  ipAllowlistRulesCreated    IpAllowlistRule[]        @relation("IpAllowlistRuleCreatedBy")
   ifrsNoteDisclosuresUpdated IfrsNoteDisclosure[]
-  requisitionsRequested JobRequisition[] @relation("RequisitionRequestedBy")
-  requisitionsApproved  JobRequisition[] @relation("RequisitionApprovedBy")
-  offersCreated         Offer[]          @relation("OfferCreatedBy")
-  backgroundChecksInitiated BackgroundCheck[]
-  assignedCorrectiveActions CorrectiveAction[]
+  requisitionsRequested      JobRequisition[]         @relation("RequisitionRequestedBy")
+  requisitionsApproved       JobRequisition[]         @relation("RequisitionApprovedBy")
+  offersCreated              Offer[]                  @relation("OfferCreatedBy")
+  backgroundChecksInitiated  BackgroundCheck[]
+  assignedCorrectiveActions  CorrectiveAction[]
 
   // Phase 4 Ã¢â‚¬â€ Property Sales completion (additive)
-  reservationsCreated    UnitReservation[]     @relation("ReservationCreatedBy")
-  reservationsCancelled  UnitReservation[]     @relation("ReservationCancelledBy")
-  allocationsCancelled   UnitSaleAllocation[]  @relation("AllocationCancelledBy")
+  reservationsCreated     UnitReservation[]     @relation("ReservationCreatedBy")
+  reservationsCancelled   UnitReservation[]     @relation("ReservationCancelledBy")
+  allocationsCancelled    UnitSaleAllocation[]  @relation("AllocationCancelledBy")
   allocationEventsCreated UnitAllocationEvent[] @relation("AllocationEventCreatedBy")
 
   employeeProfile Employee?
 
-  budgetsCreated          Budget[]             @relation("BudgetCreatedBy")
-  budgetsApproved         Budget[]             @relation("BudgetApprovedBy")
-  budgetRevisionsCreated  BudgetRevision[]     @relation("BudgetRevisionCreatedBy")
-  budgetRevisionsApproved BudgetRevision[]     @relation("BudgetRevisionApprovedBy")
-  budgetTransfersCreated  BudgetTransfer[]     @relation("BudgetTransferCreatedBy")
-  budgetTransfersApproved BudgetTransfer[]     @relation("BudgetTransferApprovedBy")
-  budgetApprovalActions   BudgetApproval[]     @relation("BudgetApprovalActor")
-  budgetCommitmentsCreated BudgetCommitment[]  @relation("BudgetCommitmentCreatedBy")
+  budgetsCreated           Budget[]           @relation("BudgetCreatedBy")
+  budgetsApproved          Budget[]           @relation("BudgetApprovedBy")
+  budgetRevisionsCreated   BudgetRevision[]   @relation("BudgetRevisionCreatedBy")
+  budgetRevisionsApproved  BudgetRevision[]   @relation("BudgetRevisionApprovedBy")
+  budgetTransfersCreated   BudgetTransfer[]   @relation("BudgetTransferCreatedBy")
+  budgetTransfersApproved  BudgetTransfer[]   @relation("BudgetTransferApprovedBy")
+  budgetApprovalActions    BudgetApproval[]   @relation("BudgetApprovalActor")
+  budgetCommitmentsCreated BudgetCommitment[] @relation("BudgetCommitmentCreatedBy")
 
-  prsRequested          PurchaseRequisition[] @relation("PRRequestedBy")
-  prsApproved           PurchaseRequisition[] @relation("PRApprovedBy")
-  posCreated            PurchaseOrder[]       @relation("POCreatedBy")
-  posApproved           PurchaseOrder[]       @relation("POApprovedBy")
-  procurementGRNsCreated ProcurementGRN[]      @relation("ProcurementGRNCreatedBy")
-  vendorInvoicesCreated VendorInvoice[]        @relation("VendorInvoiceCreatedBy")
-  threeWayMatchesActioned ThreeWayMatch[]      @relation("ThreeWayMatchMatchedBy")
+  prsRequested            PurchaseRequisition[] @relation("PRRequestedBy")
+  prsApproved             PurchaseRequisition[] @relation("PRApprovedBy")
+  posCreated              PurchaseOrder[]       @relation("POCreatedBy")
+  posApproved             PurchaseOrder[]       @relation("POApprovedBy")
+  procurementGRNsCreated  ProcurementGRN[]      @relation("ProcurementGRNCreatedBy")
+  vendorInvoicesCreated   VendorInvoice[]       @relation("VendorInvoiceCreatedBy")
+  threeWayMatchesActioned ThreeWayMatch[]       @relation("ThreeWayMatchMatchedBy")
 
   paymentBatchesCreated   PaymentBatch[]   @relation("PaymentBatchCreatedBy")
   paymentBatchesApproved  PaymentBatch[]   @relation("PaymentBatchApprovedBy")
@@ -259,41 +260,41 @@ model User {
   arInvoicesCreated ARInvoice[] @relation("ARInvoiceCreatedBy")
   receiptsCreated   Receipt[]   @relation("ReceiptCreatedBy")
 
-  bankStatementsImported        BankStatement[]          @relation("BankStatementImportedBy")
-  reconciliationSessionsCreated ReconciliationSession[]   @relation("ReconciliationSessionCreatedBy")
-  reconciliationSessionsApproved ReconciliationSession[]  @relation("ReconciliationSessionApprovedBy")
-  reconciliationMatchesCreated  ReconciliationMatch[]     @relation("ReconciliationMatchCreatedBy")
+  bankStatementsImported         BankStatement[]         @relation("BankStatementImportedBy")
+  reconciliationSessionsCreated  ReconciliationSession[] @relation("ReconciliationSessionCreatedBy")
+  reconciliationSessionsApproved ReconciliationSession[] @relation("ReconciliationSessionApprovedBy")
+  reconciliationMatchesCreated   ReconciliationMatch[]   @relation("ReconciliationMatchCreatedBy")
 
   workflowInstancesStarted WorkflowInstance[] @relation("WorkflowInstanceStartedBy")
   workflowActionsTaken     WorkflowAction[]   @relation("WorkflowActionActor")
 
-  brandAssetsUploaded     BrandAsset[]       @relation("BrandAssetUploadedBy")
+  brandAssetsUploaded      BrandAsset[]       @relation("BrandAssetUploadedBy")
   documentTemplatesCreated DocumentTemplate[] @relation("DocumentTemplateCreatedBy")
   preference               UserPreference?
   notifications            Notification[]
 
   // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
-  leadsAssigned         Lead[]        @relation("LeadAssignedTo")
-  leadsCreated          Lead[]        @relation("LeadCreatedBy")
-  prospectsAssigned     Prospect[]    @relation("ProspectAssignedTo")
-  prospectsCreated      Prospect[]    @relation("ProspectCreatedBy")
-  crmActivitiesCreated  CrmActivity[] @relation("CrmActivityCreatedBy")
+  leadsAssigned        Lead[]        @relation("LeadAssignedTo")
+  leadsCreated         Lead[]        @relation("LeadCreatedBy")
+  prospectsAssigned    Prospect[]    @relation("ProspectAssignedTo")
+  prospectsCreated     Prospect[]    @relation("ProspectCreatedBy")
+  crmActivitiesCreated CrmActivity[] @relation("CrmActivityCreatedBy")
 
   // Phase 5A Ã¢â‚¬â€ Mortgage Management / Handover Workflow / Snag Lists (additive)
   mortgageApplicationsCreated MortgageApplication[] @relation("MortgageCreatedBy")
-  handoverRecordsCreated      HandoverRecord[]     @relation("HandoverCreatedBy")
-  handoverRecordsHandedOver   HandoverRecord[]     @relation("HandoverHandedOverBy")
-  snagsReported               SnagItem[]           @relation("SnagReportedBy")
-  snagsAssigned                SnagItem[]           @relation("SnagAssignedTo")
-  snagsVerified                SnagItem[]           @relation("SnagVerifiedBy")
+  handoverRecordsCreated      HandoverRecord[]      @relation("HandoverCreatedBy")
+  handoverRecordsHandedOver   HandoverRecord[]      @relation("HandoverHandedOverBy")
+  snagsReported               SnagItem[]            @relation("SnagReportedBy")
+  snagsAssigned               SnagItem[]            @relation("SnagAssignedTo")
+  snagsVerified               SnagItem[]            @relation("SnagVerifiedBy")
 
   // Phase 5A Ã¢â‚¬â€ Tenant / Lease Management (additive)
-  tenantsCreated   Tenant[] @relation("TenantCreatedBy")
-  leasesCreated    Lease[]  @relation("LeaseCreatedBy")
+  tenantsCreated Tenant[] @relation("TenantCreatedBy")
+  leasesCreated  Lease[]  @relation("LeaseCreatedBy")
 
   // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
-  facilitiesCreated           Facility[]            @relation("FacilityCreatedBy")
-  maintenanceRequestsReported MaintenanceRequest[]   @relation("MaintenanceReportedBy")
+  facilitiesCreated           Facility[]           @relation("FacilityCreatedBy")
+  maintenanceRequestsReported MaintenanceRequest[] @relation("MaintenanceReportedBy")
 
   // Release (Fixed Assets Core, additive)
   assetsDisposed AssetDisposal[] @relation("AssetDisposedBy")
@@ -308,19 +309,19 @@ model User {
   issuesRaised    ProjectIssue[] @relation("IssueRaisedBy")
 
   // Release J (PMO Resource & Equipment/Labour Allocation, additive)
-  resourcesCreated           ProjectResource[]     @relation("ResourceCreatedBy")
-  resourceAllocationsCreated ResourceAllocation[]  @relation("ResourceAllocationCreatedBy")
+  resourcesCreated           ProjectResource[]    @relation("ResourceCreatedBy")
+  resourceAllocationsCreated ResourceAllocation[] @relation("ResourceAllocationCreatedBy")
 
   // Release K (Security Hardening Part 1, additive)
-  passwordHistory           PasswordHistory[]      @relation("PasswordHistoryUser")
-  loginHistory              LoginHistory[]         @relation("LoginHistoryUser")
+  passwordHistory             PasswordHistory[]    @relation("PasswordHistoryUser")
+  loginHistory                LoginHistory[]       @relation("LoginHistoryUser")
   authSecurityPoliciesCreated AuthSecurityPolicy[] @relation("AuthSecurityPolicyCreatedBy")
 
   // Release IA (Core Integration Framework, additive)
   integrationProvidersCreated IntegrationProvider[] @relation("IntegrationProviderCreatedBy")
 
   // Release IC.4 (Email Template Engine, additive)
-  emailTemplatesCreated EmailTemplate[] @relation("EmailTemplateCreatedBy")
+  emailTemplatesCreated      EmailTemplate[]      @relation("EmailTemplateCreatedBy")
   // Release IE.1 Checkpoint C (additive)
   paymentTransactionsCreated PaymentTransaction[] @relation("PaymentTransactionCreatedBy")
   paymentRefundsCreated      PaymentRefund[]      @relation("PaymentRefundCreatedBy")
@@ -336,26 +337,26 @@ model User {
   apiKeysRevoked ApiKey[] @relation("ApiKeyRevokedBy")
 
   // Agent Management, RE-AGENT.1 (additive)
-  agentsCreated    Agent[] @relation("AgentCreatedBy")
-  agentsApproved   Agent[] @relation("AgentApprovedBy")
-  agentsSuspended  Agent[] @relation("AgentSuspendedBy")
-  agentsTerminated Agent[] @relation("AgentTerminatedBy")
+  agentsCreated                       Agent[]                 @relation("AgentCreatedBy")
+  agentsApproved                      Agent[]                 @relation("AgentApprovedBy")
+  agentsSuspended                     Agent[]                 @relation("AgentSuspendedBy")
+  agentsTerminated                    Agent[]                 @relation("AgentTerminatedBy")
   // Agent & Commission Management, RE-AGENT.2 (additive)
-  agentAssignmentsCreated AgentAssignment[] @relation("AgentAssignmentCreatedBy")
-  agentAssignmentsEnded   AgentAssignment[] @relation("AgentAssignmentEndedBy")
+  agentAssignmentsCreated             AgentAssignment[]       @relation("AgentAssignmentCreatedBy")
+  agentAssignmentsEnded               AgentAssignment[]       @relation("AgentAssignmentEndedBy")
   // Agent & Commission Management, RE-COMM.1 (additive)
-  commissionPlansCreated    CommissionPlan[] @relation("CommissionPlanCreatedBy")
-  commissionPlansDeactivated CommissionPlan[] @relation("CommissionPlanDeactivatedBy")
+  commissionPlansCreated              CommissionPlan[]        @relation("CommissionPlanCreatedBy")
+  commissionPlansDeactivated          CommissionPlan[]        @relation("CommissionPlanDeactivatedBy")
   // Agent & Commission Management, RE-COMM.2 (additive)
-  commissionCalculationsCalculated CommissionCalculation[] @relation("CommissionCalculationCalculatedBy")
-  commissionCalculationsReversed   CommissionCalculation[] @relation("CommissionCalculationReversedBy")
-  commissionCalculationsCancelled  CommissionCalculation[] @relation("CommissionCalculationCancelledBy")
+  commissionCalculationsCalculated    CommissionCalculation[] @relation("CommissionCalculationCalculatedBy")
+  commissionCalculationsReversed      CommissionCalculation[] @relation("CommissionCalculationReversedBy")
+  commissionCalculationsCancelled     CommissionCalculation[] @relation("CommissionCalculationCancelledBy")
   // RE-COMM.3 (additive)
-  commissionCalculationsSubmitted      CommissionCalculation[] @relation("CommissionCalculationSubmittedBy")
-  commissionCalculationsApproved       CommissionCalculation[] @relation("CommissionCalculationApprovedBy")
-  commissionCalculationsRejected       CommissionCalculation[] @relation("CommissionCalculationRejectedBy")
-  commissionCalculationsMarkedPayable  CommissionCalculation[] @relation("CommissionCalculationMarkedPayableBy")
-  commissionCalculationsPaid           CommissionCalculation[] @relation("CommissionCalculationPaidBy")
+  commissionCalculationsSubmitted     CommissionCalculation[] @relation("CommissionCalculationSubmittedBy")
+  commissionCalculationsApproved      CommissionCalculation[] @relation("CommissionCalculationApprovedBy")
+  commissionCalculationsRejected      CommissionCalculation[] @relation("CommissionCalculationRejectedBy")
+  commissionCalculationsMarkedPayable CommissionCalculation[] @relation("CommissionCalculationMarkedPayableBy")
+  commissionCalculationsPaid          CommissionCalculation[] @relation("CommissionCalculationPaidBy")
 
   @@index([email])
   @@map("users")
@@ -382,7 +383,7 @@ model RefreshToken {
 
   // CASCADE justified: a session/refresh token has no value once its owning user is gone;
   // it is not financial or audit history.
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   trustedDevice TrustedDevice? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
 
   @@index([userId])
@@ -402,20 +403,20 @@ model RefreshToken {
 // skips the MFA challenge (AuthService.login), the same way "remember
 // this device for 30 days" works in most consumer MFA flows.
 model TrustedDevice {
-  id          String    @id @default(uuid())
-  userId      String
-  tokenHash   String
-  deviceName  String?
-  ipAddress   String?
-  userAgent   String?
-  trustedAt   DateTime  @default(now())
-  lastUsedAt  DateTime?
-  expiresAt   DateTime
-  revoked     Boolean   @default(false)
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String
+  deviceName String?
+  ipAddress  String?
+  userAgent  String?
+  trustedAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  expiresAt  DateTime
+  revoked    Boolean   @default(false)
 
   // CASCADE justified: identical reasoning to RefreshToken/MfaRecoveryCode
   // Ã¢â‚¬â€ a trusted-device record has no value once its owning user is gone.
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   sessions RefreshToken[]
 
   @@index([userId])
@@ -481,8 +482,8 @@ model Role {
 }
 
 model Permission {
-  id          String @id @default(uuid())
-  code        String @unique // e.g. "gl.journal.post"
+  id          String  @id @default(uuid())
+  code        String  @unique // e.g. "gl.journal.post"
   module      String // e.g. "GL", "AR", "AP", "PMO"
   description String?
 
@@ -641,108 +642,108 @@ model UserBusinessUnitAccess {
 // =====================================================================
 
 model Entity {
-  id              String   @id @default(uuid())
-  code            String   @unique // e.g. "7FC", "7FIL", "ZURII"
-  name            String
-  legalName       String
+  id                      String  @id @default(uuid())
+  code                    String  @unique // e.g. "7FC", "7FIL", "ZURII"
+  name                    String
+  legalName               String
   taxIdentificationNumber String?
   registrationNumber      String?
-  baseCurrency    String   @default("NGN")
-  fiscalYearStartMonth Int @default(1) // 1-12
-  isActive        Boolean  @default(true)
-  isConsolidationParent Boolean @default(false)
+  baseCurrency            String  @default("NGN")
+  fiscalYearStartMonth    Int     @default(1) // 1-12
+  isActive                Boolean @default(true)
+  isConsolidationParent   Boolean @default(false)
 
   // Phase 2 Ã¢â‚¬â€ Row Level Security (additive, nullable): optional grouping
   // under a Business Unit. See BusinessUnit doc comment.
-  businessUnitId  String?
-  businessUnit    BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
+  businessUnitId String?
+  businessUnit   BusinessUnit? @relation(fields: [businessUnitId], references: [id], onDelete: SetNull)
 
-  parentEntityId  String?
-  parentEntity    Entity?  @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
-  subsidiaries    Entity[] @relation("EntityHierarchy")
+  parentEntityId String?
+  parentEntity   Entity?  @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
+  subsidiaries   Entity[] @relation("EntityHierarchy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accountActivations EntityAccount[]
-  estates              Estate[]
-  landParcels          LandParcel[]
-  unitReservations     UnitReservation[]
-  projects            Project[]
+  accountActivations         EntityAccount[]
+  estates                    Estate[]
+  landParcels                LandParcel[]
+  unitReservations           UnitReservation[]
+  projects                   Project[]
   // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
-  crmLeads             Lead[]
-  crmProspects         Prospect[]
+  crmLeads                   Lead[]
+  crmProspects               Prospect[]
   // Phase 5A Ã¢â‚¬â€ Mortgage Management (additive)
-  mortgageApplications MortgageApplication[]
+  mortgageApplications       MortgageApplication[]
   // Phase 5A Ã¢â‚¬â€ Handover Workflow (additive)
-  handoverRecords      HandoverRecord[]
+  handoverRecords            HandoverRecord[]
   // Phase 5A Ã¢â‚¬â€ Tenant / Lease Management (additive)
-  tenants              Tenant[]
-  leases               Lease[]
+  tenants                    Tenant[]
+  leases                     Lease[]
   // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
-  facilities           Facility[]
-  maintenanceRequests  MaintenanceRequest[]
+  facilities                 Facility[]
+  maintenanceRequests        MaintenanceRequest[]
   // Release H (PMO Scheduling Core, additive)
-  projectTasks         ProjectTask[]
+  projectTasks               ProjectTask[]
   // Release I (PMO Risk & Issue Management, additive)
-  projectRisks         ProjectRisk[]
-  projectIssues        ProjectIssue[]
+  projectRisks               ProjectRisk[]
+  projectIssues              ProjectIssue[]
   // Release J (PMO Resource & Equipment/Labour Allocation, additive)
-  projectResources     ProjectResource[]
-  resourceAllocations  ResourceAllocation[]
+  projectResources           ProjectResource[]
+  resourceAllocations        ResourceAllocation[]
   // Release K (Security Hardening Part 1, additive)
-  authSecurityPolicies AuthSecurityPolicy[]
-  jobRequisitions     JobRequisition[]
-  vacancies           Vacancy[]
-  performanceCycles   PerformanceCycle[]
-  trainingCourses     TrainingCourse[]
-  ifrsNoteDisclosures IfrsNoteDisclosure[]
-  successionPlans     SuccessionPlan[]
-  departments          Department[]
-  costCenters          CostCenter[]
-  fundingSources       FundingSource[]
-  journalEntries       JournalEntry[]
-  journalLines         JournalLine[]
-  fiscalPeriods        FiscalPeriod[]
-  journalNumberSequences JournalNumberSequence[]
-  userAccess           UserEntityAccess[]
-  ownershipAsParent    ConsolidationOwnership[] @relation("OwnershipParent")
-  ownershipAsChild     ConsolidationOwnership[] @relation("OwnershipChild")
-  bankAccounts         BankAccount[]
-  warehouses           Warehouse[]
-  stockItems           StockItem[]
-  employees            Employee[]
-  leaveTypes           LeaveType[]
-  publicHolidays       PublicHoliday[]
-  shifts               Shift[]
-  biometricDevices     BiometricDevice[]
-  intercompanyAsInitiator IntercompanyTransaction[] @relation("ICInitiatorEntity")
+  authSecurityPolicies       AuthSecurityPolicy[]
+  jobRequisitions            JobRequisition[]
+  vacancies                  Vacancy[]
+  performanceCycles          PerformanceCycle[]
+  trainingCourses            TrainingCourse[]
+  ifrsNoteDisclosures        IfrsNoteDisclosure[]
+  successionPlans            SuccessionPlan[]
+  departments                Department[]
+  costCenters                CostCenter[]
+  fundingSources             FundingSource[]
+  journalEntries             JournalEntry[]
+  journalLines               JournalLine[]
+  fiscalPeriods              FiscalPeriod[]
+  journalNumberSequences     JournalNumberSequence[]
+  userAccess                 UserEntityAccess[]
+  ownershipAsParent          ConsolidationOwnership[]  @relation("OwnershipParent")
+  ownershipAsChild           ConsolidationOwnership[]  @relation("OwnershipChild")
+  bankAccounts               BankAccount[]
+  warehouses                 Warehouse[]
+  stockItems                 StockItem[]
+  employees                  Employee[]
+  leaveTypes                 LeaveType[]
+  publicHolidays             PublicHoliday[]
+  shifts                     Shift[]
+  biometricDevices           BiometricDevice[]
+  intercompanyAsInitiator    IntercompanyTransaction[] @relation("ICInitiatorEntity")
   intercompanyAsCounterparty IntercompanyTransaction[] @relation("ICCounterpartyEntity")
-  cashAccounts         CashAccount[]
-  loanFacilities       LoanFacility[]
-  investmentPlacements InvestmentPlacement[]
-  salaryStructures     SalaryStructure[]
-  payrollRuns          PayrollRun[]
-  incidentReports      IncidentReport[]
-  nearMisses           NearMiss[]
-  ppeIssuances         PpeIssuance[]
-  toolboxTalks         ToolboxTalk[]
-  inspectionChecklists InspectionChecklist[]
-  budgets              Budget[]
-  purchaseRequisitions PurchaseRequisition[]
-  purchaseOrders       PurchaseOrder[]
-  procurementGRNs      ProcurementGRN[]
-  vendorInvoices       VendorInvoice[]
-  vendorLedgerEntries  VendorLedger[]
-  paymentBatches       PaymentBatch[]
-  paymentVouchers      PaymentVoucher[]
-  whtDeductions        WHTDeduction[]
-  vatDeductions        VATDeduction[]
-  arInvoices           ARInvoice[]
-  receipts             Receipt[]
-  customerLedgerEntries CustomerLedger[]
-  bankStatements       BankStatement[]
-  reconciliationSessions ReconciliationSession[]
+  cashAccounts               CashAccount[]
+  loanFacilities             LoanFacility[]
+  investmentPlacements       InvestmentPlacement[]
+  salaryStructures           SalaryStructure[]
+  payrollRuns                PayrollRun[]
+  incidentReports            IncidentReport[]
+  nearMisses                 NearMiss[]
+  ppeIssuances               PpeIssuance[]
+  toolboxTalks               ToolboxTalk[]
+  inspectionChecklists       InspectionChecklist[]
+  budgets                    Budget[]
+  purchaseRequisitions       PurchaseRequisition[]
+  purchaseOrders             PurchaseOrder[]
+  procurementGRNs            ProcurementGRN[]
+  vendorInvoices             VendorInvoice[]
+  vendorLedgerEntries        VendorLedger[]
+  paymentBatches             PaymentBatch[]
+  paymentVouchers            PaymentVoucher[]
+  whtDeductions              WHTDeduction[]
+  vatDeductions              VATDeduction[]
+  arInvoices                 ARInvoice[]
+  receipts                   Receipt[]
+  customerLedgerEntries      CustomerLedger[]
+  bankStatements             BankStatement[]
+  reconciliationSessions     ReconciliationSession[]
 
   brandingProfile   EntityBrandingProfile?
   brandAssets       BrandAsset[]
@@ -750,38 +751,39 @@ model Entity {
   entityProfile     EntityProfile?
 
   // Release (Fixed Assets Core, additive)
-  fixedAssets       FixedAsset[]
+  fixedAssets FixedAsset[]
 
   // Release IA Ã¢â‚¬â€ Core Integration Framework (additive)
-  integrationProviders IntegrationProvider[]
+  integrationProviders   IntegrationProvider[]
   // Release IE.1 Checkpoint C (additive)
-  paymentTransactions  PaymentTransaction[]
+  paymentTransactions    PaymentTransaction[]
   // Transfer APIs, Checkpoint B (additive)
-  bankTransfers        BankTransfer[]
+  bankTransfers          BankTransfer[]
   // API Gateway, Checkpoint A (additive)
-  apiKeys              ApiKey[]
+  apiKeys                ApiKey[]
   // Agent Management, RE-AGENT.1 (additive)
-  agents               Agent[]
+  agents                 Agent[]
   // Agent & Commission Management, RE-AGENT.2 (additive)
-  agentAssignments     AgentAssignment[]
+  agentAssignments       AgentAssignment[]
   // Agent & Commission Management, RE-COMM.1 (additive)
-  commissionPlans      CommissionPlan[]
+  commissionPlans        CommissionPlan[]
   // Agent & Commission Management, RE-COMM.2 (additive)
   commissionCalculations CommissionCalculation[]
 
+  intercompanyConnectionsAsInitiator    IntercompanyConnection[]   @relation("ICConnectionInitiator")
+  intercompanyConnectionsAsCounterparty IntercompanyConnection[]   @relation("ICConnectionCounterparty")
+  inventoryAccountingConfig             InventoryAccountingConfig?
+
   @@index([parentEntityId])
   @@map("entities")
-
-  intercompanyConnectionsAsInitiator IntercompanyConnection[] @relation("ICConnectionInitiator")
-  intercompanyConnectionsAsCounterparty IntercompanyConnection[] @relation("ICConnectionCounterparty")
 }
 
 model EntityRelationship {
-  id               String                  @id @default(uuid())
+  id               String                 @id @default(uuid())
   parentEntityId   String
   childEntityId    String
   relationshipType EntityRelationshipType
-  ownershipPercent Decimal                 @db.Decimal(6, 3)
+  ownershipPercent Decimal                @db.Decimal(6, 3)
   effectiveFrom    DateTime
   effectiveTo      DateTime?
 
@@ -797,14 +799,14 @@ model EntityRelationship {
 // =====================================================================
 
 model Account {
-  id            String          @id @default(uuid())
-  code          String          @unique // group-wide GL code e.g. "1000-100"
-  name          String
-  accountType   AccountType
-  accountCategory AccountCategory
-  ifrsMapping   String?         // e.g. "IAS 1 - Current Assets"
-  isControlAccount Boolean      @default(false) // e.g. AR/AP control accounts
-  isPostable    Boolean         @default(true)  // false for header/summary accounts
+  id               String          @id @default(uuid())
+  code             String          @unique // group-wide GL code e.g. "1000-100"
+  name             String
+  accountType      AccountType
+  accountCategory  AccountCategory
+  ifrsMapping      String? // e.g. "IAS 1 - Current Assets"
+  isControlAccount Boolean         @default(false) // e.g. AR/AP control accounts
+  isPostable       Boolean         @default(true) // false for header/summary accounts
 
   parentAccountId String?
   parentAccount   Account?  @relation("AccountHierarchy", fields: [parentAccountId], references: [id], onDelete: Restrict)
@@ -814,22 +816,22 @@ model Account {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entityActivations EntityAccount[]
-  journalLines       JournalLine[]
-  budgetLines        BudgetLine[]
-  purchaseRequisitionLines PurchaseRequisitionLine[]
-  purchaseOrderLines       PurchaseOrderLine[]
-  vendorInvoiceLines       VendorInvoiceLine[]
+  entityActivations                EntityAccount[]
+  journalLines                     JournalLine[]
+  budgetLines                      BudgetLine[]
+  purchaseRequisitionLines         PurchaseRequisitionLine[]
+  purchaseOrderLines               PurchaseOrderLine[]
+  vendorInvoiceLines               VendorInvoiceLine[]
   procurementGRNsAsClearingAccount ProcurementGRN[]
-  whtDeductions WHTDeduction[] @relation("WHTTaxAuthorityAccount")
-  vatDeductions VATDeduction[] @relation("VATTaxAuthorityAccount")
-  arInvoiceLines ARInvoiceLine[]
-  reconciliationSessions ReconciliationSession[]
+  whtDeductions                    WHTDeduction[]            @relation("WHTTaxAuthorityAccount")
+  vatDeductions                    VATDeduction[]            @relation("VATTaxAuthorityAccount")
+  arInvoiceLines                   ARInvoiceLine[]
+  reconciliationSessions           ReconciliationSession[]
 
   // Release (Fixed Assets Core, additive)
-  assetCategoriesAsAssetAccount            AssetCategory[] @relation("FixedAssetCategoryAssetAccount")
-  assetCategoriesAsAccumulatedDeprAccount  AssetCategory[] @relation("FixedAssetCategoryAccDeprAccount")
-  assetCategoriesAsDeprExpenseAccount      AssetCategory[] @relation("FixedAssetCategoryDeprExpenseAccount")
+  assetCategoriesAsAssetAccount           AssetCategory[] @relation("FixedAssetCategoryAssetAccount")
+  assetCategoriesAsAccumulatedDeprAccount AssetCategory[] @relation("FixedAssetCategoryAccDeprAccount")
+  assetCategoriesAsDeprExpenseAccount     AssetCategory[] @relation("FixedAssetCategoryDeprExpenseAccount")
 
   // Release (Tax Center Core, additive)
   taxCodesAsAuthorityAccount TaxCode[] @relation("TaxCodeAuthorityAccount")
@@ -838,18 +840,18 @@ model Account {
   arInvoiceLinesAsVatAuthority ARInvoiceLine[] @relation("ARInvoiceLineVatAuthority")
 
   // Agent & Commission Management, RE-COMM.2 (additive)
-  commissionCalculationsAsWhtAuthority CommissionCalculation[] @relation("CommissionCalculationWhtAuthorityAccount")
+  commissionCalculationsAsWhtAuthority   CommissionCalculation[] @relation("CommissionCalculationWhtAuthorityAccount")
   // RE-COMM.4 (additive)
   commissionCalculationsAsPayableAccount CommissionCalculation[] @relation("CommissionCalculationPayableAccount")
+
+  intercompanyConnectionsInitiatorDueFrom    IntercompanyConnection[] @relation("ICConnectionInitiatorDueFrom")
+  intercompanyConnectionsInitiatorDueTo      IntercompanyConnection[] @relation("ICConnectionInitiatorDueTo")
+  intercompanyConnectionsCounterpartyDueFrom IntercompanyConnection[] @relation("ICConnectionCounterpartyDueFrom")
+  intercompanyConnectionsCounterpartyDueTo   IntercompanyConnection[] @relation("ICConnectionCounterpartyDueTo")
 
   @@index([accountType])
   @@index([parentAccountId])
   @@map("accounts")
-
-  intercompanyConnectionsInitiatorDueFrom IntercompanyConnection[] @relation("ICConnectionInitiatorDueFrom")
-  intercompanyConnectionsInitiatorDueTo IntercompanyConnection[] @relation("ICConnectionInitiatorDueTo")
-  intercompanyConnectionsCounterpartyDueFrom IntercompanyConnection[] @relation("ICConnectionCounterpartyDueFrom")
-  intercompanyConnectionsCounterpartyDueTo IntercompanyConnection[] @relation("ICConnectionCounterpartyDueTo")
 }
 
 /// Activates a group-chart account for a specific entity (per-entity enable/disable)
@@ -883,12 +885,12 @@ model Estate {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  entity   Entity    @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  projects Project[]
-  masterPlans EstateMasterPlan[]
+  entity          Entity             @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  projects        Project[]
+  masterPlans     EstateMasterPlan[]
   // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
-  crmLeads     Lead[]
-  crmProspects Prospect[]
+  crmLeads        Lead[]
+  crmProspects    Prospect[]
   // Agent & Commission Management, RE-COMM.1 (additive)
   commissionPlans CommissionPlan[]
 
@@ -906,43 +908,43 @@ model Project {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  entity Entity  @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  estate Estate? @relation(fields: [estateId], references: [id], onDelete: Restrict)
-  phases Phase[]
-  journalLines JournalLine[]
-  budgetLines  BudgetLine[]
-  boqs          Boq[]
-  workPackages  WorkPackage[]
-  incidentReports       IncidentReport[]
-  nearMisses            NearMiss[]
-  toolboxTalks          ToolboxTalk[]
-  inspectionChecklists  InspectionChecklist[]
-  purchaseRequisitions  PurchaseRequisition[]
+  entity                   Entity                    @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  estate                   Estate?                   @relation(fields: [estateId], references: [id], onDelete: Restrict)
+  phases                   Phase[]
+  journalLines             JournalLine[]
+  budgetLines              BudgetLine[]
+  boqs                     Boq[]
+  workPackages             WorkPackage[]
+  incidentReports          IncidentReport[]
+  nearMisses               NearMiss[]
+  toolboxTalks             ToolboxTalk[]
+  inspectionChecklists     InspectionChecklist[]
+  purchaseRequisitions     PurchaseRequisition[]
   purchaseRequisitionLines PurchaseRequisitionLine[]
-  purchaseOrderLines    PurchaseOrderLine[]
-  jobRequisitions       JobRequisition[]
-  arInvoiceLines        ARInvoiceLine[]
-  userAccess            UserProjectAccess[]
-  unitReservations      UnitReservation[]
-  plotReleases          PlotProjectRelease[]
+  purchaseOrderLines       PurchaseOrderLine[]
+  jobRequisitions          JobRequisition[]
+  arInvoiceLines           ARInvoiceLine[]
+  userAccess               UserProjectAccess[]
+  unitReservations         UnitReservation[]
+  plotReleases             PlotProjectRelease[]
   // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive)
-  crmLeads              Lead[]
-  crmProspects          Prospect[]
+  crmLeads                 Lead[]
+  crmProspects             Prospect[]
   // Phase 5A Ã¢â‚¬â€ Facility Management (additive): common-area facilities
   // (generator, lifts, security systems, etc.) serving this project/estate.
-  facilities            Facility[]
+  facilities               Facility[]
 
   // Release H (PMO Scheduling Core, additive)
-  tasks                 ProjectTask[]
+  tasks            ProjectTask[]
   // Release I (PMO Risk & Issue Management, additive)
-  risks                 ProjectRisk[]
-  issues                ProjectIssue[]
+  risks            ProjectRisk[]
+  issues           ProjectIssue[]
   // Release J (PMO Resource & Equipment/Labour Allocation, additive)
-  resources             ProjectResource[]
+  resources        ProjectResource[]
   // Agent & Commission Management, RE-AGENT.2 (additive)
-  agentAssignments       AgentAssignment[]
+  agentAssignments AgentAssignment[]
   // Agent & Commission Management, RE-COMM.1 (additive)
-  commissionPlans        CommissionPlan[]
+  commissionPlans  CommissionPlan[]
 
   @@unique([entityId, code])
   @@map("projects")
@@ -955,12 +957,12 @@ model Phase {
   name      String
   isActive  Boolean @default(true)
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  blocks  Block[]
-  journalLines JournalLine[]
-  budgetLines  BudgetLine[]
-  boqs          Boq[]
-  workPackages  WorkPackage[]
+  project                  Project                   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  blocks                   Block[]
+  journalLines             JournalLine[]
+  budgetLines              BudgetLine[]
+  boqs                     Boq[]
+  workPackages             WorkPackage[]
   purchaseRequisitionLines PurchaseRequisitionLine[]
   purchaseOrderLines       PurchaseOrderLine[]
   arInvoiceLines           ARInvoiceLine[]
@@ -970,14 +972,14 @@ model Phase {
 }
 
 model Block {
-  id      String  @id @default(uuid())
-  phaseId String
-  code    String
-  name    String
+  id       String  @id @default(uuid())
+  phaseId  String
+  code     String
+  name     String
   isActive Boolean @default(true)
 
-  phase  Phase   @relation(fields: [phaseId], references: [id], onDelete: Restrict)
-  floors Floor[]
+  phase        Phase         @relation(fields: [phaseId], references: [id], onDelete: Restrict)
+  floors       Floor[]
   journalLines JournalLine[]
 
   @@unique([phaseId, code])
@@ -985,14 +987,14 @@ model Block {
 }
 
 model Floor {
-  id      String @id @default(uuid())
-  blockId String
-  code    String
-  name    String
+  id       String  @id @default(uuid())
+  blockId  String
+  code     String
+  name     String
   isActive Boolean @default(true)
 
-  block Block  @relation(fields: [blockId], references: [id], onDelete: Restrict)
-  units Unit[]
+  block        Block         @relation(fields: [blockId], references: [id], onDelete: Restrict)
+  units        Unit[]
   journalLines JournalLine[]
 
   @@unique([blockId, code])
@@ -1000,14 +1002,14 @@ model Floor {
 }
 
 model Unit {
-  id           String     @id @default(uuid())
-  floorId      String
-  code         String     // e.g. "A-3-12"
-  name         String?
-  unitType     String?    // e.g. "3-Bed Terrace"
-  sizeSqm      Decimal?   @db.Decimal(10, 2)
-  listPrice    Decimal    @db.Decimal(18, 2)
-  status       UnitStatus @default(AVAILABLE)
+  id        String     @id @default(uuid())
+  floorId   String
+  code      String // e.g. "A-3-12"
+  name      String?
+  unitType  String? // e.g. "3-Bed Terrace"
+  sizeSqm   Decimal?   @db.Decimal(10, 2)
+  listPrice Decimal    @db.Decimal(18, 2)
+  status    UnitStatus @default(AVAILABLE)
 
   floor Floor @relation(fields: [floorId], references: [id], onDelete: Restrict)
 
@@ -1075,20 +1077,20 @@ model LandParcel {
 /// parcel may carry more than one acquisition row across its history
 /// (e.g. a renegotiation), but only one should reach COMPLETED.
 model LandAcquisition {
-  id                String                 @id @default(uuid())
+  id                String                @id @default(uuid())
   parcelId          String
   vendorName        String
   vendorContact     String?
-  agreedPrice       Decimal                @db.Decimal(18, 2)
-  currency          String                 @default("NGN")
+  agreedPrice       Decimal               @db.Decimal(18, 2)
+  currency          String                @default("NGN")
   paymentTerms      String?
   dueDiligenceNotes String?
-  status            LandAcquisitionStatus  @default(NEGOTIATION)
+  status            LandAcquisitionStatus @default(NEGOTIATION)
   acquisitionDate   DateTime?
   completedAt       DateTime?
   createdById       String?
-  createdAt         DateTime               @default(now())
-  updatedAt         DateTime               @updatedAt
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
 
   parcel LandParcel @relation(fields: [parcelId], references: [id], onDelete: Restrict)
 
@@ -1100,20 +1102,20 @@ model LandAcquisition {
 /// assignment, governor's consent, etc.). A parcel typically accrues
 /// several of these over its titling lifecycle.
 model TitleDeed {
-  id                String      @id @default(uuid())
-  parcelId          String
-  titleType         TitleType
-  titleNumber       String?
-  status            TitleStatus @default(PENDING)
-  issuingAuthority  String?
-  applicationDate   DateTime?
-  issuedDate        DateTime?
-  expiryDate        DateTime?
-  documentRef       String?
-  notes             String?
-  createdById       String?
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id               String      @id @default(uuid())
+  parcelId         String
+  titleType        TitleType
+  titleNumber      String?
+  status           TitleStatus @default(PENDING)
+  issuingAuthority String?
+  applicationDate  DateTime?
+  issuedDate       DateTime?
+  expiryDate       DateTime?
+  documentRef      String?
+  notes            String?
+  createdById      String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   parcel LandParcel @relation(fields: [parcelId], references: [id], onDelete: Restrict)
 
@@ -1160,8 +1162,8 @@ model Plot {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  parcel     LandParcel  @relation(fields: [parcelId], references: [id], onDelete: Restrict)
-  surveyPlan SurveyPlan? @relation(fields: [surveyPlanId], references: [id], onDelete: SetNull)
+  parcel     LandParcel          @relation(fields: [parcelId], references: [id], onDelete: Restrict)
+  surveyPlan SurveyPlan?         @relation(fields: [surveyPlanId], references: [id], onDelete: SetNull)
   release    PlotProjectRelease?
 
   @@unique([parcelId, plotNumber])
@@ -1172,16 +1174,16 @@ model Plot {
 /// be APPROVED at a time Ã¢â‚¬â€ approving a new version automatically
 /// supersedes the previously-approved one (history is kept, not deleted).
 model EstateMasterPlan {
-  id                String            @id @default(uuid())
+  id                String           @id @default(uuid())
   estateId          String
-  version           Int               @default(1)
-  status            MasterPlanStatus  @default(DRAFT)
+  version           Int              @default(1)
+  status            MasterPlanStatus @default(DRAFT)
   summary           String?
   totalPlannedUnits Int?
   approvedAt        DateTime?
   createdById       String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   estate Estate           @relation(fields: [estateId], references: [id], onDelete: Restrict)
   zones  MasterPlanZone[]
@@ -1237,20 +1239,20 @@ model Department {
   name     String
   isActive Boolean @default(true)
 
-  entity    Entity     @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  employees Employee[]
-  journalLines JournalLine[]
-  budgetLines  BudgetLine[]
-  purchaseRequisitions    PurchaseRequisition[]
+  entity                   Entity                    @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  employees                Employee[]
+  journalLines             JournalLine[]
+  budgetLines              BudgetLine[]
+  purchaseRequisitions     PurchaseRequisition[]
   purchaseRequisitionLines PurchaseRequisitionLine[]
-  purchaseOrderLines      PurchaseOrderLine[]
-  jobRequisitions JobRequisition[]
-  vacancies       Vacancy[]
-  employmentEventsFrom EmploymentEvent[] @relation("EmploymentEventFromDept")
-  employmentEventsTo   EmploymentEvent[] @relation("EmploymentEventToDept")
-  userAccess UserDepartmentAccess[]
+  purchaseOrderLines       PurchaseOrderLine[]
+  jobRequisitions          JobRequisition[]
+  vacancies                Vacancy[]
+  employmentEventsFrom     EmploymentEvent[]         @relation("EmploymentEventFromDept")
+  employmentEventsTo       EmploymentEvent[]         @relation("EmploymentEventToDept")
+  userAccess               UserDepartmentAccess[]
   // Release (Fixed Assets Core, additive)
-  fixedAssets FixedAsset[]
+  fixedAssets              FixedAsset[]
 
   @@unique([entityId, code])
   @@map("departments")
@@ -1263,63 +1265,63 @@ model CostCenter {
   name     String
   isActive Boolean @default(true)
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  journalLines JournalLine[]
-  budgetLines  BudgetLine[]
-  purchaseRequisitions    PurchaseRequisition[]
+  entity                   Entity                    @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  journalLines             JournalLine[]
+  budgetLines              BudgetLine[]
+  purchaseRequisitions     PurchaseRequisition[]
   purchaseRequisitionLines PurchaseRequisitionLine[]
-  purchaseOrderLines      PurchaseOrderLine[]
-  jobRequisitions JobRequisition[]
-  userAccess UserCostCenterAccess[]
+  purchaseOrderLines       PurchaseOrderLine[]
+  jobRequisitions          JobRequisition[]
+  userAccess               UserCostCenterAccess[]
   // Release (Fixed Assets Core, additive)
-  fixedAssets FixedAsset[]
+  fixedAssets              FixedAsset[]
 
   @@unique([entityId, code])
   @@map("cost_centers")
 }
 
 model FundingSource {
-  id       String  @id @default(uuid())
-  entityId String
-  code     String
-  name     String
+  id         String  @id @default(uuid())
+  entityId   String
+  code       String
+  name       String
   sourceType String? // e.g. "Equity", "Bank Loan", "Investor Capital"
-  isActive Boolean @default(true)
+  isActive   Boolean @default(true)
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  journalLines JournalLine[]
-  budgetLines  BudgetLine[]
-  purchaseRequisitions    PurchaseRequisition[]
+  entity                   Entity                    @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  journalLines             JournalLine[]
+  budgetLines              BudgetLine[]
+  purchaseRequisitions     PurchaseRequisition[]
   purchaseRequisitionLines PurchaseRequisitionLine[]
-  purchaseOrderLines      PurchaseOrderLine[]
+  purchaseOrderLines       PurchaseOrderLine[]
 
   @@unique([entityId, code])
   @@map("funding_sources")
 }
 
 model Vendor {
-  id        String   @id @default(uuid())
-  code      String   @unique
-  name      String
-  taxId     String?
-  bankName  String?
+  id                String   @id @default(uuid())
+  code              String   @unique
+  name              String
+  taxId             String?
+  bankName          String?
   bankAccountNumber String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
 
-  journalLines JournalLine[]
-  contracts    Contractor[]
+  journalLines  JournalLine[]
+  contracts     Contractor[]
   goodsReceipts GoodsReceipt[]
 
-  purchaseOrders  PurchaseOrder[]
-  procurementGRNs ProcurementGRN[]
-  vendorInvoices  VendorInvoice[]
+  purchaseOrders      PurchaseOrder[]
+  procurementGRNs     ProcurementGRN[]
+  vendorInvoices      VendorInvoice[]
   vendorLedgerEntries VendorLedger[]
-  paymentVouchers PaymentVoucher[]
+  paymentVouchers     PaymentVoucher[]
 
   // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
-  facilitiesServiced   Facility[]
-  maintenanceRequests  MaintenanceRequest[] @relation("MaintenanceAssignedVendor")
+  facilitiesServiced  Facility[]
+  maintenanceRequests MaintenanceRequest[] @relation("MaintenanceAssignedVendor")
 
   @@map("vendors")
 }
@@ -1333,15 +1335,15 @@ model Customer {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
-  journalLines         JournalLine[]
-  installmentSchedules InstallmentSchedule[]
-  saleAllocations      UnitSaleAllocation[]
-  arInvoices           ARInvoice[]
-  receipts             Receipt[]
-  customerLedgerEntries CustomerLedger[]
-  reservations          UnitReservation[]
-  allocationEventsFrom  UnitAllocationEvent[] @relation("AllocationEventFromCustomer")
-  allocationEventsTo    UnitAllocationEvent[] @relation("AllocationEventToCustomer")
+  journalLines           JournalLine[]
+  installmentSchedules   InstallmentSchedule[]
+  saleAllocations        UnitSaleAllocation[]
+  arInvoices             ARInvoice[]
+  receipts               Receipt[]
+  customerLedgerEntries  CustomerLedger[]
+  reservations           UnitReservation[]
+  allocationEventsFrom   UnitAllocationEvent[] @relation("AllocationEventFromCustomer")
+  allocationEventsTo     UnitAllocationEvent[] @relation("AllocationEventToCustomer")
   // Phase 5A Ã¢â‚¬â€ CRM / Lead Management (additive): this customer record was
   // created when a Prospect converted (see Prospect.convertedCustomerId).
   convertedFromProspects Prospect[]
@@ -1360,13 +1362,13 @@ model Customer {
 model FiscalPeriod {
   id        String       @id @default(uuid())
   entityId  String
-  name      String       // e.g. "2026-07"
+  name      String // e.g. "2026-07"
   startDate DateTime
   endDate   DateTime
   status    PeriodStatus @default(OPEN)
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  journalEntries JournalEntry[]
+  entity              Entity               @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  journalEntries      JournalEntry[]
   ifrsNoteDisclosures IfrsNoteDisclosure[]
 
   @@unique([entityId, name])
@@ -1392,26 +1394,26 @@ model JournalNumberSequence {
 }
 
 model JournalEntry {
-  id             String             @id @default(uuid())
-  journalNumber  String             @unique // assigned atomically on posting, e.g. "7FC-JE-2026-000123"
-  entityId       String
-  fiscalPeriodId String
-  entryDate      DateTime
-  description    String
-  sourceType     JournalSourceType  @default(MANUAL)
-  sourceReference String?           // e.g. payroll run id, IC transaction id
-  status         JournalEntryStatus @default(DRAFT)
+  id              String             @id @default(uuid())
+  journalNumber   String             @unique // assigned atomically on posting, e.g. "7FC-JE-2026-000123"
+  entityId        String
+  fiscalPeriodId  String
+  entryDate       DateTime
+  description     String
+  sourceType      JournalSourceType  @default(MANUAL)
+  sourceReference String? // e.g. payroll run id, IC transaction id
+  status          JournalEntryStatus @default(DRAFT)
 
-  reversalOfId   String? @unique
-  reversalOf     JournalEntry? @relation("Reversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
-  reversedBy     JournalEntry? @relation("Reversal")
+  reversalOfId String?       @unique
+  reversalOf   JournalEntry? @relation("Reversal", fields: [reversalOfId], references: [id], onDelete: Restrict)
+  reversedBy   JournalEntry? @relation("Reversal")
 
   createdById  String
-  createdBy    User   @relation("JournalCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy    User    @relation("JournalCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   approvedById String?
-  approvedBy   User?  @relation("JournalApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  approvedBy   User?   @relation("JournalApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
   postedById   String?
-  postedBy     User?  @relation("JournalPostedBy", fields: [postedById], references: [id], onDelete: Restrict)
+  postedBy     User?   @relation("JournalPostedBy", fields: [postedById], references: [id], onDelete: Restrict)
 
   approvedAt DateTime?
   postedAt   DateTime?
@@ -1442,14 +1444,14 @@ model JournalEntry {
 }
 
 model JournalLine {
-  id             String   @id @default(uuid())
+  id             String @id @default(uuid())
   journalEntryId String
   lineNumber     Int
 
   accountId String
 
-  debit  Decimal @db.Decimal(18, 2) @default(0)
-  credit Decimal @db.Decimal(18, 2) @default(0)
+  debit  Decimal @default(0) @db.Decimal(18, 2)
+  credit Decimal @default(0) @db.Decimal(18, 2)
 
   memo String?
 
@@ -1510,14 +1512,14 @@ model JournalLine {
 /// new one Ã¢â‚¬â€ see ReportingController), surfaced by ifrsNotes() alongside
 /// the eighteen GL-derived notes so the API returns one coherent document.
 model IfrsNoteDisclosure {
-  id             String              @id @default(uuid())
+  id             String                @id @default(uuid())
   entityId       String
   fiscalPeriodId String
   noteType       IfrsNarrativeNoteType
   content        String
   updatedById    String
-  updatedAt      DateTime            @updatedAt
-  createdAt      DateTime            @default(now())
+  updatedAt      DateTime              @updatedAt
+  createdAt      DateTime              @default(now())
 
   entity       Entity       @relation(fields: [entityId], references: [id])
   fiscalPeriod FiscalPeriod @relation(fields: [fiscalPeriodId], references: [id])
@@ -1539,15 +1541,15 @@ enum IfrsNarrativeNoteType {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  userId     String?
-  action     String   // e.g. "JOURNAL_POSTED", "PERIOD_LOCKED"
-  entityType String   // e.g. "JournalEntry"
-  entityId   String   // record id affected
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String // e.g. "JOURNAL_POSTED", "PERIOD_LOCKED"
+  entityType  String // e.g. "JournalEntry"
+  entityId    String // record id affected
   beforeState Json?
   afterState  Json?
-  ipAddress  String?
-  createdAt  DateTime @default(now())
+  ipAddress   String?
+  createdAt   DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: Restrict)
 
@@ -1560,15 +1562,15 @@ model AuditLog {
 // INTERCOMPANY ENGINE
 // =====================================================================
 model IntercompanyConnection {
-  id                   String   @id @default(uuid())
+  id String @id @default(uuid())
 
   initiatorEntityId    String
   counterpartyEntityId String
 
-  initiatorDueFromAccountId     String
-  initiatorDueToAccountId       String
-  counterpartyDueFromAccountId  String
-  counterpartyDueToAccountId    String
+  initiatorDueFromAccountId    String
+  initiatorDueToAccountId      String
+  counterpartyDueFromAccountId String
+  counterpartyDueToAccountId   String
 
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -1593,25 +1595,26 @@ model IntercompanyConnection {
   @@index([counterpartyEntityId])
   @@map("intercompany_connections")
 }
+
 model IntercompanyTransaction {
-  id                 String               @id @default(uuid())
-  connectionId       String
-  initiatorEntityId  String
+  id                   String               @id @default(uuid())
+  connectionId         String
+  initiatorEntityId    String
   counterpartyEntityId String
-  journalEntryId     String               @unique
-  mirrorJournalEntryId String?            @unique
-  amount             Decimal              @db.Decimal(18, 2)
-  currency           String               @default("NGN")
-  description        String
+  journalEntryId       String               @unique
+  mirrorJournalEntryId String?              @unique
+  amount               Decimal              @db.Decimal(18, 2)
+  currency             String               @default("NGN")
+  description          String
   reconciliationStatus ReconciliationStatus @default(UNRECONCILED)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  connection          IntercompanyConnection @relation(fields: [connectionId], references: [id], onDelete: Restrict)
-  initiatorEntity    Entity       @relation("ICInitiatorEntity", fields: [initiatorEntityId], references: [id], onDelete: Restrict)
-  counterpartyEntity Entity       @relation("ICCounterpartyEntity", fields: [counterpartyEntityId], references: [id], onDelete: Restrict)
-  journalEntry       JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Restrict)
+  connection         IntercompanyConnection @relation(fields: [connectionId], references: [id], onDelete: Restrict)
+  initiatorEntity    Entity                 @relation("ICInitiatorEntity", fields: [initiatorEntityId], references: [id], onDelete: Restrict)
+  counterpartyEntity Entity                 @relation("ICCounterpartyEntity", fields: [counterpartyEntityId], references: [id], onDelete: Restrict)
+  journalEntry       JournalEntry           @relation(fields: [journalEntryId], references: [id], onDelete: Restrict)
 
   eliminations IntercompanyElimination[]
 
@@ -1625,7 +1628,7 @@ model IntercompanyElimination {
   intercompanyTransactionId String
   consolidationGroupId      String
   eliminationAmount         Decimal  @db.Decimal(18, 2)
-  fiscalPeriodId             String
+  fiscalPeriodId            String
   createdAt                 DateTime @default(now())
 
   intercompanyTransaction IntercompanyTransaction @relation(fields: [intercompanyTransactionId], references: [id], onDelete: Restrict)
@@ -1639,12 +1642,12 @@ model IntercompanyElimination {
 // =====================================================================
 
 model ConsolidationGroup {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
+  id             String   @id @default(uuid())
+  code           String   @unique
+  name           String
   parentEntityId String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
   ownerships   ConsolidationOwnership[]
   eliminations IntercompanyElimination[]
@@ -1653,11 +1656,11 @@ model ConsolidationGroup {
 }
 
 model ConsolidationOwnership {
-  id                   String   @id @default(uuid())
+  id                   String    @id @default(uuid())
   consolidationGroupId String
   parentEntityId       String
   childEntityId        String
-  ownershipPercent     Decimal  @db.Decimal(6, 3)
+  ownershipPercent     Decimal   @db.Decimal(6, 3)
   effectiveFrom        DateTime
   effectiveTo          DateTime?
 
@@ -1674,42 +1677,42 @@ model ConsolidationOwnership {
 // =====================================================================
 
 model UnitSaleAllocation {
-  id         String   @id @default(uuid())
-  unitId     String
-  customerId String
-  salePrice  Decimal  @db.Decimal(18, 2)
+  id             String     @id @default(uuid())
+  unitId         String
+  customerId     String
+  salePrice      Decimal    @db.Decimal(18, 2)
   allocationDate DateTime
-  status     UnitStatus @default(RESERVED)
+  status         UnitStatus @default(RESERVED)
 
   // Phase 4 Ã¢â‚¬â€ Property Sales completion (additive). The existing `status`
   // field tracks physical unit lifecycle (RESERVED/ALLOCATED/.../SOLD) and
   // is left untouched; cancellation is modeled separately here rather than
   // overloading `status`, since UnitStatus has no CANCELLED value and this
   // avoids changing the meaning of an existing, working field.
-  isCancelled     Boolean   @default(false)
-  cancelledAt     DateTime?
-  cancelledReason String?
-  cancelledById   String?
+  isCancelled                 Boolean   @default(false)
+  cancelledAt                 DateTime?
+  cancelledReason             String?
+  cancelledById               String?
   // Lineage for transfer/swap: the allocation this one replaced, if any.
   // Cancelling the old allocation and creating a new one (rather than
   // mutating customerId in place) keeps full history instead of losing it.
-  transferredFromAllocationId String? @unique
+  transferredFromAllocationId String?   @unique
 
-  unit     Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  cancelledBy        User?               @relation("AllocationCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
-  transferredFrom     UnitSaleAllocation? @relation("AllocationTransferLineage", fields: [transferredFromAllocationId], references: [id], onDelete: Restrict)
-  transferredTo       UnitSaleAllocation? @relation("AllocationTransferLineage")
+  unit            Unit                @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  customer        Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  cancelledBy     User?               @relation("AllocationCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
+  transferredFrom UnitSaleAllocation? @relation("AllocationTransferLineage", fields: [transferredFromAllocationId], references: [id], onDelete: Restrict)
+  transferredTo   UnitSaleAllocation? @relation("AllocationTransferLineage")
 
-  installmentSchedule InstallmentSchedule?
-  arInvoices          ARInvoice[]
-  sourceReservation   UnitReservation?      @relation("ReservationConvertedAllocation")
-  events              UnitAllocationEvent[]
+  installmentSchedule    InstallmentSchedule?
+  arInvoices             ARInvoice[]
+  sourceReservation      UnitReservation?        @relation("ReservationConvertedAllocation")
+  events                 UnitAllocationEvent[]
   // Phase 5A Ã¢â‚¬â€ Mortgage Management / Handover Workflow (additive)
-  mortgageApplications MortgageApplication[]
-  handoverRecord       HandoverRecord?
+  mortgageApplications   MortgageApplication[]
+  handoverRecord         HandoverRecord?
   // Agent & Commission Management, RE-AGENT.2 (additive)
-  agentAssignments     AgentAssignment[]
+  agentAssignments       AgentAssignment[]
   // Agent & Commission Management, RE-COMM.2 (additive)
   commissionCalculations CommissionCalculation[]
 
@@ -1745,34 +1748,34 @@ enum AllocationEventType {
 /// plan) so an expired or cancelled reservation never needs to touch
 /// financial records Ã¢â‚¬â€ nothing is posted to GL until conversion.
 model UnitReservation {
-  id             String            @id @default(uuid())
-  unitId         String
-  customerId     String
+  id                    String            @id @default(uuid())
+  unitId                String
+  customerId            String
   // Denormalized (not derived via unit->floor->block->phase->project) for
   // efficient RLS filtering and reporting, matching the existing pattern
   // already used by ARInvoiceLine.projectId/phaseId elsewhere in this schema.
-  entityId       String
-  projectId      String
-  reservationFee Decimal?          @db.Decimal(18, 2)
-  reservedAt     DateTime          @default(now())
-  expiresAt      DateTime
-  status         ReservationStatus @default(ACTIVE)
-  cancelledReason String?
-  cancelledById   String?
+  entityId              String
+  projectId             String
+  reservationFee        Decimal?          @db.Decimal(18, 2)
+  reservedAt            DateTime          @default(now())
+  expiresAt             DateTime
+  status                ReservationStatus @default(ACTIVE)
+  cancelledReason       String?
+  cancelledById         String?
   // True when this reservation is for a unit with a prior cancelled
   // allocation (i.e. this is a resale, not the unit's first sale).
-  isResale               Boolean @default(false)
-  convertedAllocationId  String? @unique
-  createdById            String
-  createdAt              DateTime @default(now())
+  isResale              Boolean           @default(false)
+  convertedAllocationId String?           @unique
+  createdById           String
+  createdAt             DateTime          @default(now())
 
-  unit                Unit                @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  customer            Customer            @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  entity              Entity              @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  project             Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  cancelledBy         User?               @relation("ReservationCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
-  createdBy           User                @relation("ReservationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  convertedAllocation UnitSaleAllocation? @relation("ReservationConvertedAllocation", fields: [convertedAllocationId], references: [id], onDelete: Restrict)
+  unit                Unit                  @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  customer            Customer              @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  entity              Entity                @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  project             Project               @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  cancelledBy         User?                 @relation("ReservationCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
+  createdBy           User                  @relation("ReservationCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  convertedAllocation UnitSaleAllocation?   @relation("ReservationConvertedAllocation", fields: [convertedAllocationId], references: [id], onDelete: Restrict)
   events              UnitAllocationEvent[]
 
   @@index([unitId, status])
@@ -1816,21 +1819,21 @@ model InstallmentSchedule {
   totalAmount  Decimal  @db.Decimal(18, 2)
   createdAt    DateTime @default(now())
 
-  unit       Unit                 @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  customer   Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  allocation UnitSaleAllocation   @relation(fields: [allocationId], references: [id], onDelete: Restrict)
+  unit       Unit               @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  customer   Customer           @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  allocation UnitSaleAllocation @relation(fields: [allocationId], references: [id], onDelete: Restrict)
   lines      InstallmentLine[]
 
   @@map("installment_schedules")
 }
 
 model InstallmentLine {
-  id           String    @id @default(uuid())
-  scheduleId   String
-  dueDate      DateTime
-  amountDue    Decimal   @db.Decimal(18, 2)
-  amountPaid   Decimal   @db.Decimal(18, 2) @default(0)
-  paidAt       DateTime?
+  id         String    @id @default(uuid())
+  scheduleId String
+  dueDate    DateTime
+  amountDue  Decimal   @db.Decimal(18, 2)
+  amountPaid Decimal   @default(0) @db.Decimal(18, 2)
+  paidAt     DateTime?
 
   schedule InstallmentSchedule @relation(fields: [scheduleId], references: [id], onDelete: Restrict)
 
@@ -1932,26 +1935,26 @@ model Lead {
 /// this model only tracks the CRM side (assignment, site visits,
 /// negotiation) up to the point a Customer/UnitReservation exists.
 model Prospect {
-  id                 String         @id @default(uuid())
-  leadId             String?        @unique
-  entityId           String
-  projectId          String?
-  estateId           String?
-  unitOfInterestId   String?
-  status             ProspectStatus @default(ACTIVE)
-  assignedToId       String?
-  budgetMin          Decimal?       @db.Decimal(18, 2)
-  budgetMax          Decimal?       @db.Decimal(18, 2)
-  expectedCloseDate  DateTime?
-  lostReason         String?
-  wonAt              DateTime?
+  id                  String         @id @default(uuid())
+  leadId              String?        @unique
+  entityId            String
+  projectId           String?
+  estateId            String?
+  unitOfInterestId    String?
+  status              ProspectStatus @default(ACTIVE)
+  assignedToId        String?
+  budgetMin           Decimal?       @db.Decimal(18, 2)
+  budgetMax           Decimal?       @db.Decimal(18, 2)
+  expectedCloseDate   DateTime?
+  lostReason          String?
+  wonAt               DateTime?
   // Set once this prospect has a Customer record (created on first
   // reservation, or pre-existing for a repeat buyer). Nullable because a
   // brand-new prospect has no Customer until they actually reserve.
-  convertedCustomerId String?       @unique
-  createdById        String
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
+  convertedCustomerId String?        @unique
+  createdById         String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
 
   lead              Lead?     @relation(fields: [leadId], references: [id], onDelete: Restrict)
   entity            Entity    @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -2080,21 +2083,21 @@ enum SnagSource {
 }
 
 model HandoverRecord {
-  id                String         @id @default(uuid())
-  allocationId      String         @unique
-  entityId          String
-  unitId            String
-  customerId        String
-  status            HandoverStatus @default(SCHEDULED)
-  scheduledDate     DateTime
-  inspectedAt       DateTime?
-  completedAt       DateTime?
-  customerSignedAt  DateTime?
-  handedOverById    String?
-  cancelledReason   String?
-  createdById       String
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  id               String         @id @default(uuid())
+  allocationId     String         @unique
+  entityId         String
+  unitId           String
+  customerId       String
+  status           HandoverStatus @default(SCHEDULED)
+  scheduledDate    DateTime
+  inspectedAt      DateTime?
+  completedAt      DateTime?
+  customerSignedAt DateTime?
+  handedOverById   String?
+  cancelledReason  String?
+  createdById      String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   allocation   UnitSaleAllocation @relation(fields: [allocationId], references: [id], onDelete: Restrict)
   entity       Entity             @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -2174,24 +2177,24 @@ enum LeaseRentFrequency {
 }
 
 model Tenant {
-  id           String       @id @default(uuid())
-  entityId     String
-  customerId   String
-  unitId       String
-  status       TenantStatus @default(ACTIVE)
-  moveInDate   DateTime
-  moveOutDate  DateTime?
-  notes        String?
-  createdById  String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id          String       @id @default(uuid())
+  entityId    String
+  customerId  String
+  unitId      String
+  status      TenantStatus @default(ACTIVE)
+  moveInDate  DateTime
+  moveOutDate DateTime?
+  notes       String?
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   entity    Entity   @relation(fields: [entityId], references: [id], onDelete: Restrict)
   customer  Customer @relation(fields: [customerId], references: [id], onDelete: Restrict)
   unit      Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
   createdBy User     @relation("TenantCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
-  leases Lease[]
+  leases              Lease[]
   // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive)
   maintenanceRequests MaintenanceRequest[]
 
@@ -2220,10 +2223,10 @@ model Lease {
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
-  entity    Entity   @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Restrict)
-  unit      Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
-  createdBy User     @relation("LeaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  entity    Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Restrict)
+  unit      Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  createdBy User   @relation("LeaseCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
   rentInvoices LeaseRentInvoice[]
 
@@ -2238,12 +2241,12 @@ model Lease {
 /// the financial record Ã¢â‚¬â€ this table is a thin pointer, not a duplicate
 /// ledger.
 model LeaseRentInvoice {
-  id           String   @id @default(uuid())
-  leaseId      String
-  arInvoiceId  String   @unique
-  periodStart  DateTime
-  periodEnd    DateTime
-  createdAt    DateTime @default(now())
+  id          String   @id @default(uuid())
+  leaseId     String
+  arInvoiceId String   @unique
+  periodStart DateTime
+  periodEnd   DateTime
+  createdAt   DateTime @default(now())
 
   lease     Lease     @relation(fields: [leaseId], references: [id], onDelete: Restrict)
   arInvoice ARInvoice @relation(fields: [arInvoiceId], references: [id], onDelete: Restrict)
@@ -2346,29 +2349,29 @@ model Facility {
 }
 
 model MaintenanceRequest {
-  id                   String                    @id @default(uuid())
+  id                   String                   @id @default(uuid())
   entityId             String
   facilityId           String?
   unitId               String?
   tenantId             String?
   category             FacilityCategory
-  priority             MaintenancePriority        @default(MEDIUM)
-  source               MaintenanceRequestSource   @default(INTERNAL)
+  priority             MaintenancePriority      @default(MEDIUM)
+  source               MaintenanceRequestSource @default(INTERNAL)
   description          String
-  status               MaintenanceRequestStatus   @default(OPEN)
+  status               MaintenanceRequestStatus @default(OPEN)
   reportedById         String
   assignedVendorId     String?
   assignedAt           DateTime?
   targetResolutionDate DateTime?
-  costEstimate         Decimal?                  @db.Decimal(18, 2)
-  actualCost           Decimal?                  @db.Decimal(18, 2)
-  vendorInvoiceId      String?                   @unique
+  costEstimate         Decimal?                 @db.Decimal(18, 2)
+  actualCost           Decimal?                 @db.Decimal(18, 2)
+  vendorInvoiceId      String?                  @unique
   resolvedAt           DateTime?
   resolutionNotes      String?
   closedAt             DateTime?
   cancelledReason      String?
-  createdAt            DateTime                  @default(now())
-  updatedAt            DateTime                  @updatedAt
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 
   entity         Entity         @relation(fields: [entityId], references: [id], onDelete: Restrict)
   facility       Facility?      @relation(fields: [facilityId], references: [id], onDelete: Restrict)
@@ -2484,10 +2487,10 @@ model BankAccount {
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
 
-  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  paymentVouchers PaymentVoucher[]
-  receipts        Receipt[]
-  bankStatements  BankStatement[]
+  entity                 Entity                  @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  paymentVouchers        PaymentVoucher[]
+  receipts               Receipt[]
+  bankStatements         BankStatement[]
   reconciliationSessions ReconciliationSession[]
 
   // Release IF.1, Checkpoint C (additive)
@@ -2583,24 +2586,24 @@ enum BankTransferStatus {
 }
 
 model BankTransfer {
-  id                      String             @id @default(uuid())
-  entityId                String
-  providerCode            String
-  providerTransferId      String?
-  reference               String             @unique
-  amount                  Decimal            @db.Decimal(18, 2)
-  currency                String             @default("NGN")
-  recipientAccountNumber  String
-  recipientBankCode       String
-  recipientName           String?
-  narration               String?
-  status                  BankTransferStatus @default(PENDING)
-  failureReason           String?
-  workflowInstanceId      String?
-  initiatedById           String
-  completedAt             DateTime?
-  createdAt               DateTime           @default(now())
-  updatedAt               DateTime           @updatedAt
+  id                     String             @id @default(uuid())
+  entityId               String
+  providerCode           String
+  providerTransferId     String?
+  reference              String             @unique
+  amount                 Decimal            @db.Decimal(18, 2)
+  currency               String             @default("NGN")
+  recipientAccountNumber String
+  recipientBankCode      String
+  recipientName          String?
+  narration              String?
+  status                 BankTransferStatus @default(PENDING)
+  failureReason          String?
+  workflowInstanceId     String?
+  initiatedById          String
+  completedAt            DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
   entity      Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
   initiatedBy User   @relation("BankTransferInitiatedBy", fields: [initiatedById], references: [id], onDelete: Restrict)
@@ -2707,38 +2710,38 @@ model Warehouse {
 
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
 
-  stockBalances    StockBalance[]
-  movements        StockMovement[]
-  goodsReceipts    GoodsReceipt[]
-  materialIssues   MaterialIssue[]
-  stockCounts      StockCount[]
-  transfersOut     StockTransfer[] @relation("TransferFromWarehouse")
-  transfersIn      StockTransfer[] @relation("TransferToWarehouse")
-  procurementGRNs  ProcurementGRN[]
+  stockBalances   StockBalance[]
+  movements       StockMovement[]
+  goodsReceipts   GoodsReceipt[]
+  materialIssues  MaterialIssue[]
+  stockCounts     StockCount[]
+  transfersOut    StockTransfer[]  @relation("TransferFromWarehouse")
+  transfersIn     StockTransfer[]  @relation("TransferToWarehouse")
+  procurementGRNs ProcurementGRN[]
 
   @@unique([entityId, code])
   @@map("warehouses")
 }
 
 model StockItem {
-  id            String           @id @default(uuid())
+  id            String          @id @default(uuid())
   entityId      String
   code          String
   name          String
   domain        InventoryDomain
   unitOfMeasure String
-  isActive      Boolean          @default(true)
-  createdAt     DateTime         @default(now())
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
 
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
 
-  balances StockBalance[]
-  movements StockMovement[]
-  goodsReceiptLines GoodsReceiptLine[]
-  materialIssueLines MaterialIssueLine[]
-  stockTransferLines StockTransferLine[]
-  stockCountLines StockCountLine[]
-  purchaseOrderLines PurchaseOrderLine[]
+  balances            StockBalance[]
+  movements           StockMovement[]
+  goodsReceiptLines   GoodsReceiptLine[]
+  materialIssueLines  MaterialIssueLine[]
+  stockTransferLines  StockTransferLine[]
+  stockCountLines     StockCountLine[]
+  purchaseOrderLines  PurchaseOrderLine[]
   procurementGRNLines ProcurementGRNLine[]
 
   @@unique([entityId, code])
@@ -2747,12 +2750,12 @@ model StockItem {
 
 /// Current weighted-average position per item per warehouse.
 model StockBalance {
-  stockItemId      String
-  warehouseId      String
-  quantityOnHand   Decimal @db.Decimal(18, 4) @default(0)
-  averageUnitCost  Decimal @db.Decimal(18, 4) @default(0)
-  totalValue       Decimal @db.Decimal(18, 2) @default(0)
-  updatedAt        DateTime @updatedAt
+  stockItemId     String
+  warehouseId     String
+  quantityOnHand  Decimal  @default(0) @db.Decimal(18, 4)
+  averageUnitCost Decimal  @default(0) @db.Decimal(18, 4)
+  totalValue      Decimal  @default(0) @db.Decimal(18, 2)
+  updatedAt       DateTime @updatedAt
 
   stockItem StockItem @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
   warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
@@ -2772,7 +2775,7 @@ model StockMovement {
   unitCost      Decimal           @db.Decimal(18, 4)
   totalCost     Decimal           @db.Decimal(18, 2)
   movementDate  DateTime
-  referenceType String?           // "GoodsReceipt" | "MaterialIssue" | "StockTransfer" | "StockCount"
+  referenceType String? // "GoodsReceipt" | "MaterialIssue" | "StockTransfer" | "StockCount"
   referenceId   String?
   createdAt     DateTime          @default(now())
 
@@ -2785,14 +2788,14 @@ model StockMovement {
 }
 
 model GoodsReceipt {
-  id              String              @id @default(uuid())
+  id              String             @id @default(uuid())
   warehouseId     String
   vendorId        String?
   receiptDate     DateTime
   referenceNumber String?
-  status          InventoryDocStatus  @default(DRAFT)
+  status          InventoryDocStatus @default(DRAFT)
   createdById     String
-  createdAt       DateTime            @default(now())
+  createdAt       DateTime           @default(now())
 
   warehouse Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
   vendor    Vendor?            @relation(fields: [vendorId], references: [id], onDelete: Restrict)
@@ -2915,16 +2918,16 @@ enum PayrollRunStatus {
 }
 
 model SalaryStructure {
-  id           String   @id @default(uuid())
-  entityId     String
-  code         String
-  name         String
-  basicSalary  Decimal  @db.Decimal(18, 2)
-  housingAllowance  Decimal @db.Decimal(18, 2) @default(0)
-  transportAllowance Decimal @db.Decimal(18, 2) @default(0)
-  otherAllowances    Decimal @db.Decimal(18, 2) @default(0)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  id                 String   @id @default(uuid())
+  entityId           String
+  code               String
+  name               String
+  basicSalary        Decimal  @db.Decimal(18, 2)
+  housingAllowance   Decimal  @default(0) @db.Decimal(18, 2)
+  transportAllowance Decimal  @default(0) @db.Decimal(18, 2)
+  otherAllowances    Decimal  @default(0) @db.Decimal(18, 2)
+  isActive           Boolean  @default(true)
+  createdAt          DateTime @default(now())
 
   entity    Entity     @relation(fields: [entityId], references: [id], onDelete: Restrict)
   employees Employee[]
@@ -2946,30 +2949,30 @@ model Employee {
 
   // Master-data fields (HRMS expansion Ã¢â‚¬â€ additive, defaults keep existing
   // payroll-only records valid without a backfill).
-  photoUrl            String?
-  gender              Gender?
-  dateOfBirth         DateTime?
-  maritalStatus       MaritalStatus?
-  nationality         String?
-  stateOfOrigin       String?
-  phone               String?
-  personalEmail       String?
-  workEmail           String?
-  residentialAddress  String?
-  jobTitle            String?
-  gradeLevel          String?
-  employmentType      EmploymentType   @default(FULL_TIME)
-  employmentStatus    EmploymentStatus @default(PROBATION)
-  hireDate            DateTime?
-  confirmationDate    DateTime?
-  probationEndDate    DateTime?
-  exitDate            DateTime?
-  reportsToId         String?
-  bankName            String?
-  bankAccountNumber   String?
-  pensionPin          String?
-  taxId               String?
-  userId              String? @unique // links this employee to a portal login (ESS)
+  photoUrl           String?
+  gender             Gender?
+  dateOfBirth        DateTime?
+  maritalStatus      MaritalStatus?
+  nationality        String?
+  stateOfOrigin      String?
+  phone              String?
+  personalEmail      String?
+  workEmail          String?
+  residentialAddress String?
+  jobTitle           String?
+  gradeLevel         String?
+  employmentType     EmploymentType   @default(FULL_TIME)
+  employmentStatus   EmploymentStatus @default(PROBATION)
+  hireDate           DateTime?
+  confirmationDate   DateTime?
+  probationEndDate   DateTime?
+  exitDate           DateTime?
+  reportsToId        String?
+  bankName           String?
+  bankAccountNumber  String?
+  pensionPin         String?
+  taxId              String?
+  userId             String?          @unique // links this employee to a portal login (ESS)
 
   // Release IH, Checkpoint I Ã¢â‚¬â€ Google Workspace directory-account sync
   // (best-effort, same shape as Interview's calendarProviderCode/
@@ -2989,8 +2992,8 @@ model Employee {
   directReports   Employee[]       @relation("EmployeeManager")
   user            User?            @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  payslips      Payslip[]
-  ppeIssuances  PpeIssuance[]
+  payslips     Payslip[]
+  ppeIssuances PpeIssuance[]
 
   documents         EmployeeDocument[]
   nextOfKin         EmployeeNextOfKin[]
@@ -3005,19 +3008,19 @@ model Employee {
   biometricEvents   BiometricEventLog[]
   exitRecord        EmployeeExit?
 
-  interviewPanels    InterviewPanelist[]
-  interviewFeedback  InterviewFeedback[]
+  interviewPanels      InterviewPanelist[]
+  interviewFeedback    InterviewFeedback[]
   hiredFromApplication JobApplication?
 
-  goals                     Goal[]
-  kpis                      Kpi[]
-  competencyAssessments     CompetencyAssessment[]
-  performanceReviews        PerformanceReview[]
-  trainingEnrollments       TrainingEnrollment[]
-  certifications            Certification[]
-  successionIncumbencies    SuccessionPlan[]      @relation("SuccessionIncumbent")
-  successionCandidacies     SuccessionCandidate[]
-  employmentEvents          EmploymentEvent[]
+  goals                  Goal[]
+  kpis                   Kpi[]
+  competencyAssessments  CompetencyAssessment[]
+  performanceReviews     PerformanceReview[]
+  trainingEnrollments    TrainingEnrollment[]
+  certifications         Certification[]
+  successionIncumbencies SuccessionPlan[]       @relation("SuccessionIncumbent")
+  successionCandidacies  SuccessionCandidate[]
+  employmentEvents       EmploymentEvent[]
 
   @@unique([entityId, employeeCode])
   @@map("employees")
@@ -3042,18 +3045,18 @@ model PayrollRun {
 }
 
 model Payslip {
-  id                 String   @id @default(uuid())
-  payrollRunId       String
-  employeeId         String
-  basicSalary        Decimal  @db.Decimal(18, 2)
-  grossPay           Decimal  @db.Decimal(18, 2)
-  payeTax            Decimal  @db.Decimal(18, 2)
-  pensionEmployee    Decimal  @db.Decimal(18, 2)
-  pensionEmployer    Decimal  @db.Decimal(18, 2)
-  nhfDeduction       Decimal  @db.Decimal(18, 2)
-  otherDeductions    Decimal  @db.Decimal(18, 2) @default(0)
-  netPay             Decimal  @db.Decimal(18, 2)
-  createdAt          DateTime @default(now())
+  id              String   @id @default(uuid())
+  payrollRunId    String
+  employeeId      String
+  basicSalary     Decimal  @db.Decimal(18, 2)
+  grossPay        Decimal  @db.Decimal(18, 2)
+  payeTax         Decimal  @db.Decimal(18, 2)
+  pensionEmployee Decimal  @db.Decimal(18, 2)
+  pensionEmployer Decimal  @db.Decimal(18, 2)
+  nhfDeduction    Decimal  @db.Decimal(18, 2)
+  otherDeductions Decimal  @default(0) @db.Decimal(18, 2)
+  netPay          Decimal  @db.Decimal(18, 2)
+  createdAt       DateTime @default(now())
 
   payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Restrict)
   employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Restrict)
@@ -3149,15 +3152,15 @@ model PpeIssuance {
 }
 
 model ToolboxTalk {
-  id             String   @id @default(uuid())
-  entityId       String
-  projectId      String?
-  topic          String
-  talkDate       DateTime
-  conductedById  String
-  attendeeCount  Int
-  notes          String?
-  createdAt      DateTime @default(now())
+  id            String   @id @default(uuid())
+  entityId      String
+  projectId     String?
+  topic         String
+  talkDate      DateTime
+  conductedById String
+  attendeeCount Int
+  notes         String?
+  createdAt     DateTime @default(now())
 
   entity  Entity   @relation(fields: [entityId], references: [id], onDelete: Restrict)
   project Project? @relation(fields: [projectId], references: [id], onDelete: Restrict)
@@ -3166,16 +3169,16 @@ model ToolboxTalk {
 }
 
 model CorrectiveAction {
-  id               String                  @id @default(uuid())
+  id               String                 @id @default(uuid())
   incidentReportId String?
   nearMissId       String?
   description      String
   assignedToId     String?
   dueDate          DateTime
-  status           CorrectiveActionStatus  @default(OPEN)
+  status           CorrectiveActionStatus @default(OPEN)
   completedAt      DateTime?
   createdById      String
-  createdAt        DateTime                @default(now())
+  createdAt        DateTime               @default(now())
 
   // Release IG.1, Checkpoint M Ã¢â‚¬â€ Microsoft To Do sync (additive). Same
   // three-field shape Candidate uses for its own Contacts sync
@@ -3195,28 +3198,28 @@ model CorrectiveAction {
 }
 
 model InspectionChecklist {
-  id              String            @id @default(uuid())
-  entityId        String
-  projectId       String?
-  checklistType   String // e.g. "Scaffolding", "Fire Safety", "Site Housekeeping"
-  inspectionDate  DateTime
-  inspectorId     String
-  result          InspectionResult?
-  createdAt       DateTime          @default(now())
+  id             String            @id @default(uuid())
+  entityId       String
+  projectId      String?
+  checklistType  String // e.g. "Scaffolding", "Fire Safety", "Site Housekeeping"
+  inspectionDate DateTime
+  inspectorId    String
+  result         InspectionResult?
+  createdAt      DateTime          @default(now())
 
-  entity  Entity   @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  project Project? @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  entity  Entity                    @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  project Project?                  @relation(fields: [projectId], references: [id], onDelete: Restrict)
   items   InspectionChecklistItem[]
 
   @@map("inspection_checklists")
 }
 
 model InspectionChecklistItem {
-  id               String  @id @default(uuid())
-  checklistId      String
-  itemDescription  String
-  isCompliant      Boolean?
-  remarks          String?
+  id              String   @id @default(uuid())
+  checklistId     String
+  itemDescription String
+  isCompliant     Boolean?
+  remarks         String?
 
   checklist InspectionChecklist @relation(fields: [checklistId], references: [id], onDelete: Restrict)
 
@@ -3251,14 +3254,14 @@ model Contractor {
 }
 
 model Boq {
-  id          String       @id @default(uuid())
-  projectId   String
-  phaseId     String?
+  id           String       @id @default(uuid())
+  projectId    String
+  phaseId      String?
   contractorId String?
-  title       String
-  status      PmoDocStatus @default(DRAFT)
-  createdById String
-  createdAt   DateTime     @default(now())
+  title        String
+  status       PmoDocStatus @default(DRAFT)
+  createdById  String
+  createdAt    DateTime     @default(now())
 
   project    Project     @relation(fields: [projectId], references: [id], onDelete: Restrict)
   phase      Phase?      @relation(fields: [phaseId], references: [id], onDelete: Restrict)
@@ -3284,17 +3287,17 @@ model BoqLine {
 }
 
 model WorkPackage {
-  id            String       @id @default(uuid())
-  projectId     String
-  phaseId       String?
-  contractorId  String
-  code          String
-  name          String
-  description   String?
-  budgetAmount  Decimal      @db.Decimal(18, 2)
-  status        PmoDocStatus @default(DRAFT)
-  createdById   String
-  createdAt     DateTime     @default(now())
+  id           String       @id @default(uuid())
+  projectId    String
+  phaseId      String?
+  contractorId String
+  code         String
+  name         String
+  description  String?
+  budgetAmount Decimal      @db.Decimal(18, 2)
+  status       PmoDocStatus @default(DRAFT)
+  createdById  String
+  createdAt    DateTime     @default(now())
 
   project    Project    @relation(fields: [projectId], references: [id], onDelete: Restrict)
   phase      Phase?     @relation(fields: [phaseId], references: [id], onDelete: Restrict)
@@ -3310,17 +3313,17 @@ model WorkPackage {
 }
 
 model ProgressValuation {
-  id               String       @id @default(uuid())
-  workPackageId    String
-  valuationNumber  Int
-  valuationDate    DateTime
-  percentComplete  Decimal      @db.Decimal(5, 2)
-  valuationAmount  Decimal      @db.Decimal(18, 2)
-  status           PmoDocStatus @default(DRAFT)
-  createdById      String
-  createdAt        DateTime     @default(now())
+  id              String       @id @default(uuid())
+  workPackageId   String
+  valuationNumber Int
+  valuationDate   DateTime
+  percentComplete Decimal      @db.Decimal(5, 2)
+  valuationAmount Decimal      @db.Decimal(18, 2)
+  status          PmoDocStatus @default(DRAFT)
+  createdById     String
+  createdAt       DateTime     @default(now())
 
-  workPackage WorkPackage @relation(fields: [workPackageId], references: [id], onDelete: Restrict)
+  workPackage WorkPackage                @relation(fields: [workPackageId], references: [id], onDelete: Restrict)
   certificate InterimPaymentCertificate?
 
   @@unique([workPackageId, valuationNumber])
@@ -3328,18 +3331,18 @@ model ProgressValuation {
 }
 
 model InterimPaymentCertificate {
-  id                       String       @id @default(uuid())
-  progressValuationId      String       @unique
-  certificateNumber        String       @unique
-  grossValuationAmount     Decimal      @db.Decimal(18, 2)
-  retentionPercent         Decimal      @db.Decimal(5, 2)
-  retentionAmount          Decimal      @db.Decimal(18, 2)
-  previousCertifiedAmount  Decimal      @db.Decimal(18, 2)
-  netPayableAmount         Decimal      @db.Decimal(18, 2)
-  status                   PmoDocStatus @default(DRAFT)
-  issuedDate               DateTime
-  createdById              String
-  createdAt                DateTime     @default(now())
+  id                      String       @id @default(uuid())
+  progressValuationId     String       @unique
+  certificateNumber       String       @unique
+  grossValuationAmount    Decimal      @db.Decimal(18, 2)
+  retentionPercent        Decimal      @db.Decimal(5, 2)
+  retentionAmount         Decimal      @db.Decimal(18, 2)
+  previousCertifiedAmount Decimal      @db.Decimal(18, 2)
+  netPayableAmount        Decimal      @db.Decimal(18, 2)
+  status                  PmoDocStatus @default(DRAFT)
+  issuedDate              DateTime
+  createdById             String
+  createdAt               DateTime     @default(now())
 
   progressValuation ProgressValuation @relation(fields: [progressValuationId], references: [id], onDelete: Restrict)
 
@@ -3366,8 +3369,8 @@ model Retention {
   id               String   @id @default(uuid())
   workPackageId    String   @unique
   retentionPercent Decimal  @db.Decimal(5, 2)
-  totalHeld        Decimal  @db.Decimal(18, 2) @default(0)
-  totalReleased    Decimal  @db.Decimal(18, 2) @default(0)
+  totalHeld        Decimal  @default(0) @db.Decimal(18, 2)
+  totalReleased    Decimal  @default(0) @db.Decimal(18, 2)
   createdAt        DateTime @default(now())
 
   workPackage WorkPackage        @relation(fields: [workPackageId], references: [id], onDelete: Restrict)
@@ -3390,17 +3393,17 @@ model RetentionRelease {
 }
 
 model FinalAccount {
-  id                   String       @id @default(uuid())
-  workPackageId        String       @unique
-  originalContractSum  Decimal      @db.Decimal(18, 2)
-  totalVariations      Decimal      @db.Decimal(18, 2)
-  totalCertified       Decimal      @db.Decimal(18, 2)
-  totalRetentionHeld   Decimal      @db.Decimal(18, 2)
-  finalAccountAmount   Decimal      @db.Decimal(18, 2)
-  status               PmoDocStatus @default(DRAFT)
-  agreedDate           DateTime?
-  createdById          String
-  createdAt            DateTime     @default(now())
+  id                  String       @id @default(uuid())
+  workPackageId       String       @unique
+  originalContractSum Decimal      @db.Decimal(18, 2)
+  totalVariations     Decimal      @db.Decimal(18, 2)
+  totalCertified      Decimal      @db.Decimal(18, 2)
+  totalRetentionHeld  Decimal      @db.Decimal(18, 2)
+  finalAccountAmount  Decimal      @db.Decimal(18, 2)
+  status              PmoDocStatus @default(DRAFT)
+  agreedDate          DateTime?
+  createdById         String
+  createdAt           DateTime     @default(now())
 
   workPackage WorkPackage @relation(fields: [workPackageId], references: [id], onDelete: Restrict)
 
@@ -3430,13 +3433,13 @@ enum MaturityInstruction {
 }
 
 model CashAccount {
-  id         String   @id @default(uuid())
-  entityId   String
-  name       String
-  custodian  String?
-  currency   String   @default("NGN")
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  entityId  String
+  name      String
+  custodian String?
+  currency  String   @default("NGN")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
 
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
 
@@ -3483,8 +3486,8 @@ model RepaymentLine {
   dueDate        DateTime
   principalDue   Decimal   @db.Decimal(18, 2)
   interestDue    Decimal   @db.Decimal(18, 2)
-  principalPaid  Decimal   @db.Decimal(18, 2) @default(0)
-  interestPaid   Decimal   @db.Decimal(18, 2) @default(0)
+  principalPaid  Decimal   @default(0) @db.Decimal(18, 2)
+  interestPaid   Decimal   @default(0) @db.Decimal(18, 2)
   paidAt         DateTime?
 
   loanFacility LoanFacility @relation(fields: [loanFacilityId], references: [id], onDelete: Restrict)
@@ -3505,16 +3508,16 @@ model InterestAccrual {
 }
 
 model InvestmentPlacement {
-  id                  String               @id @default(uuid())
+  id                  String              @id @default(uuid())
   entityId            String
   institutionName     String
-  principalAmount     Decimal              @db.Decimal(18, 2)
-  interestRatePercent Decimal              @db.Decimal(6, 3)
+  principalAmount     Decimal             @db.Decimal(18, 2)
+  interestRatePercent Decimal             @db.Decimal(6, 3)
   placementDate       DateTime
   maturityDate        DateTime
-  maturityInstruction MaturityInstruction  @default(PAYOUT)
-  status              PlacementStatus      @default(ACTIVE)
-  createdAt           DateTime             @default(now())
+  maturityInstruction MaturityInstruction @default(PAYOUT)
+  status              PlacementStatus     @default(ACTIVE)
+  createdAt           DateTime            @default(now())
 
   entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
 
@@ -3596,9 +3599,9 @@ model Budget {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entity     Entity  @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  createdBy  User    @relation("BudgetCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy User?   @relation("BudgetApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  entity     Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  createdBy  User   @relation("BudgetCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?  @relation("BudgetApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
 
   lines     BudgetLine[]
   revisions BudgetRevision[]
@@ -3623,7 +3626,7 @@ model BudgetLine {
   departmentId    String?
   costCenterId    String?
   fundingSourceId String?
-  period          Int     // fiscal month, 1-12
+  period          Int // fiscal month, 1-12
 
   originalAmount Decimal @db.Decimal(18, 2)
   revisedAmount  Decimal @db.Decimal(18, 2)
@@ -3639,10 +3642,10 @@ model BudgetLine {
   costCenter    CostCenter?    @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
   fundingSource FundingSource? @relation(fields: [fundingSourceId], references: [id], onDelete: Restrict)
 
-  commitments      BudgetCommitment[]
-  revisionEntries  BudgetRevisionLine[]
-  transfersFrom    BudgetTransfer[]     @relation("TransferFromLine")
-  transfersTo      BudgetTransfer[]     @relation("TransferToLine")
+  commitments              BudgetCommitment[]
+  revisionEntries          BudgetRevisionLine[]
+  transfersFrom            BudgetTransfer[]          @relation("TransferFromLine")
+  transfersTo              BudgetTransfer[]          @relation("TransferToLine")
   purchaseRequisitionLines PurchaseRequisitionLine[]
   jobRequisitions          JobRequisition[]
   purchaseOrderLines       PurchaseOrderLine[]
@@ -3684,7 +3687,7 @@ model BudgetRevision {
 }
 
 model BudgetRevisionLine {
-  id               String @id @default(uuid())
+  id               String  @id @default(uuid())
   budgetRevisionId String
   budgetLineId     String
   previousAmount   Decimal @db.Decimal(18, 2)
@@ -3702,11 +3705,11 @@ model BudgetRevisionLine {
 /// without changing the budget's total Ã¢â‚¬â€ e.g. reallocating cost-center
 /// spend within an approved envelope.
 model BudgetTransfer {
-  id       String                @id @default(uuid())
-  budgetId String
+  id         String               @id @default(uuid())
+  budgetId   String
   fromLineId String
   toLineId   String
-  amount     Decimal             @db.Decimal(18, 2)
+  amount     Decimal              @db.Decimal(18, 2)
   reason     String
   status     BudgetTransferStatus @default(DRAFT)
 
@@ -3749,13 +3752,13 @@ model BudgetApproval {
 /// loose reference (not an FK) so this model has no dependency on the
 /// Procurement schema landing first.
 model BudgetCommitment {
-  id             String                      @id @default(uuid())
+  id             String                     @id @default(uuid())
   budgetLineId   String
-  sourceType     BudgetCommitmentSourceType  @default(MANUAL)
+  sourceType     BudgetCommitmentSourceType @default(MANUAL)
   sourceId       String?
-  amount         Decimal                     @db.Decimal(18, 2)
-  releasedAmount Decimal                     @db.Decimal(18, 2) @default(0)
-  status         BudgetCommitmentStatus      @default(OPEN)
+  amount         Decimal                    @db.Decimal(18, 2)
+  releasedAmount Decimal                    @default(0) @db.Decimal(18, 2)
+  status         BudgetCommitmentStatus     @default(OPEN)
   description    String?
 
   createdById String
@@ -3827,34 +3830,34 @@ enum ThreeWayMatchStatus {
 /// A department/site request to buy something. Carries no GL/budget
 /// commitment itself Ã¢â‚¬â€ that only happens once it becomes an approved PO.
 model PurchaseRequisition {
-  id             String    @id @default(uuid())
-  entityId       String
-  prNumber       String
-  requestedById  String
-  projectId      String?
-  departmentId   String?
-  costCenterId   String?
+  id              String   @id @default(uuid())
+  entityId        String
+  prNumber        String
+  requestedById   String
+  projectId       String?
+  departmentId    String?
+  costCenterId    String?
   fundingSourceId String?
-  justification  String?
-  status         PRStatus  @default(DRAFT)
+  justification   String?
+  status          PRStatus @default(DRAFT)
 
-  submittedAt  DateTime?
-  approvedById String?
-  approvedAt   DateTime?
+  submittedAt    DateTime?
+  approvedById   String?
+  approvedAt     DateTime?
   rejectedReason String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entity        Entity          @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  requestedBy   User            @relation("PRRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
-  approvedBy    User?           @relation("PRApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
-  project       Project?        @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  department    Department?     @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  costCenter    CostCenter?     @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
-  fundingSource FundingSource?  @relation(fields: [fundingSourceId], references: [id], onDelete: Restrict)
+  entity        Entity         @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  requestedBy   User           @relation("PRRequestedBy", fields: [requestedById], references: [id], onDelete: Restrict)
+  approvedBy    User?          @relation("PRApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  project       Project?       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  department    Department?    @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  costCenter    CostCenter?    @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  fundingSource FundingSource? @relation(fields: [fundingSourceId], references: [id], onDelete: Restrict)
 
-  lines         PurchaseRequisitionLine[]
+  lines          PurchaseRequisitionLine[]
   purchaseOrders PurchaseOrder[]
 
   @@unique([entityId, prNumber])
@@ -3863,18 +3866,18 @@ model PurchaseRequisition {
 }
 
 model PurchaseRequisitionLine {
-  id              String   @id @default(uuid())
-  requisitionId   String
-  description     String
-  accountId       String
-  budgetLineId    String?
-  quantity        Decimal  @db.Decimal(18, 4)
+  id                String  @id @default(uuid())
+  requisitionId     String
+  description       String
+  accountId         String
+  budgetLineId      String?
+  quantity          Decimal @db.Decimal(18, 4)
   estimatedUnitCost Decimal @db.Decimal(18, 2)
-  projectId       String?
-  phaseId         String?
-  departmentId    String?
-  costCenterId    String?
-  fundingSourceId String?
+  projectId         String?
+  phaseId           String?
+  departmentId      String?
+  costCenterId      String?
+  fundingSourceId   String?
 
   createdAt DateTime @default(now())
 
@@ -3883,7 +3886,7 @@ model PurchaseRequisitionLine {
   budgetLine    BudgetLine?         @relation(fields: [budgetLineId], references: [id], onDelete: Restrict)
   project       Project?            @relation(fields: [projectId], references: [id], onDelete: Restrict)
   phase         Phase?              @relation(fields: [phaseId], references: [id], onDelete: Restrict)
-  department    Department?        @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  department    Department?         @relation(fields: [departmentId], references: [id], onDelete: Restrict)
   costCenter    CostCenter?         @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
   fundingSource FundingSource?      @relation(fields: [fundingSourceId], references: [id], onDelete: Restrict)
 
@@ -3898,13 +3901,13 @@ model PurchaseRequisitionLine {
 /// availability (Budget - Actual - Commitments) is checked and a
 /// BudgetCommitment is raised per line via BudgetingService.
 model PurchaseOrder {
-  id              String   @id @default(uuid())
-  entityId        String
-  poNumber        String
-  requisitionId   String?
-  vendorId        String
-  status          POStatus @default(DRAFT)
-  orderDate       DateTime
+  id            String   @id @default(uuid())
+  entityId      String
+  poNumber      String
+  requisitionId String?
+  vendorId      String
+  status        POStatus @default(DRAFT)
+  orderDate     DateTime
 
   createdById  String
   approvedById String?
@@ -3931,16 +3934,16 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id                 String  @id @default(uuid())
-  purchaseOrderId    String
-  requisitionLineId  String?
-  description        String
-  accountId          String
-  stockItemId        String?
-  quantity           Decimal @db.Decimal(18, 4)
-  unitCost           Decimal @db.Decimal(18, 2)
-  quantityReceived   Decimal @db.Decimal(18, 4) @default(0)
-  quantityInvoiced   Decimal @db.Decimal(18, 4) @default(0)
+  id                String  @id @default(uuid())
+  purchaseOrderId   String
+  requisitionLineId String?
+  description       String
+  accountId         String
+  stockItemId       String?
+  quantity          Decimal @db.Decimal(18, 4)
+  unitCost          Decimal @db.Decimal(18, 2)
+  quantityReceived  Decimal @default(0) @db.Decimal(18, 4)
+  quantityInvoiced  Decimal @default(0) @db.Decimal(18, 4)
 
   budgetLineId       String
   budgetCommitmentId String? @unique
@@ -3954,17 +3957,17 @@ model PurchaseOrderLine {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  purchaseOrder    PurchaseOrder             @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
-  requisitionLine  PurchaseRequisitionLine?  @relation(fields: [requisitionLineId], references: [id], onDelete: Restrict)
-  account          Account                   @relation(fields: [accountId], references: [id], onDelete: Restrict)
-  stockItem        StockItem?                @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
-  budgetLine       BudgetLine                @relation(fields: [budgetLineId], references: [id], onDelete: Restrict)
-  budgetCommitment BudgetCommitment?         @relation(fields: [budgetCommitmentId], references: [id], onDelete: Restrict)
-  project          Project?                  @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  phase            Phase?                    @relation(fields: [phaseId], references: [id], onDelete: Restrict)
-  department       Department?               @relation(fields: [departmentId], references: [id], onDelete: Restrict)
-  costCenter       CostCenter?               @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
-  fundingSource    FundingSource?            @relation(fields: [fundingSourceId], references: [id], onDelete: Restrict)
+  purchaseOrder    PurchaseOrder            @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  requisitionLine  PurchaseRequisitionLine? @relation(fields: [requisitionLineId], references: [id], onDelete: Restrict)
+  account          Account                  @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  stockItem        StockItem?               @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
+  budgetLine       BudgetLine               @relation(fields: [budgetLineId], references: [id], onDelete: Restrict)
+  budgetCommitment BudgetCommitment?        @relation(fields: [budgetCommitmentId], references: [id], onDelete: Restrict)
+  project          Project?                 @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  phase            Phase?                   @relation(fields: [phaseId], references: [id], onDelete: Restrict)
+  department       Department?              @relation(fields: [departmentId], references: [id], onDelete: Restrict)
+  costCenter       CostCenter?              @relation(fields: [costCenterId], references: [id], onDelete: Restrict)
+  fundingSource    FundingSource?           @relation(fields: [fundingSourceId], references: [id], onDelete: Restrict)
 
   grnLines           ProcurementGRNLine[]
   vendorInvoiceLines VendorInvoiceLine[]
@@ -3998,15 +4001,15 @@ model ProcurementGRN {
   grIrClearingAccountId String
 
   createdById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   postedAt    DateTime?
 
-  entity            Entity        @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  purchaseOrder     PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
-  vendor            Vendor        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
-  warehouse         Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
-  createdBy         User          @relation("ProcurementGRNCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  grIrClearingAccount Account     @relation(fields: [grIrClearingAccountId], references: [id], onDelete: Restrict)
+  entity              Entity        @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  purchaseOrder       PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
+  vendor              Vendor        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  warehouse           Warehouse     @relation(fields: [warehouseId], references: [id], onDelete: Restrict)
+  createdBy           User          @relation("ProcurementGRNCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  grIrClearingAccount Account       @relation(fields: [grIrClearingAccountId], references: [id], onDelete: Restrict)
 
   lines           ProcurementGRNLine[]
   threeWayMatches ThreeWayMatch[]
@@ -4026,9 +4029,9 @@ model ProcurementGRNLine {
 
   createdAt DateTime @default(now())
 
-  grn             ProcurementGRN    @relation(fields: [grnId], references: [id], onDelete: Restrict)
+  grn               ProcurementGRN    @relation(fields: [grnId], references: [id], onDelete: Restrict)
   purchaseOrderLine PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id], onDelete: Restrict)
-  stockItem       StockItem?        @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
+  stockItem         StockItem?        @relation(fields: [stockItemId], references: [id], onDelete: Restrict)
 
   @@index([grnId])
   @@index([purchaseOrderLineId])
@@ -4050,10 +4053,10 @@ model VendorInvoice {
   // amountPaid. Maintained by AccountsPayableService when a payment
   // voucher posts, mirroring how PurchaseOrderLine.quantityReceived is
   // maintained by ProcurementService.
-  amountPaid Decimal @db.Decimal(18, 2) @default(0)
+  amountPaid Decimal @default(0) @db.Decimal(18, 2)
 
   createdById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   postedAt    DateTime?
 
   entity        Entity         @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -4061,8 +4064,8 @@ model VendorInvoice {
   purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict)
   createdBy     User           @relation("VendorInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
-  lines           VendorInvoiceLine[]
-  threeWayMatches ThreeWayMatch[]
+  lines              VendorInvoiceLine[]
+  threeWayMatches    ThreeWayMatch[]
   paymentAllocations PaymentVoucherAllocation[]
   // Phase 5A Ã¢â‚¬â€ Facility Management / Maintenance Requests (additive):
   // set when this bill was raised via MaintenanceService billing a
@@ -4079,9 +4082,9 @@ model VendorInvoiceLine {
   vendorInvoiceId     String
   purchaseOrderLineId String?
   description         String
-  accountId            String
-  quantity             Decimal @db.Decimal(18, 4)
-  unitCost             Decimal @db.Decimal(18, 2)
+  accountId           String
+  quantity            Decimal @db.Decimal(18, 4)
+  unitCost            Decimal @db.Decimal(18, 2)
 
   createdAt DateTime @default(now())
 
@@ -4107,9 +4110,9 @@ model ThreeWayMatch {
   vendorInvoiceId String
   status          ThreeWayMatchStatus @default(PENDING)
 
-  quantityVarianceQty   Decimal? @db.Decimal(18, 4)
-  priceVarianceAmount   Decimal? @db.Decimal(18, 2)
-  notes                 String?
+  quantityVarianceQty Decimal? @db.Decimal(18, 4)
+  priceVarianceAmount Decimal? @db.Decimal(18, 2)
+  notes               String?
 
   matchedById String?
   matchedAt   DateTime?
@@ -4180,8 +4183,8 @@ model VendorLedger {
   vendorId        String
   transactionDate DateTime
   entryType       VendorLedgerEntryType
-  debit           Decimal               @db.Decimal(18, 2) @default(0)
-  credit          Decimal               @db.Decimal(18, 2) @default(0)
+  debit           Decimal               @default(0) @db.Decimal(18, 2)
+  credit          Decimal               @default(0) @db.Decimal(18, 2)
   description     String?
 
   // Loose reference (not an FK) to the originating document Ã¢â‚¬â€ a
@@ -4204,11 +4207,11 @@ model VendorLedger {
 }
 
 model PaymentBatch {
-  id           String             @id @default(uuid())
-  entityId     String
-  batchNumber  String
-  paymentDate  DateTime
-  status       PaymentBatchStatus @default(DRAFT)
+  id          String             @id @default(uuid())
+  entityId    String
+  batchNumber String
+  paymentDate DateTime
+  status      PaymentBatchStatus @default(DRAFT)
 
   createdById  String
   approvedById String?
@@ -4218,9 +4221,9 @@ model PaymentBatch {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entity     Entity          @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  createdBy  User            @relation("PaymentBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy User?           @relation("PaymentBatchApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  entity     Entity           @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  createdBy  User             @relation("PaymentBatchCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy User?            @relation("PaymentBatchApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
   vouchers   PaymentVoucher[]
 
   @@unique([entityId, batchNumber])
@@ -4246,12 +4249,12 @@ model PaymentVoucher {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entity      Entity      @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  vendor      Vendor      @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  entity      Entity        @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  vendor      Vendor        @relation(fields: [vendorId], references: [id], onDelete: Restrict)
   batch       PaymentBatch? @relation(fields: [batchId], references: [id], onDelete: Restrict)
-  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
-  createdBy   User        @relation("PaymentVoucherCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy  User?       @relation("PaymentVoucherApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  bankAccount BankAccount   @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  createdBy   User          @relation("PaymentVoucherCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy  User?         @relation("PaymentVoucherApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
 
   allocations PaymentVoucherAllocation[]
 
@@ -4287,14 +4290,14 @@ model PaymentVoucherAllocation {
 /// but still fully settles that portion of the vendor's payable Ã¢â‚¬â€ it
 /// becomes a separate liability owed to the tax authority instead.
 model WHTDeduction {
-  id                         String               @id @default(uuid())
+  id                         String              @id @default(uuid())
   entityId                   String
-  paymentVoucherAllocationId String               @unique
-  rate                       Decimal              @db.Decimal(6, 4)
-  amount                     Decimal              @db.Decimal(18, 2)
+  paymentVoucherAllocationId String              @unique
+  rate                       Decimal             @db.Decimal(6, 4)
+  amount                     Decimal             @db.Decimal(18, 2)
   taxAuthorityAccountId      String
   certificateNumber          String?
-  status                     TaxRemittanceStatus  @default(PENDING)
+  status                     TaxRemittanceStatus @default(PENDING)
   remittedAt                 DateTime?
 
   createdAt DateTime @default(now())
@@ -4310,13 +4313,13 @@ model WHTDeduction {
 /// withholds VAT and remits it directly rather than paying it to the
 /// vendor as part of the invoice.
 model VATDeduction {
-  id                         String               @id @default(uuid())
+  id                         String              @id @default(uuid())
   entityId                   String
-  paymentVoucherAllocationId String               @unique
-  rate                       Decimal              @db.Decimal(6, 4)
-  amount                     Decimal              @db.Decimal(18, 2)
+  paymentVoucherAllocationId String              @unique
+  rate                       Decimal             @db.Decimal(6, 4)
+  amount                     Decimal             @db.Decimal(18, 2)
   taxAuthorityAccountId      String
-  status                     TaxRemittanceStatus  @default(PENDING)
+  status                     TaxRemittanceStatus @default(PENDING)
   remittedAt                 DateTime?
 
   createdAt DateTime @default(now())
@@ -4371,10 +4374,10 @@ model ARInvoice {
 
   // Running total settled via posted Receipt allocations. Open balance
   // for aging/statements = invoice total - amountReceived.
-  amountReceived Decimal @db.Decimal(18, 2) @default(0)
+  amountReceived Decimal @default(0) @db.Decimal(18, 2)
 
   createdById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   postedAt    DateTime?
 
   entity     Entity              @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -4382,11 +4385,11 @@ model ARInvoice {
   allocation UnitSaleAllocation? @relation(fields: [allocationId], references: [id], onDelete: Restrict)
   createdBy  User                @relation("ARInvoiceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
-  lines               ARInvoiceLine[]
-  receiptAllocations  ReceiptAllocation[]
+  lines              ARInvoiceLine[]
+  receiptAllocations ReceiptAllocation[]
   // Phase 5A Ã¢â‚¬â€ Lease Management (additive): set when this invoice was
   // generated as a periodic rent billing rather than a unit-sale invoice.
-  leaseRentInvoice    LeaseRentInvoice?
+  leaseRentInvoice   LeaseRentInvoice?
 
   @@unique([entityId, invoiceNumber])
   @@index([entityId, customerId])
@@ -4417,10 +4420,10 @@ model ARInvoiceLine {
   // retroactively alter an already-issued invoice. All three fields are
   // null for a line with no vatTaxCodeId Ã¢â‚¬â€ existing invoices/lines are
   // completely unaffected.
-  vatRate              Decimal? @db.Decimal(6, 4)
-  vatAmount            Decimal? @db.Decimal(18, 2)
+  vatRate               Decimal? @db.Decimal(6, 4)
+  vatAmount             Decimal? @db.Decimal(18, 2)
   vatAuthorityAccountId String?
-  vatAuthorityAccount  Account? @relation("ARInvoiceLineVatAuthority", fields: [vatAuthorityAccountId], references: [id], onDelete: Restrict)
+  vatAuthorityAccount   Account? @relation("ARInvoiceLineVatAuthority", fields: [vatAuthorityAccountId], references: [id], onDelete: Restrict)
 
   arInvoice ARInvoice @relation(fields: [arInvoiceId], references: [id], onDelete: Restrict)
   account   Account   @relation(fields: [accountId], references: [id], onDelete: Restrict)
@@ -4442,7 +4445,7 @@ model Receipt {
   status        ReceiptStatus @default(DRAFT)
 
   createdById String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
   postedAt    DateTime?
 
   entity      Entity      @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -4478,13 +4481,13 @@ model ReceiptAllocation {
 /// side: INVOICE increases the balance (debit, since AR control is a
 /// debit-normal asset account), RECEIPT decreases it (credit).
 model CustomerLedger {
-  id              String                   @id @default(uuid())
+  id              String                  @id @default(uuid())
   entityId        String
   customerId      String
   transactionDate DateTime
   entryType       CustomerLedgerEntryType
-  debit           Decimal                  @db.Decimal(18, 2) @default(0)
-  credit          Decimal                  @db.Decimal(18, 2) @default(0)
+  debit           Decimal                 @default(0) @db.Decimal(18, 2)
+  credit          Decimal                 @default(0) @db.Decimal(18, 2)
   description     String?
 
   referenceType String
@@ -4524,14 +4527,14 @@ enum ReconciliationMatchType {
 }
 
 model BankStatement {
-  id            String   @id @default(uuid())
-  entityId      String
-  bankAccountId String
-  statementDate DateTime
-  periodStart   DateTime
-  periodEnd     DateTime
-  openingBalance Decimal @db.Decimal(18, 2)
-  closingBalance Decimal @db.Decimal(18, 2)
+  id             String   @id @default(uuid())
+  entityId       String
+  bankAccountId  String
+  statementDate  DateTime
+  periodStart    DateTime
+  periodEnd      DateTime
+  openingBalance Decimal  @db.Decimal(18, 2)
+  closingBalance Decimal  @db.Decimal(18, 2)
 
   importedById String
   createdAt    DateTime @default(now())
@@ -4540,7 +4543,7 @@ model BankStatement {
   bankAccount BankAccount @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
   importedBy  User        @relation("BankStatementImportedBy", fields: [importedById], references: [id], onDelete: Restrict)
 
-  lines               BankStatementLine[]
+  lines                  BankStatementLine[]
   reconciliationSessions ReconciliationSession[]
 
   @@index([bankAccountId, statementDate])
@@ -4561,7 +4564,7 @@ model BankStatementLine {
 
   createdAt DateTime @default(now())
 
-  statement BankStatement @relation(fields: [statementId], references: [id], onDelete: Restrict)
+  statement BankStatement         @relation(fields: [statementId], references: [id], onDelete: Restrict)
   matches   ReconciliationMatch[]
 
   @@index([statementId])
@@ -4569,16 +4572,16 @@ model BankStatementLine {
 }
 
 model ReconciliationSession {
-  id             String                      @id @default(uuid())
-  entityId       String
-  bankAccountId  String
-  statementId    String
+  id              String                      @id @default(uuid())
+  entityId        String
+  bankAccountId   String
+  statementId     String
   // GL account this bank account posts to Ã¢â‚¬â€ supplied explicitly since
   // BankAccount itself carries no GL account reference (same pattern
   // used for AP/AR cash accounts).
   bankGlAccountId String
-  sessionDate    DateTime
-  status         ReconciliationSessionStatus @default(DRAFT)
+  sessionDate     DateTime
+  status          ReconciliationSessionStatus @default(DRAFT)
 
   createdById  String
   approvedById String?
@@ -4587,12 +4590,12 @@ model ReconciliationSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  entity      Entity        @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  bankAccount BankAccount   @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
-  statement   BankStatement @relation(fields: [statementId], references: [id], onDelete: Restrict)
-  bankGlAccount Account     @relation(fields: [bankGlAccountId], references: [id], onDelete: Restrict)
-  createdBy   User          @relation("ReconciliationSessionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy  User?         @relation("ReconciliationSessionApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  entity        Entity        @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  bankAccount   BankAccount   @relation(fields: [bankAccountId], references: [id], onDelete: Restrict)
+  statement     BankStatement @relation(fields: [statementId], references: [id], onDelete: Restrict)
+  bankGlAccount Account       @relation(fields: [bankGlAccountId], references: [id], onDelete: Restrict)
+  createdBy     User          @relation("ReconciliationSessionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy    User?         @relation("ReconciliationSessionApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
 
   matches ReconciliationMatch[]
 
@@ -4609,8 +4612,8 @@ model ReconciliationMatch {
   // JournalLine of the adjustment entry created for that purpose.
   journalLineId       String?
   matchType           ReconciliationMatchType
-  matchedAmount        Decimal                 @db.Decimal(18, 2)
-  notes                String?
+  matchedAmount       Decimal                 @db.Decimal(18, 2)
+  notes               String?
 
   createdById String
   createdAt   DateTime @default(now())
@@ -4699,12 +4702,12 @@ enum WorkflowRuleOperator {
 /// "PurchaseOrder", "PaymentVoucher") describing what it's meant for,
 /// purely for admin-UI filtering Ã¢â‚¬â€ the engine itself doesn't care.
 model WorkflowDefinition {
-  id          String   @id @default(uuid())
-  code        String   @unique
+  id          String  @id @default(uuid())
+  code        String  @unique
   name        String
   description String?
   entityType  String
-  isActive    Boolean  @default(true)
+  isActive    Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -4734,7 +4737,7 @@ model WorkflowStageDefinition {
 
   // CASCADE justified: a stage definition has no meaning outside its parent workflow template;
   // this is config/structure, not workflow execution history (which is Restrict elsewhere).
-  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  workflowDefinition WorkflowDefinition      @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
   rules              WorkflowApprovalRule[]
   stageInstances     WorkflowStageInstance[]
 
@@ -4749,7 +4752,7 @@ model WorkflowStageDefinition {
 /// all (skipping ones with an unmet rule); when set, it instead
 /// overrides that stage's requiredRoleCode for this instance.
 model WorkflowApprovalRule {
-  id                   String                @id @default(uuid())
+  id                   String               @id @default(uuid())
   workflowDefinitionId String
   stageDefinitionId    String?
   field                WorkflowRuleField
@@ -4766,7 +4769,7 @@ model WorkflowApprovalRule {
   // CASCADE justified: pure template structure (approval rule belongs only to its workflow
   // definition/stage definition), never itself execution history. WorkflowInstance/WorkflowStageInstance
   // (the actual execution audit trail) are Restrict below.
-  workflowDefinition WorkflowDefinition      @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  workflowDefinition WorkflowDefinition       @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
   stageDefinition    WorkflowStageDefinition? @relation(fields: [stageDefinitionId], references: [id], onDelete: Cascade)
 
   @@map("workflow_approval_rules")
@@ -4806,20 +4809,20 @@ model WorkflowInstance {
 }
 
 model WorkflowStageInstance {
-  id                String                      @id @default(uuid())
+  id                 String                      @id @default(uuid())
   workflowInstanceId String
-  stageDefinitionId String
-  sequence          Int
-  status            WorkflowStageInstanceStatus @default(PENDING)
-  requiredRoleCode  String?
-  requiredApprovals Int                         @default(1)
-  approvalsReceived Int                         @default(0)
+  stageDefinitionId  String
+  sequence           Int
+  status             WorkflowStageInstanceStatus @default(PENDING)
+  requiredRoleCode   String?
+  requiredApprovals  Int                         @default(1)
+  approvalsReceived  Int                         @default(0)
 
   activatedAt DateTime?
   completedAt DateTime?
 
   workflowInstance WorkflowInstance        @relation(fields: [workflowInstanceId], references: [id], onDelete: Restrict)
-  stageDefinition  WorkflowStageDefinition  @relation(fields: [stageDefinitionId], references: [id], onDelete: Restrict)
+  stageDefinition  WorkflowStageDefinition @relation(fields: [stageDefinitionId], references: [id], onDelete: Restrict)
   actions          WorkflowAction[]
 
   @@unique([workflowInstanceId, sequence])
@@ -4891,18 +4894,18 @@ model EntityBrandingProfile {
   id       String @id @default(uuid())
   entityId String @unique
 
-  primaryColor   String @default("#0F1B2D")
-  secondaryColor String @default("#16273D")
-  accentColor    String @default("#C9A227")
-  themeMode      ThemeMode @default(SYSTEM)
-  whiteLabelEnabled Boolean @default(false)
+  primaryColor      String    @default("#0F1B2D")
+  secondaryColor    String    @default("#16273D")
+  accentColor       String    @default("#C9A227")
+  themeMode         ThemeMode @default(SYSTEM)
+  whiteLabelEnabled Boolean   @default(false)
 
-  language           String   @default("en")
-  supportedLanguages String[] @default(["en"])
-  timeZone           String   @default("Africa/Lagos")
-  dateFormat         String   @default("DD/MM/YYYY")
-  decimalSeparator   String   @default(".")
-  thousandsSeparator String   @default(",")
+  language               String                 @default("en")
+  supportedLanguages     String[]               @default(["en"])
+  timeZone               String                 @default("Africa/Lagos")
+  dateFormat             String                 @default("DD/MM/YYYY")
+  decimalSeparator       String                 @default(".")
+  thousandsSeparator     String                 @default(",")
   currencySymbolPosition CurrencySymbolPosition @default(BEFORE)
 
   createdAt DateTime @default(now())
@@ -5121,15 +5124,15 @@ enum AssetAssignmentStatus {
 }
 
 model EmployeeAssetAssignment {
-  id           String                 @id @default(uuid())
+  id           String                @id @default(uuid())
   employeeId   String
   assetTag     String?
   assetName    String
   description  String?
-  assignedDate DateTime               @default(now())
+  assignedDate DateTime              @default(now())
   returnedDate DateTime?
   condition    String?
-  status       AssetAssignmentStatus  @default(ASSIGNED)
+  status       AssetAssignmentStatus @default(ASSIGNED)
   issuedById   String
 
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict)
@@ -5185,8 +5188,8 @@ model LeaveBalance {
   leaveTypeId        String
   year               Int
   entitledDays       Decimal @db.Decimal(6, 2)
-  usedDays           Decimal @db.Decimal(6, 2) @default(0)
-  carriedForwardDays Decimal @db.Decimal(6, 2) @default(0)
+  usedDays           Decimal @default(0) @db.Decimal(6, 2)
+  carriedForwardDays Decimal @default(0) @db.Decimal(6, 2)
 
   employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   leaveType LeaveType @relation(fields: [leaveTypeId], references: [id], onDelete: Restrict)
@@ -5357,13 +5360,13 @@ enum DisciplinaryCaseStatus {
 }
 
 model DisciplinaryCase {
-  id          String                  @id @default(uuid())
+  id          String                 @id @default(uuid())
   employeeId  String
   caseType    DisciplinaryCaseType
   description String
   raisedById  String
-  raisedAt    DateTime                @default(now())
-  status      DisciplinaryCaseStatus  @default(OPEN)
+  raisedAt    DateTime               @default(now())
+  status      DisciplinaryCaseStatus @default(OPEN)
   outcome     String?
   closedAt    DateTime?
 
@@ -5387,19 +5390,19 @@ enum ExitClearanceStatus {
 }
 
 model EmployeeExit {
-  id              String               @id @default(uuid())
-  employeeId      String               @unique
+  id              String              @id @default(uuid())
+  employeeId      String              @unique
   exitType        ExitType
   noticeDate      DateTime
   lastWorkingDate DateTime
   reason          String?
-  clearanceStatus ExitClearanceStatus  @default(PENDING)
+  clearanceStatus ExitClearanceStatus @default(PENDING)
   clearedAt       DateTime?
   initiatedById   String
 
   createdAt DateTime @default(now())
 
-  employee       Employee             @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  employee       Employee            @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   clearanceItems ExitClearanceItem[]
 
   @@map("employee_exits")
@@ -5412,11 +5415,11 @@ enum ExitClearanceItemStatus {
 }
 
 model ExitClearanceItem {
-  id             String                   @id @default(uuid())
+  id             String                  @id @default(uuid())
   employeeExitId String
   department     String // e.g. "IT", "Finance", "Admin", "HR"
   item           String
-  status         ExitClearanceItemStatus  @default(PENDING)
+  status         ExitClearanceItemStatus @default(PENDING)
   clearedById    String?
   clearedAt      DateTime?
   remarks        String?
@@ -5487,24 +5490,24 @@ enum OfferStatus {
 }
 
 model JobRequisition {
-  id             String            @id @default(uuid())
-  entityId       String
-  departmentId   String?
-  costCenterId   String?
-  projectId      String?
-  requestedById  String
-  jobTitle       String
-  gradeLevel     String?
-  employmentType EmploymentType    @default(FULL_TIME)
-  headcount      Int               @default(1)
-  justification  String?
-  budgetLineId   String? // optional link into Budgeting for headcount-cost validation
-  status         RequisitionStatus @default(DRAFT)
+  id                 String            @id @default(uuid())
+  entityId           String
+  departmentId       String?
+  costCenterId       String?
+  projectId          String?
+  requestedById      String
+  jobTitle           String
+  gradeLevel         String?
+  employmentType     EmploymentType    @default(FULL_TIME)
+  headcount          Int               @default(1)
+  justification      String?
+  budgetLineId       String? // optional link into Budgeting for headcount-cost validation
+  status             RequisitionStatus @default(DRAFT)
   workflowInstanceId String?
-  approvedById   String?
-  approvedAt     DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  approvedById       String?
+  approvedAt         DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   entity      Entity      @relation(fields: [entityId], references: [id], onDelete: Restrict)
   department  Department? @relation(fields: [departmentId], references: [id], onDelete: Restrict)
@@ -5520,7 +5523,7 @@ model JobRequisition {
 }
 
 model Vacancy {
-  id               String        @id @default(uuid())
+  id               String         @id @default(uuid())
   jobRequisitionId String
   entityId         String
   departmentId     String?
@@ -5528,11 +5531,11 @@ model Vacancy {
   description      String?
   location         String?
   employmentType   EmploymentType @default(FULL_TIME)
-  status           VacancyStatus @default(DRAFT)
+  status           VacancyStatus  @default(DRAFT)
   openedAt         DateTime?
   closedAt         DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   jobRequisition JobRequisition   @relation(fields: [jobRequisitionId], references: [id], onDelete: Restrict)
   entity         Entity           @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -5544,15 +5547,15 @@ model Vacancy {
 }
 
 model Candidate {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   firstName    String
   lastName     String
   email        String
   phone        String?
   source       String?
   linkedinUrl  String?
-  portalUserId String?   @unique
-  createdAt    DateTime  @default(now())
+  portalUserId String?  @unique
+  createdAt    DateTime @default(now())
 
   // Release IG.1, Checkpoint G Ã¢â‚¬â€ Outlook contact sync (best-effort, same
   // shape as Interview's calendarProviderCode/calendarEventId/
@@ -5585,21 +5588,21 @@ model CandidateDocument {
 }
 
 model JobApplication {
-  id            String           @id @default(uuid())
-  vacancyId     String
-  candidateId   String
-  stage         ApplicationStage @default(APPLIED)
-  score         Decimal?         @db.Decimal(5, 2)
+  id              String           @id @default(uuid())
+  vacancyId       String
+  candidateId     String
+  stage           ApplicationStage @default(APPLIED)
+  score           Decimal?         @db.Decimal(5, 2)
   rejectionReason String?
-  hiredEmployeeId String?        @unique
-  appliedAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
+  hiredEmployeeId String?          @unique
+  appliedAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
-  vacancy       Vacancy    @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
-  candidate     Candidate  @relation(fields: [candidateId], references: [id], onDelete: Restrict)
-  hiredEmployee Employee?  @relation(fields: [hiredEmployeeId], references: [id], onDelete: Restrict)
-  interviews    Interview[]
-  offer         Offer?
+  vacancy         Vacancy          @relation(fields: [vacancyId], references: [id], onDelete: Restrict)
+  candidate       Candidate        @relation(fields: [candidateId], references: [id], onDelete: Restrict)
+  hiredEmployee   Employee?        @relation(fields: [hiredEmployeeId], references: [id], onDelete: Restrict)
+  interviews      Interview[]
+  offer           Offer?
   backgroundCheck BackgroundCheck?
 
   @@unique([vacancyId, candidateId])
@@ -5608,15 +5611,15 @@ model JobApplication {
 }
 
 model Interview {
-  id              String           @id @default(uuid())
-  jobApplicationId String
-  round           Int              @default(1)
-  title           String
-  scheduledAt     DateTime
-  durationMinutes Int              @default(60)
-  location        String? // physical or "video-call"
-  status          InterviewStatus  @default(SCHEDULED)
-  createdAt       DateTime         @default(now())
+  id                   String          @id @default(uuid())
+  jobApplicationId     String
+  round                Int             @default(1)
+  title                String
+  scheduledAt          DateTime
+  durationMinutes      Int             @default(60)
+  location             String? // physical or "video-call"
+  status               InterviewStatus @default(SCHEDULED)
+  createdAt            DateTime        @default(now())
   // Release IG.1, Checkpoint C Ã¢â‚¬â€ calendar sync. Both null until the first
   // successful CalendarProvider.createEvent() call (best-effort; scheduling
   // an interview must never fail because a Graph API call failed Ã¢â‚¬â€ see
@@ -5646,9 +5649,9 @@ model Interview {
   // deliberately no separate teamsSyncFailedAt flag yet, unlike
   // calendarSyncFailedAt; a warning is logged instead. That visibility
   // gap plus a retry endpoint are left for a later checkpoint).
-  teamsProviderCode String?
-  teamsMeetingId    String?
-  teamsJoinUrl      String?
+  teamsProviderCode    String?
+  teamsMeetingId       String?
+  teamsJoinUrl         String?
   // Release IG.1, Checkpoint T Ã¢â‚¬â€ visibility for Teams-sync failures,
   // closing the gap Checkpoint S's own comment above named. Same shape
   // as calendarSyncFailedAt: set whenever a best-effort createMeeting/
@@ -5658,7 +5661,7 @@ model Interview {
   // an update-failure case Ã¢â‚¬â€ TeamsProvider has no updateMeeting method
   // (see teams-provider.interface.ts), so reschedule() never touches
   // Teams at all and can't set this flag.
-  teamsSyncFailedAt DateTime?
+  teamsSyncFailedAt    DateTime?
 
   jobApplication JobApplication      @relation(fields: [jobApplicationId], references: [id], onDelete: Restrict)
   interviewers   InterviewPanelist[]
@@ -5669,7 +5672,7 @@ model Interview {
 }
 
 model InterviewPanelist {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   interviewId String
   employeeId  String
 
@@ -5681,15 +5684,15 @@ model InterviewPanelist {
 }
 
 model InterviewFeedback {
-  id              String                  @id @default(uuid())
-  interviewId     String
-  employeeId      String
-  rating          Int // 1-5
-  recommendation  InterviewRecommendation
-  strengths       String?
-  concerns        String?
-  comments        String?
-  submittedAt     DateTime                @default(now())
+  id             String                  @id @default(uuid())
+  interviewId    String
+  employeeId     String
+  rating         Int // 1-5
+  recommendation InterviewRecommendation
+  strengths      String?
+  concerns       String?
+  comments       String?
+  submittedAt    DateTime                @default(now())
 
   interview Interview @relation(fields: [interviewId], references: [id], onDelete: Restrict)
   employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Restrict)
@@ -5699,22 +5702,22 @@ model InterviewFeedback {
 }
 
 model Offer {
-  id                String      @id @default(uuid())
-  jobApplicationId  String      @unique
-  jobTitle          String
-  gradeLevel        String?
-  proposedSalary    Decimal     @db.Decimal(18, 2)
-  currency          String      @default("NGN")
-  startDate         DateTime?
-  status            OfferStatus @default(DRAFT)
-  workflowInstanceId String?
-  letterUrl         String?
-  sentAt            DateTime?
-  respondedAt       DateTime?
-  declineReason     String?
-  createdById       String
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  id                          String      @id @default(uuid())
+  jobApplicationId            String      @unique
+  jobTitle                    String
+  gradeLevel                  String?
+  proposedSalary              Decimal     @db.Decimal(18, 2)
+  currency                    String      @default("NGN")
+  startDate                   DateTime?
+  status                      OfferStatus @default(DRAFT)
+  workflowInstanceId          String?
+  letterUrl                   String?
+  sentAt                      DateTime?
+  respondedAt                 DateTime?
+  declineReason               String?
+  createdById                 String
+  createdAt                   DateTime    @default(now())
+  updatedAt                   DateTime    @updatedAt
   // Digital Signature Providers Ã¢â‚¬â€ first real caller. signatureProviderEnvelopeId
   // stays null until the first successful SignatureProvider.sendForSignature()
   // call (best-effort; sending an offer must never fail because the
@@ -5737,7 +5740,7 @@ model Offer {
   // null on the next successful send. There is no "update" concept to
   // clear it on later (see SignatureProvider's own doc comment Ã¢â‚¬â€ no
   // updateEnvelope exists), only future successful sends of a NEW offer.
-  signatureSyncFailedAt DateTime?
+  signatureSyncFailedAt       DateTime?
 
   jobApplication JobApplication @relation(fields: [jobApplicationId], references: [id], onDelete: Restrict)
   createdBy      User           @relation("OfferCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
@@ -5795,13 +5798,13 @@ enum BackgroundCheckStatus {
 }
 
 model BackgroundCheck {
-  id              String                @id @default(uuid())
-  jobApplicationId String               @unique
-  checkType       String // e.g. "Criminal Record", "Reference Check", "Medical Clearance"
-  status          BackgroundCheckStatus @default(PENDING)
-  initiatedById   String?
-  completedAt     DateTime?
-  notes           String?
+  id               String                @id @default(uuid())
+  jobApplicationId String                @unique
+  checkType        String // e.g. "Criminal Record", "Reference Check", "Medical Clearance"
+  status           BackgroundCheckStatus @default(PENDING)
+  initiatedById    String?
+  completedAt      DateTime?
+  notes            String?
 
   createdAt DateTime @default(now())
 
@@ -5810,6 +5813,7 @@ model BackgroundCheck {
 
   @@map("background_checks")
 }
+
 enum EmploymentEventType {
   TRANSFER
   PROMOTION
@@ -5852,17 +5856,17 @@ enum PerformanceCycleStatus {
 }
 
 model PerformanceCycle {
-  id        String                  @id @default(uuid())
+  id        String                 @id @default(uuid())
   entityId  String
   name      String
   startDate DateTime
   endDate   DateTime
-  status    PerformanceCycleStatus  @default(OPEN)
+  status    PerformanceCycleStatus @default(OPEN)
 
-  entity  Entity               @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  goals   Goal[]
-  kpis    Kpi[]
-  reviews PerformanceReview[]
+  entity                Entity                 @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  goals                 Goal[]
+  kpis                  Kpi[]
+  reviews               PerformanceReview[]
   competencyAssessments CompetencyAssessment[]
 
   @@unique([entityId, name])
@@ -5887,22 +5891,22 @@ model Goal {
   status          GoalStatus @default(NOT_STARTED)
   progressPercent Int        @default(0)
 
-  employee Employee           @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  cycle    PerformanceCycle?  @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  cycle    PerformanceCycle? @relation(fields: [cycleId], references: [id], onDelete: Restrict)
 
   @@index([employeeId])
   @@map("goals")
 }
 
 model Kpi {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   employeeId  String
   cycleId     String?
   name        String
-  targetValue Decimal  @db.Decimal(18, 4)
-  actualValue Decimal  @db.Decimal(18, 4) @default(0)
+  targetValue Decimal @db.Decimal(18, 4)
+  actualValue Decimal @default(0) @db.Decimal(18, 4)
   unit        String?
-  weight      Decimal  @db.Decimal(5, 2) @default(0)
+  weight      Decimal @default(0) @db.Decimal(5, 2)
 
   employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
   cycle    PerformanceCycle? @relation(fields: [cycleId], references: [id], onDelete: Restrict)
@@ -5912,8 +5916,8 @@ model Kpi {
 }
 
 model Competency {
-  id          String @id @default(uuid())
-  name        String @unique
+  id          String  @id @default(uuid())
+  name        String  @unique
   description String?
 
   assessments CompetencyAssessment[]
@@ -5955,27 +5959,27 @@ enum ReviewStatus {
 /// still representable via peerComments (free text, multiple reviewers'
 /// input consolidated by whoever runs calibration).
 model PerformanceReview {
-  id              String       @id @default(uuid())
-  employeeId      String
-  cycleId         String
-  reviewerId      String // the employee's manager
-  selfRating      Decimal?     @db.Decimal(4, 2)
-  selfComments    String?
-  managerRating    Decimal?    @db.Decimal(4, 2)
-  managerComments  String?
-  peerComments     String?
-  calibratedRating Decimal?    @db.Decimal(4, 2)
-  status          ReviewStatus @default(DRAFT)
-  promotionRecommended    Boolean @default(false)
-  incrementRecommended    Decimal? @db.Decimal(5, 2) // recommended % salary increment
-  bonusRecommended        Decimal? @db.Decimal(18, 2)
-  pipRequired             Boolean @default(false) // Performance Improvement Plan flag
-  completedAt     DateTime?
+  id                   String       @id @default(uuid())
+  employeeId           String
+  cycleId              String
+  reviewerId           String // the employee's manager
+  selfRating           Decimal?     @db.Decimal(4, 2)
+  selfComments         String?
+  managerRating        Decimal?     @db.Decimal(4, 2)
+  managerComments      String?
+  peerComments         String?
+  calibratedRating     Decimal?     @db.Decimal(4, 2)
+  status               ReviewStatus @default(DRAFT)
+  promotionRecommended Boolean      @default(false)
+  incrementRecommended Decimal?     @db.Decimal(5, 2) // recommended % salary increment
+  bonusRecommended     Decimal?     @db.Decimal(18, 2)
+  pipRequired          Boolean      @default(false) // Performance Improvement Plan flag
+  completedAt          DateTime?
 
   createdAt DateTime @default(now())
 
-  employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Restrict)
-  cycle    PerformanceCycle  @relation(fields: [cycleId], references: [id], onDelete: Restrict)
+  employee Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  cycle    PerformanceCycle @relation(fields: [cycleId], references: [id], onDelete: Restrict)
 
   @@unique([employeeId, cycleId])
   @@map("performance_reviews")
@@ -6010,13 +6014,13 @@ enum TrainingSessionStatus {
 }
 
 model TrainingSession {
-  id        String                 @id @default(uuid())
+  id        String                @id @default(uuid())
   courseId  String
   startDate DateTime
   endDate   DateTime
   location  String?
-  status    TrainingSessionStatus  @default(SCHEDULED)
-  cost      Decimal?               @db.Decimal(18, 2)
+  status    TrainingSessionStatus @default(SCHEDULED)
+  cost      Decimal?              @db.Decimal(18, 2)
 
   course      TrainingCourse       @relation(fields: [courseId], references: [id], onDelete: Restrict)
   enrollments TrainingEnrollment[]
@@ -6033,12 +6037,12 @@ enum TrainingEnrollmentStatus {
 }
 
 model TrainingEnrollment {
-  id               String                    @id @default(uuid())
-  sessionId        String
-  employeeId       String
-  status           TrainingEnrollmentStatus  @default(ENROLLED)
-  completionScore  Decimal?                  @db.Decimal(5, 2)
-  evaluationRating Int? // 1-5 post-training evaluation
+  id                 String                   @id @default(uuid())
+  sessionId          String
+  employeeId         String
+  status             TrainingEnrollmentStatus @default(ENROLLED)
+  completionScore    Decimal?                 @db.Decimal(5, 2)
+  evaluationRating   Int? // 1-5 post-training evaluation
   evaluationComments String?
 
   session  TrainingSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
@@ -6052,9 +6056,9 @@ model TrainingEnrollment {
 }
 
 model Certification {
-  id                   String   @id @default(uuid())
+  id                   String    @id @default(uuid())
   employeeId           String
-  trainingEnrollmentId String?  @unique
+  trainingEnrollmentId String?   @unique
   name                 String
   issuedBy             String?
   issueDate            DateTime
@@ -6085,12 +6089,12 @@ enum SuccessionCriticality {
 }
 
 model SuccessionPlan {
-  id                 String                 @id @default(uuid())
-  entityId           String
-  positionTitle      String
+  id                  String                @id @default(uuid())
+  entityId            String
+  positionTitle       String
   incumbentEmployeeId String?
-  criticality        SuccessionCriticality  @default(MEDIUM)
-  notes              String?
+  criticality         SuccessionCriticality @default(MEDIUM)
+  notes               String?
 
   createdAt DateTime @default(now())
 
@@ -6153,21 +6157,21 @@ enum NotificationStatus {
 // run completed, bank import finished, report ready, budget threshold
 // breached, etc.) as well as ad-hoc notifications raised by the API.
 model Notification {
-  id        String              @id @default(uuid())
-  userId    String
-  channel   NotificationChannel @default(IN_APP)
-  status    NotificationStatus  @default(PENDING)
-  title     String
-  body      String
+  id                String              @id @default(uuid())
+  userId            String
+  channel           NotificationChannel @default(IN_APP)
+  status            NotificationStatus  @default(PENDING)
+  title             String
+  body              String
   // Release IC.4 (Email Template Engine, additive). Populated only when the
   // notification was created from an EmailTemplate with an htmlTemplate Ã¢â‚¬â€
   // every existing call site that doesn't pass a template leaves this null,
   // and NotificationProcessor's IN_APP path never reads it (the web app's
   // notification list still renders `body` as plain text, unchanged).
-  bodyHtml  String?
-  metadata  Json?
-  readAt    DateTime?
-  sentAt    DateTime?
+  bodyHtml          String?
+  metadata          Json?
+  readAt            DateTime?
+  sentAt            DateTime?
   // Release ID Ã¢â‚¬â€ SMS Integration (Delivery Receipts). providerMessageId is
   // Twilio's message SID, set by SmsProcessor right after a successful
   // send Ã¢â‚¬â€ SmsWebhookController looks a notification up by this field to
@@ -6176,7 +6180,7 @@ model Notification {
   // SID was ever issued.
   providerMessageId String?
   deliveredAt       DateTime?
-  createdAt DateTime            @default(now())
+  createdAt         DateTime            @default(now())
 
   // CASCADE justified: a notification is a disposable operational message
   // with no independent audit/financial meaning once its recipient is gone.
@@ -6231,16 +6235,16 @@ model EmailTemplate {
 // Runtime feature toggles. Read by both the API and the worker; changes
 // take effect without a redeploy (subject to each reader's cache TTL).
 model FeatureFlag {
-  key         String   @id
-  description String?
-  enabled     Boolean  @default(false)
+  key            String   @id
+  description    String?
+  enabled        Boolean  @default(false)
   // Optional 0-100 rollout percentage for gradual enablement; when set,
   // readers should hash a stable identifier (e.g. entityId/userId) against
   // this value rather than treating the flag as a simple boolean.
   rolloutPercent Int?
-  metadata    Json?
-  updatedAt   DateTime @updatedAt
-  createdAt   DateTime @default(now())
+  metadata       Json?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
 
   @@map("feature_flags")
 }
@@ -6257,18 +6261,18 @@ enum JobRunStatus {
 // /health readiness signal, audit trail for "why didn't my payroll run
 // calculate") Ã¢â‚¬â€ not a replacement for BullMQ's own Redis-backed job state.
 model JobRunLog {
-  id          String       @id @default(uuid())
-  queueName   String
-  jobName     String
-  jobId       String
-  status      JobRunStatus @default(QUEUED)
-  payload     Json?
-  result      Json?
+  id           String       @id @default(uuid())
+  queueName    String
+  jobName      String
+  jobId        String
+  status       JobRunStatus @default(QUEUED)
+  payload      Json?
+  result       Json?
   errorMessage String?
-  attemptsMade Int         @default(0)
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  createdAt   DateTime     @default(now())
+  attemptsMade Int          @default(0)
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  createdAt    DateTime     @default(now())
 
   @@index([queueName, status])
   @@index([jobId])
@@ -6322,23 +6326,23 @@ enum IntegrationStatus {
 /// to one entity when that's how the vendor relationship actually works
 /// (e.g. a bank integration tied to one legal entity's account).
 model IntegrationProvider {
-  id                    String               @id @default(uuid())
-  entityId              String?
-  category              IntegrationCategory
-  providerCode          String               // e.g. "AWS_S3", "SMTP", "TWILIO", "PAYSTACK" Ã¢â‚¬â€ free text by design, see IntegrationProviderDriver
-  name                  String
-  status                IntegrationStatus    @default(INACTIVE)
-  isActive              Boolean              @default(true)
-  config                Json?                // non-secret settings (bucket name, region, sender address, ...)
-  encryptedCredentials  String?              // AES-256-GCM ciphertext of a JSON secret blob Ã¢â‚¬â€ see IntegrationEncryptionService
-  retryMaxAttempts      Int                  @default(3)
-  retryBackoffMs        Int                  @default(2000)
-  lastHealthCheckAt     DateTime?
-  lastHealthCheckOk     Boolean?
-  lastHealthCheckError  String?
-  createdById           String
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
+  id                   String              @id @default(uuid())
+  entityId             String?
+  category             IntegrationCategory
+  providerCode         String // e.g. "AWS_S3", "SMTP", "TWILIO", "PAYSTACK" Ã¢â‚¬â€ free text by design, see IntegrationProviderDriver
+  name                 String
+  status               IntegrationStatus   @default(INACTIVE)
+  isActive             Boolean             @default(true)
+  config               Json? // non-secret settings (bucket name, region, sender address, ...)
+  encryptedCredentials String? // AES-256-GCM ciphertext of a JSON secret blob Ã¢â‚¬â€ see IntegrationEncryptionService
+  retryMaxAttempts     Int                 @default(3)
+  retryBackoffMs       Int                 @default(2000)
+  lastHealthCheckAt    DateTime?
+  lastHealthCheckOk    Boolean?
+  lastHealthCheckError String?
+  createdById          String
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
 
   entity    Entity? @relation(fields: [entityId], references: [id], onDelete: Restrict)
   createdBy User    @relation("IntegrationProviderCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
@@ -6380,9 +6384,9 @@ enum DepreciationEntryStatus {
 /// Groups fixed assets under a common useful life/GL mapping default
 /// (e.g. "IT Equipment", "Motor Vehicles", "Office Furniture").
 model AssetCategory {
-  id                     String             @id @default(uuid())
-  name                   String             @unique
-  defaultUsefulLifeYears Int
+  id                        String             @id @default(uuid())
+  name                      String             @unique
+  defaultUsefulLifeYears    Int
   defaultDepreciationMethod DepreciationMethod @default(STRAIGHT_LINE)
 
   assetAccountId                   String
@@ -6414,10 +6418,10 @@ model FixedAsset {
   name        String
   description String?
 
-  acquisitionDate DateTime
-  acquisitionCost Decimal  @db.Decimal(18, 2)
-  residualValue   Decimal  @db.Decimal(18, 2) @default(0)
-  usefulLifeYears Int // overrides AssetCategory.defaultUsefulLifeYears for this asset
+  acquisitionDate    DateTime
+  acquisitionCost    Decimal            @db.Decimal(18, 2)
+  residualValue      Decimal            @default(0) @db.Decimal(18, 2)
+  usefulLifeYears    Int // overrides AssetCategory.defaultUsefulLifeYears for this asset
   depreciationMethod DepreciationMethod @default(STRAIGHT_LINE)
 
   departmentId String?
@@ -6448,7 +6452,7 @@ model FixedAsset {
 /// One row per asset per monthly depreciation run. periodDate is
 /// normalized to the first of the month it covers.
 model DepreciationEntry {
-  id           String @id @default(uuid())
+  id           String     @id @default(uuid())
   fixedAssetId String
   fixedAsset   FixedAsset @relation(fields: [fixedAssetId], references: [id], onDelete: Restrict)
 
@@ -6474,12 +6478,12 @@ model DepreciationEntry {
 /// A fixed asset can be disposed at most once (one-to-one); re-disposal
 /// attempts are rejected in the service layer against FixedAsset.status.
 model AssetDisposal {
-  id           String @id @default(uuid())
-  fixedAssetId String @unique
+  id           String     @id @default(uuid())
+  fixedAssetId String     @unique
   fixedAsset   FixedAsset @relation(fields: [fixedAssetId], references: [id], onDelete: Restrict)
 
   disposalDate           DateTime
-  disposalProceeds       Decimal  @db.Decimal(18, 2) @default(0)
+  disposalProceeds       Decimal  @default(0) @db.Decimal(18, 2)
   netBookValueAtDisposal Decimal  @db.Decimal(18, 2)
   gainLoss               Decimal  @db.Decimal(18, 2) // proceeds - netBookValueAtDisposal
 
@@ -6512,11 +6516,11 @@ enum TaxType {
 }
 
 model TaxCode {
-  id       String  @id @default(uuid())
-  code     String  @unique // e.g. "WHT-SERVICES-5", "VAT-STANDARD"
-  name     String
-  taxType  TaxType
-  rate     Decimal @db.Decimal(6, 4)
+  id           String  @id @default(uuid())
+  code         String  @unique // e.g. "WHT-SERVICES-5", "VAT-STANDARD"
+  name         String
+  taxType      TaxType
+  rate         Decimal @db.Decimal(6, 4)
   jurisdiction String? // e.g. country/state the rate applies in
 
   taxAuthorityAccountId String
@@ -6585,14 +6589,14 @@ model ProjectTask {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  project    Project      @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  entity     Entity       @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  parentTask ProjectTask? @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: Restrict)
+  project    Project       @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  entity     Entity        @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  parentTask ProjectTask?  @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: Restrict)
   childTasks ProjectTask[] @relation("TaskHierarchy")
-  createdBy  User         @relation("ProjectTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdBy  User          @relation("ProjectTaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
 
-  predecessorOf TaskDependency[] @relation("TaskPredecessor")
-  successorOf   TaskDependency[] @relation("TaskSuccessor")
+  predecessorOf       TaskDependency[]     @relation("TaskPredecessor")
+  successorOf         TaskDependency[]     @relation("TaskSuccessor")
   // Release J (PMO Resource & Equipment/Labour Allocation, additive)
   resourceAllocations ResourceAllocation[]
 
@@ -6648,25 +6652,25 @@ enum RiskStatus {
 }
 
 model ProjectRisk {
-  id              String          @id @default(uuid())
-  projectId       String
-  entityId        String
-  title           String
-  description     String?
-  category        String?
-  probability     RiskProbability @default(MEDIUM)
-  impact          RiskImpact      @default(MEDIUM)
+  id             String          @id @default(uuid())
+  projectId      String
+  entityId       String
+  title          String
+  description    String?
+  category       String?
+  probability    RiskProbability @default(MEDIUM)
+  impact         RiskImpact      @default(MEDIUM)
   // 1-9, probability x impact on a 1/2/3 scale each Ã¢â‚¬â€ simple, standard
   // risk-matrix scoring rather than a full quantitative model.
-  riskScore       Int
-  status          RiskStatus      @default(IDENTIFIED)
-  ownerId         String?
-  mitigationPlan  String?
-  identifiedById  String
-  identifiedAt    DateTime        @default(now())
-  closedAt        DateTime?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  riskScore      Int
+  status         RiskStatus      @default(IDENTIFIED)
+  ownerId        String?
+  mitigationPlan String?
+  identifiedById String
+  identifiedAt   DateTime        @default(now())
+  closedAt       DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   project      Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
   entity       Entity         @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -6740,22 +6744,22 @@ enum ResourceType {
 }
 
 model ProjectResource {
-  id             String       @id @default(uuid())
-  projectId      String
-  entityId       String
-  type           ResourceType
-  name           String
-  code           String?
-  unitOfMeasure  String?
-  unitCost       Decimal?     @db.Decimal(18, 2)
+  id            String       @id @default(uuid())
+  projectId     String
+  entityId      String
+  type          ResourceType
+  name          String
+  code          String?
+  unitOfMeasure String?
+  unitCost      Decimal?     @db.Decimal(18, 2)
   // Total concurrent capacity this resource can support (e.g. crew
   // headcount, or number of identical equipment units) Ã¢â‚¬â€ used by
   // ResourceService.allocateResource() to reject over-booking.
-  capacity       Int?
-  isActive       Boolean      @default(true)
-  createdById    String
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  capacity      Int?
+  isActive      Boolean      @default(true)
+  createdById   String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
   project   Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
   entity    Entity  @relation(fields: [entityId], references: [id], onDelete: Restrict)
@@ -6776,20 +6780,20 @@ enum ResourceAllocationStatus {
 }
 
 model ResourceAllocation {
-  id              String                    @id @default(uuid())
+  id              String                   @id @default(uuid())
   resourceId      String
   taskId          String
   entityId        String
   startDate       DateTime
   endDate         DateTime
-  plannedQuantity Decimal                   @db.Decimal(10, 2)
-  actualQuantity  Decimal?                  @db.Decimal(10, 2)
-  status          ResourceAllocationStatus  @default(PLANNED)
+  plannedQuantity Decimal                  @db.Decimal(10, 2)
+  actualQuantity  Decimal?                 @db.Decimal(10, 2)
+  status          ResourceAllocationStatus @default(PLANNED)
   notes           String?
   cancelledReason String?
   createdById     String
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   resource  ProjectResource @relation(fields: [resourceId], references: [id], onDelete: Restrict)
   task      ProjectTask     @relation(fields: [taskId], references: [id], onDelete: Restrict)
@@ -6953,10 +6957,10 @@ enum AgentStatus {
 }
 
 model Agent {
-  id         String      @id @default(uuid())
-  code       String      @unique
-  agentType  AgentType
-  status     AgentStatus @default(PENDING_APPROVAL)
+  id        String      @id @default(uuid())
+  code      String      @unique
+  agentType AgentType
+  status    AgentStatus @default(PENDING_APPROVAL)
 
   // Individual/company/broker classification (RE-AGENT.1). displayName
   // is always required (the person's name for INDIVIDUAL, the
@@ -6979,10 +6983,10 @@ model Agent {
   country      String?
 
   // License/registration information.
-  licenseNumber        String?
-  licenseIssuingBody   String?
-  licenseExpiryDate    DateTime?
-  registrationNumber   String?
+  licenseNumber      String?
+  licenseIssuingBody String?
+  licenseExpiryDate  DateTime?
+  registrationNumber String?
 
   // Entity relationship Ã¢â‚¬â€ which 7F LedgerOS legal entity this agent is
   // engaged under. See this section's own top comment for why this
@@ -7005,7 +7009,7 @@ model Agent {
   /// payouts Ã¢â‚¬â€ read by the (later, RE-COMM.2) commission-calculation
   /// checkpoint; stored here since it's a property of the agent, not of
   /// any one commission transaction.
-  withholdingTaxExempt Boolean @default(false)
+  withholdingTaxExempt    Boolean @default(false)
 
   // Agent agreement/reference.
   agreementReference String?
@@ -7015,13 +7019,13 @@ model Agent {
   // Status lifecycle detail Ã¢â‚¬â€ see AgentStatus's own doc comment for the
   // allowed transitions. Populated only by the corresponding
   // AgentService method, never directly.
-  approvedById   String?
-  approvedAt     DateTime?
-  suspendedById  String?
-  suspendedAt    DateTime?
-  suspendReason  String?
-  terminatedById String?
-  terminatedAt   DateTime?
+  approvedById    String?
+  approvedAt      DateTime?
+  suspendedById   String?
+  suspendedAt     DateTime?
+  suspendReason   String?
+  terminatedById  String?
+  terminatedAt    DateTime?
   terminateReason String?
 
   notes String?
@@ -7030,21 +7034,21 @@ model Agent {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  createdBy   User  @relation("AgentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy  User? @relation("AgentApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
-  suspendedBy User? @relation("AgentSuspendedBy", fields: [suspendedById], references: [id], onDelete: Restrict)
+  createdBy    User  @relation("AgentCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy   User? @relation("AgentApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  suspendedBy  User? @relation("AgentSuspendedBy", fields: [suspendedById], references: [id], onDelete: Restrict)
   terminatedBy User? @relation("AgentTerminatedBy", fields: [terminatedById], references: [id], onDelete: Restrict)
+
+  assignments            AgentAssignment[]
+  // Agent & Commission Management, RE-COMM.1 (additive)
+  commissionPlans        CommissionPlan[]
+  // Agent & Commission Management, RE-COMM.2 (additive)
+  commissionCalculations CommissionCalculation[]
 
   @@index([entityId])
   @@index([status])
   @@index([agentType])
   @@map("agents")
-
-  assignments AgentAssignment[]
-  // Agent & Commission Management, RE-COMM.1 (additive)
-  commissionPlans CommissionPlan[]
-  // Agent & Commission Management, RE-COMM.2 (additive)
-  commissionCalculations CommissionCalculation[]
 }
 
 // =====================================================================
@@ -7191,12 +7195,12 @@ enum CommissionPlanStatus {
 }
 
 model CommissionPlan {
-  id     String                @id @default(uuid())
-  code   String                @unique
+  id     String               @id @default(uuid())
+  code   String               @unique
   name   String
   type   CommissionPlanType
   scope  CommissionPlanScope
-  status CommissionPlanStatus  @default(ACTIVE)
+  status CommissionPlanStatus @default(ACTIVE)
 
   // Entity relationship Ã¢â‚¬â€ which 7F LedgerOS legal entity this plan
   // applies under (same dimension every other master record in this
@@ -7222,7 +7226,7 @@ model CommissionPlan {
   // isTiered is false. When isTiered is true, both are null and
   // `tiers` supplies the schedule instead Ã¢â‚¬â€ enforced by
   // CommissionPlanService, not a DB CHECK.
-  rate        Decimal? @db.Decimal(9, 4)  // percentage, e.g. 2.5000 = 2.5%, used when type=PERCENTAGE
+  rate        Decimal? @db.Decimal(9, 4) // percentage, e.g. 2.5000 = 2.5%, used when type=PERCENTAGE
   fixedAmount Decimal? @db.Decimal(18, 2) // used when type=FIXED
 
   // Referral commission Ã¢â‚¬â€ a distinct, typically-lower rate paid to a
@@ -7238,7 +7242,7 @@ model CommissionPlan {
   // non-overlapping bands over the commission basis amount) supplies
   // the schedule instead of the flat rate/fixedAmount above. Validated
   // by CommissionPlanService.validateTiers() at create/update time.
-  isTiered Boolean @default(false)
+  isTiered Boolean              @default(false)
   tiers    CommissionPlanTier[]
 
   effectiveFrom DateTime
@@ -7246,11 +7250,11 @@ model CommissionPlan {
 
   notes String?
 
-  createdById   String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deactivatedById String?
-  deactivatedAt   DateTime?
+  createdById      String
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deactivatedById  String?
+  deactivatedAt    DateTime?
   deactivateReason String?
 
   createdBy     User  @relation("CommissionPlanCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
@@ -7280,10 +7284,10 @@ model CommissionPlan {
 /// constraints). Exactly one of rate/fixedAmount is populated per tier,
 /// matching the parent CommissionPlan's own `type`.
 model CommissionPlanTier {
-  id               String  @id @default(uuid())
+  id               String   @id @default(uuid())
   commissionPlanId String
   tierOrder        Int
-  minAmount        Decimal @db.Decimal(18, 2)
+  minAmount        Decimal  @db.Decimal(18, 2)
   maxAmount        Decimal? @db.Decimal(18, 2)
   rate             Decimal? @db.Decimal(9, 4)
   fixedAmount      Decimal? @db.Decimal(18, 2)
@@ -7413,34 +7417,34 @@ model CommissionCalculation {
   // live FK for traceability/reporting joins, but every number the plan
   // supplied is separately snapshotted below so a later edit to the
   // plan itself never changes this row's own amounts.
-  commissionPlanId String
-  commissionPlan   CommissionPlan @relation(fields: [commissionPlanId], references: [id], onDelete: Restrict)
-  planType         CommissionPlanType
-  planWasTiered    Boolean
-  tierOrderApplied Int?
-  rateApplied      Decimal? @db.Decimal(9, 4)
-  fixedAmountApplied Decimal? @db.Decimal(18, 2)
+  commissionPlanId   String
+  commissionPlan     CommissionPlan     @relation(fields: [commissionPlanId], references: [id], onDelete: Restrict)
+  planType           CommissionPlanType
+  planWasTiered      Boolean
+  tierOrderApplied   Int?
+  rateApplied        Decimal?           @db.Decimal(9, 4)
+  fixedAmountApplied Decimal?           @db.Decimal(18, 2)
 
   // Basis (gross/net sale value, discount handling).
-  basisType      CommissionBasisType
-  grossSaleValue Decimal @db.Decimal(18, 2) // snapshot of allocation.salePrice
-  discountAmount Decimal @db.Decimal(18, 2) @default(0)
-  netSaleValue   Decimal @db.Decimal(18, 2) // grossSaleValue - discountAmount
+  basisType             CommissionBasisType
+  grossSaleValue        Decimal             @db.Decimal(18, 2) // snapshot of allocation.salePrice
+  discountAmount        Decimal             @default(0) @db.Decimal(18, 2)
+  netSaleValue          Decimal             @db.Decimal(18, 2) // grossSaleValue - discountAmount
   // Whichever of grossSaleValue/netSaleValue basisType selects Ã¢â‚¬â€ the
   // amount a flat-rate plan's `rate`/`fixedAmount` (or a tiered plan's
   // tier lookup) is actually applied against, before any collection
   // proration below.
-  commissionBasisAmount Decimal @db.Decimal(18, 2)
+  commissionBasisAmount Decimal             @db.Decimal(18, 2)
 
   // Partial-payment rules.
-  collectionBasis      CommissionCollectionBasis @default(FULL)
-  collectedAmount      Decimal? @db.Decimal(18, 2)
-  collectedPercent     Decimal? @db.Decimal(7, 4) // 0..1, e.g. 0.4500 = 45% collected
+  collectionBasis     CommissionCollectionBasis @default(FULL)
+  collectedAmount     Decimal?                  @db.Decimal(18, 2)
+  collectedPercent    Decimal?                  @db.Decimal(7, 4) // 0..1, e.g. 0.4500 = 45% collected
   // commissionBasisAmount unchanged if FULL; commissionBasisAmount *
   // collectedPercent if COLLECTED Ã¢â‚¬â€ this is the amount the rate/tier
   // lookup and the resulting grossCommission are actually computed
   // from.
-  proratedBasisAmount Decimal @db.Decimal(18, 2)
+  proratedBasisAmount Decimal                   @db.Decimal(18, 2)
 
   grossCommission Decimal @db.Decimal(18, 2)
 
@@ -7453,7 +7457,7 @@ model CommissionCalculation {
   // taxCodeId was supplied.
   whtApplied            Boolean  @default(false)
   whtRate               Decimal? @db.Decimal(6, 4)
-  whtAmount             Decimal  @db.Decimal(18, 2) @default(0)
+  whtAmount             Decimal  @default(0) @db.Decimal(18, 2)
   whtAuthorityAccountId String?
   whtAuthorityAccount   Account? @relation("CommissionCalculationWhtAuthorityAccount", fields: [whtAuthorityAccountId], references: [id], onDelete: Restrict)
 
@@ -7476,10 +7480,10 @@ model CommissionCalculation {
   reverseReason String?
   reversedBy    User?     @relation("CommissionCalculationReversedBy", fields: [reversedById], references: [id], onDelete: Restrict)
 
-  cancelledById  String?
-  cancelledAt    DateTime?
-  cancelReason   String?
-  cancelledBy    User?     @relation("CommissionCalculationCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
+  cancelledById String?
+  cancelledAt   DateTime?
+  cancelReason  String?
+  cancelledBy   User?     @relation("CommissionCalculationCancelledBy", fields: [cancelledById], references: [id], onDelete: Restrict)
 
   // Forward approval/payment lifecycle (RE-COMM.3) Ã¢â‚¬â€ see
   // CommissionCalculationStatus's own doc comment for the full
@@ -7519,7 +7523,7 @@ model CommissionCalculation {
   // workflow integration is a further, separate future step, not
   // required for the entry itself to be correct and balanced today.
   payableAccountId      String?
-  payableAccount        Account?     @relation("CommissionCalculationPayableAccount", fields: [payableAccountId], references: [id], onDelete: Restrict)
+  payableAccount        Account?      @relation("CommissionCalculationPayableAccount", fields: [payableAccountId], references: [id], onDelete: Restrict)
   payableJournalEntryId String?
   payableJournalEntry   JournalEntry? @relation("CommissionCalculationPayableJournalEntry", fields: [payableJournalEntryId], references: [id], onDelete: Restrict)
   paymentJournalEntryId String?
@@ -7537,9 +7541,9 @@ model CommissionCalculation {
   /// it superseded (which `adjust()` reverses in the same transaction).
   /// See CommissionCalculationStatus's own doc comment for why this is
   /// not a status of its own.
-  supersedesCalculationId String?                  @unique
-  supersedesCalculation   CommissionCalculation?   @relation("CommissionCalculationSupersedes", fields: [supersedesCalculationId], references: [id], onDelete: Restrict)
-  supersededBy            CommissionCalculation?   @relation("CommissionCalculationSupersedes")
+  supersedesCalculationId String?                @unique
+  supersedesCalculation   CommissionCalculation? @relation("CommissionCalculationSupersedes", fields: [supersedesCalculationId], references: [id], onDelete: Restrict)
+  supersededBy            CommissionCalculation? @relation("CommissionCalculationSupersedes")
 
   notes String?
 
@@ -7553,4 +7557,24 @@ model CommissionCalculation {
   @@index([commissionPlanId])
   @@index([status])
   @@map("commission_calculations")
+}
+
+model InventoryAccountingConfig {
+  id       String @id @default(uuid())
+  entityId String @unique
+
+  inventoryAssetAccountId String
+  grniAccountId           String
+  cogsAccountId           String
+  inventoryGainAccountId  String
+  inventoryLossAccountId  String
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Restrict)
+
+  @@index([entityId, isActive])
+  @@map("inventory_accounting_configs")
 }

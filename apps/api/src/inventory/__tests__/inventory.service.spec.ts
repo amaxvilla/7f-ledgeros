@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { InventoryDocStatus, StockMovementType } from '@prisma/client';
 import { InventoryService } from '../inventory.service';
+import { InventoryAccountingService } from '../accounting/inventory-accounting.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RowLevelSecurityService } from '../../security/row-level-security.service';
 import { SecurityScope } from '../../security/security.types';
@@ -130,7 +131,23 @@ describe('InventoryService — weighted-average valuation', () => {
     };
 
     const moduleRef = await Test.createTestingModule({
-      providers: [InventoryService, RowLevelSecurityService, { provide: PrismaService, useValue: prisma }],
+      providers: [
+        InventoryService,
+        RowLevelSecurityService,
+        { provide: PrismaService, useValue: prisma },
+        {
+          provide: InventoryAccountingService,
+          useValue: {
+            resolveAccount: jest.fn().mockResolvedValue('account-inventory'),
+            postInventoryEvent: jest.fn().mockResolvedValue({
+              journalEntryId: 'je-test',
+              totalDebit: 0,
+              totalCredit: 0,
+              balanced: true,
+            }),
+          },
+        },
+      ],
     }).compile();
 
     service = moduleRef.get(InventoryService);
@@ -371,6 +388,18 @@ describe('InventoryService — read models', () => {
         InventoryService,
         RowLevelSecurityService,
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: InventoryAccountingService,
+          useValue: {
+            resolveAccount: jest.fn().mockResolvedValue('account-inventory'),
+            postInventoryEvent: jest.fn().mockResolvedValue({
+              journalEntryId: 'je-test',
+              totalDebit: 0,
+              totalCredit: 0,
+              balanced: true,
+            }),
+          },
+        },
       ],
     }).compile();
 

@@ -313,6 +313,116 @@ export class PostingEngineService {
    * (balance, open period, activated accounts) and still writes an audit
    * log and emits `journal.posted`; it simply skips DRAFT/APPROVAL states.
    */
+  async postSystemEntryInTransaction(
+    tx: Prisma.TransactionClient,
+    dto: CreateJournalEntryDto,
+    systemUserId: string,
+  ) {
+    this.assertBalanced(dto.lines);
+    this.assertNoZeroLines(dto.lines);
+
+    const entity = await tx.entity.findUnique({
+      where: { id: dto.entityId },
+    });
+
+    if (!entity || !entity.isActive) {
+      throw new NotFoundException(
+        `Entity ${dto.entityId} not found or inactive`,
+      );
+    }
+
+    const fiscalPeriod = await this.getOrCreateFiscalPeriod(
+      dto.entityId,
+      new Date(dto.entryDate),
+      tx,
+    );
+
+    if (fiscalPeriod.status !== PeriodStatus.OPEN) {
+      throw new ConflictException(
+        `Cannot post into fiscal period ${fiscalPeriod.name}: period is ${fiscalPeriod.status}`,
+      );
+    }
+
+    await this.assertLinesPostable(dto.entityId, dto.lines, tx);
+
+    const entryDate = new Date(dto.entryDate);
+    const fiscalYear = entryDate.getUTCFullYear();
+
+    const sequenceRows = await tx.$queryRaw<{ lastNumber: number }[]>`
+      INSERT INTO journal_number_sequences ("entityId", "fiscalYear", "lastNumber")
+      VALUES (${dto.entityId}, ${fiscalYear}, 1)
+      ON CONFLICT ("entityId", "fiscalYear")
+      DO UPDATE SET "lastNumber" = journal_number_sequences."lastNumber" + 1
+      RETURNING "lastNumber"
+    `;
+
+    const journalNumber =
+      `${entity.code}-JE-${fiscalYear}-${String(sequenceRows[0].lastNumber).padStart(6, '0')}`;
+
+    const posted = await tx.journalEntry.create({
+      data: {
+        journalNumber,
+        entityId: dto.entityId,
+        fiscalPeriodId: fiscalPeriod.id,
+        entryDate,
+        description: dto.description,
+        sourceType: dto.sourceType ?? 'MANUAL',
+        sourceReference: dto.sourceReference,
+        status: JournalEntryStatus.POSTED,
+        createdById: systemUserId,
+        approvedById: systemUserId,
+        approvedAt: new Date(),
+        postedById: systemUserId,
+        postedAt: new Date(),
+        lines: {
+          create: dto.lines.map((line, index) => ({
+            lineNumber: index + 1,
+            accountId: line.accountId,
+            debit: line.debit,
+            credit: line.credit,
+            memo: line.memo,
+            entityId: dto.entityId,
+            projectId: line.projectId,
+            phaseId: line.phaseId,
+            blockId: line.blockId,
+            floorId: line.floorId,
+            unitId: line.unitId,
+            departmentId: line.departmentId,
+            costCenterId: line.costCenterId,
+            fundingSourceId: line.fundingSourceId,
+            vendorId: line.vendorId,
+            customerId: line.customerId,
+          })),
+        },
+      },
+      include: { lines: true },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: systemUserId,
+        action: 'JOURNAL_POSTED_SYSTEM',
+        entityType: 'JournalEntry',
+        entityId: posted.id,
+        afterState: {
+          journalNumber,
+          sourceType: dto.sourceType,
+          lineCount: posted.lines.length,
+        },
+      },
+    });
+
+    this.events.emit(
+      JournalPostedEvent.eventName,
+      new JournalPostedEvent(
+        posted.id,
+        journalNumber,
+        posted.entityId,
+      ),
+    );
+
+    return posted;
+  }
   async postSystemEntry(dto: CreateJournalEntryDto, systemUserId: string) {
     this.assertBalanced(dto.lines);
     this.assertNoZeroLines(dto.lines);

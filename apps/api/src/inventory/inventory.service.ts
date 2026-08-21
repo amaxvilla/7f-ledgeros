@@ -1,7 +1,8 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+﻿import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InventoryDocStatus, InventoryDomain, Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RowLevelSecurityService } from '../security/row-level-security.service';
+import { InventoryAccountingService } from './accounting/inventory-accounting.service';
 import { SecurityScope } from '../security/security.types';
 
 interface CreateGoodsReceiptDto {
@@ -45,6 +46,7 @@ export class InventoryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly rowLevelSecurity: RowLevelSecurityService,
+    private readonly inventoryAccounting: InventoryAccountingService,
   ) {}
 
   // ---- Master data ----
@@ -55,6 +57,175 @@ export class InventoryService {
     return this.prisma.warehouse.create({ data: { entityId, code, name } });
   }
 
+  async getWarehouse(id: string, scope: SecurityScope) {
+    const warehouse = await this.prisma.warehouse.findUnique({
+      where: { id },
+    });
+
+    if (!warehouse) {
+      throw new NotFoundException(`Warehouse ${id} not found`);
+    }
+
+    await this.assertWarehouseAccess(scope, id, 'view');
+
+    const [balances, movements] = await Promise.all([
+      this.prisma.stockBalance.findMany({
+        where: { warehouseId: id },
+        include: {
+          stockItem: true,
+        },
+        orderBy: {
+          stockItem: { code: 'asc' },
+        },
+      }),
+      this.prisma.stockMovement.findMany({
+        where: { warehouseId: id },
+        include: {
+          stockItem: true,
+        },
+        orderBy: { movementDate: 'desc' },
+        take: 100,
+      }),
+    ]);
+
+    return {
+      warehouse,
+      balances,
+      movements,
+    };
+  }
+
+  async updateWarehouse(
+    id: string,
+    data: { code?: string; name?: string; isActive?: boolean },
+    scope: SecurityScope,
+  ) {
+    await this.assertWarehouseAccess(scope, id, 'post');
+
+    const warehouse = await this.prisma.warehouse.findUnique({
+      where: { id },
+    });
+
+    if (!warehouse) {
+      throw new NotFoundException(`Warehouse ${id} not found`);
+    }
+
+    if (data.code && data.code !== warehouse.code) {
+      const existing = await this.prisma.warehouse.findUnique({
+        where: {
+          entityId_code: {
+            entityId: warehouse.entityId,
+            code: data.code,
+          },
+        },
+      });
+
+      if (existing && existing.id !== id) {
+        throw new ConflictException(
+          `Warehouse code "${data.code}" already exists for this entity`,
+        );
+      }
+    }
+
+    return this.prisma.warehouse.update({
+      where: { id },
+      data: {
+        ...(data.code !== undefined ? { code: data.code } : {}),
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      },
+    });
+  }
+
+  async getStockItem(id: string, scope: SecurityScope) {
+    const item = await this.prisma.stockItem.findUnique({
+      where: { id },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Stock item ${id} not found`);
+    }
+
+    await this.assertStockItemsBelongToEntity(scope, [id], item.entityId, 'view');
+
+    const [balances, movements] = await Promise.all([
+      this.prisma.stockBalance.findMany({
+        where: { stockItemId: id },
+        include: {
+          warehouse: true,
+        },
+        orderBy: {
+          warehouse: { code: 'asc' },
+        },
+      }),
+      this.prisma.stockMovement.findMany({
+        where: { stockItemId: id },
+        include: {
+          warehouse: true,
+        },
+        orderBy: { movementDate: 'desc' },
+        take: 100,
+      }),
+    ]);
+
+    return {
+      stockItem: item,
+      balances,
+      movements,
+    };
+  }
+
+  async updateStockItem(
+    id: string,
+    data: {
+      code?: string;
+      name?: string;
+      domain?: InventoryDomain;
+      unitOfMeasure?: string;
+      isActive?: boolean;
+    },
+    scope: SecurityScope,
+  ) {
+    const item = await this.prisma.stockItem.findUnique({
+      where: { id },
+    });
+
+    if (!item) {
+      throw new NotFoundException(`Stock item ${id} not found`);
+    }
+
+    await this.assertStockItemsBelongToEntity(scope, [id], item.entityId, 'post');
+
+    if (data.code && data.code !== item.code) {
+      const existing = await this.prisma.stockItem.findUnique({
+        where: {
+          entityId_code: {
+            entityId: item.entityId,
+            code: data.code,
+          },
+        },
+      });
+
+      if (existing && existing.id !== id) {
+        throw new ConflictException(
+          `Stock item code "${data.code}" already exists for this entity`,
+        );
+      }
+    }
+
+    return this.prisma.stockItem.update({
+      where: { id },
+      data: {
+        ...(data.code !== undefined ? { code: data.code } : {}),
+        ...(data.name !== undefined ? { name: data.name } : {}),
+        ...(data.domain !== undefined ? { domain: data.domain } : {}),
+        ...(data.unitOfMeasure !== undefined
+          ? { unitOfMeasure: data.unitOfMeasure }
+          : {}),
+        ...(data.isActive !== undefined ? { isActive: data.isActive } : {}),
+      },
+    });
+  }
   findWarehouses(scope: SecurityScope, entityId?: string) {
     const rls = this.rowLevelSecurity.buildWhere(scope, { dimensions: ['entity', 'businessUnit'] });
     return this.prisma.warehouse.findMany({ where: { AND: [rls, { entityId }] } });
@@ -139,7 +310,12 @@ export class InventoryService {
         tx,
       );
 
+      let totalInventoryValue = 0;
+
       for (const line of receipt.lines) {
+        const lineValue = Number(line.quantity) * Number(line.unitCost);
+        totalInventoryValue += lineValue;
+
         await this.applyMovement(tx, {
           stockItemId: line.stockItemId,
           warehouseId: receipt.warehouseId,
@@ -152,7 +328,25 @@ export class InventoryService {
         });
       }
 
-      return tx.goodsReceipt.update({ where: { id }, data: { status: InventoryDocStatus.POSTED } });
+      await this.inventoryAccounting.postInventoryEvent(
+        'RECEIPT',
+        {
+          entityId: warehouse.entityId,
+          sourceType: 'INVENTORY',
+          sourceId: receipt.id,
+          postingDate: receipt.receiptDate.toISOString(),
+          currency: 'NGN',
+          description: `Inventory receipt ${receipt.id}`,
+        },
+        totalInventoryValue,
+        scope.userId,
+        tx,
+      );
+
+      return tx.goodsReceipt.update({
+        where: { id },
+        data: { status: InventoryDocStatus.POSTED },
+      });
     });
   }
 
@@ -208,30 +402,60 @@ export class InventoryService {
         tx,
       );
 
+      let totalCogs = 0;
+
       for (const line of issue.lines) {
         const balance = await tx.stockBalance.findUnique({
-          where: { stockItemId_warehouseId: { stockItemId: line.stockItemId, warehouseId: issue.warehouseId } },
+          where: {
+            stockItemId_warehouseId: {
+              stockItemId: line.stockItemId,
+              warehouseId: issue.warehouseId,
+            },
+          },
         });
+
         const onHand = balance ? Number(balance.quantityOnHand) : 0;
+
         if (Number(line.quantity) > onHand + QTY_TOLERANCE) {
           throw new BadRequestException(
             `Cannot issue ${line.quantity} of item ${line.stockItemId}: only ${onHand} on hand`,
           );
         }
 
+        const unitCost = balance ? Number(balance.averageUnitCost) : 0;
+        totalCogs += Number(line.quantity) * unitCost;
+
         await this.applyMovement(tx, {
           stockItemId: line.stockItemId,
           warehouseId: issue.warehouseId,
           movementType: StockMovementType.ISSUE,
           quantity: -Number(line.quantity),
-          unitCost: balance ? Number(balance.averageUnitCost) : 0,
+          unitCost,
           movementDate: issue.issueDate,
           referenceType: 'MaterialIssue',
           referenceId: issue.id,
         });
       }
 
-      return tx.materialIssue.update({ where: { id }, data: { status: InventoryDocStatus.POSTED } });
+      await this.inventoryAccounting.postInventoryEvent(
+        'ISSUE',
+        {
+          entityId: warehouse.entityId,
+          sourceType: 'INVENTORY',
+          sourceId: issue.id,
+          postingDate: issue.issueDate.toISOString(),
+          currency: 'NGN',
+          description: `Inventory issue ${issue.id}`,
+        },
+        totalCogs,
+        scope.userId,
+        tx,
+      );
+
+      return tx.materialIssue.update({
+        where: { id },
+        data: { status: InventoryDocStatus.POSTED },
+      });
     });
   }
 
@@ -355,6 +579,21 @@ export class InventoryService {
           referenceType: 'StockTransfer',
           referenceId: transfer.id,
         });
+
+        await this.inventoryAccounting.postInventoryEvent(
+          'TRANSFER',
+          {
+            entityId: sourceWarehouse.entityId,
+            sourceType: 'INVENTORY_TRANSFER',
+            sourceId: transfer.id,
+            postingDate: transfer.transferDate.toISOString(),
+            currency: 'NGN',
+            reference: transfer.id,
+            description: `Inventory transfer ${transfer.id}`,
+          },
+          transferCost * Number(line.quantity),
+          transfer.createdById,
+        );
       }
 
       return tx.stockTransfer.update({ where: { id }, data: { status: InventoryDocStatus.POSTED } });
@@ -429,19 +668,37 @@ export class InventoryService {
         tx,
       );
 
+      let positiveVarianceValue = 0;
+      let negativeVarianceValue = 0;
+
       for (const line of count.lines) {
-        if (Math.abs(Number(line.varianceQuantity)) < QTY_TOLERANCE) continue;
+        const varianceQuantity = Number(line.varianceQuantity);
+
+        if (Math.abs(varianceQuantity) < QTY_TOLERANCE) continue;
 
         const balance = await tx.stockBalance.findUnique({
-          where: { stockItemId_warehouseId: { stockItemId: line.stockItemId, warehouseId: count.warehouseId } },
+          where: {
+            stockItemId_warehouseId: {
+              stockItemId: line.stockItemId,
+              warehouseId: count.warehouseId,
+            },
+          },
         });
+
         const currentAvgCost = balance ? Number(balance.averageUnitCost) : 0;
+        const varianceValue = Math.abs(varianceQuantity * currentAvgCost);
+
+        if (varianceQuantity > 0) {
+          positiveVarianceValue += varianceValue;
+        } else {
+          negativeVarianceValue += varianceValue;
+        }
 
         await this.applyMovement(tx, {
           stockItemId: line.stockItemId,
           warehouseId: count.warehouseId,
           movementType: StockMovementType.COUNT_ADJUSTMENT,
-          quantity: Number(line.varianceQuantity),
+          quantity: varianceQuantity,
           unitCost: currentAvgCost,
           movementDate: count.countDate,
           referenceType: 'StockCount',
@@ -449,7 +706,45 @@ export class InventoryService {
         });
       }
 
-      return tx.stockCount.update({ where: { id }, data: { status: InventoryDocStatus.POSTED } });
+      if (positiveVarianceValue > 0) {
+        await this.inventoryAccounting.postInventoryEvent(
+          'COUNT_VARIANCE',
+          {
+            entityId: warehouse.entityId,
+            sourceType: 'INVENTORY',
+            sourceId: `${count.id}:GAIN`,
+            postingDate: count.countDate.toISOString(),
+            currency: 'NGN',
+            description: `Inventory count gain ${count.id}`,
+          },
+          positiveVarianceValue,
+          scope.userId,
+          tx,
+        );
+      }
+
+      if (negativeVarianceValue > 0) {
+
+        await this.inventoryAccounting.postInventoryEvent(
+          'ADJUSTMENT',
+          {
+            entityId: warehouse.entityId,
+            sourceType: 'INVENTORY',
+            sourceId: `${count.id}:LOSS`,
+            postingDate: count.countDate.toISOString(),
+            currency: 'NGN',
+            description: `Inventory count loss ${count.id}`,
+          },
+          negativeVarianceValue,
+          scope.userId,
+          tx,
+        );
+      }
+
+      return tx.stockCount.update({
+        where: { id },
+        data: { status: InventoryDocStatus.POSTED },
+      });
     });
   }
 
@@ -656,9 +951,22 @@ export class InventoryService {
       referenceId: string;
     },
     tx?: Prisma.TransactionClient,
+    systemUserId?: string,
+    postAccounting = false,
   ) {
-    const run = (client: Prisma.TransactionClient) =>
-      this.applyMovement(client, {
+    const run = async (client: Prisma.TransactionClient) => {
+      const warehouse = await client.warehouse.findUnique({
+        where: { id: params.warehouseId },
+        select: { id: true, entityId: true, isActive: true },
+      });
+
+      if (!warehouse || !warehouse.isActive) {
+        throw new NotFoundException(
+          `Warehouse ${params.warehouseId} not found or inactive`,
+        );
+      }
+
+      const result = await this.applyMovement(client, {
         stockItemId: params.stockItemId,
         warehouseId: params.warehouseId,
         movementType: StockMovementType.RECEIPT,
@@ -669,7 +977,30 @@ export class InventoryService {
         referenceId: params.referenceId,
       });
 
-    if (tx) return run(tx);
+      if (postAccounting && systemUserId) {
+        await this.inventoryAccounting.postInventoryEvent(
+          'RECEIPT',
+          {
+            entityId: warehouse.entityId,
+            sourceType: 'INVENTORY',
+            sourceId: params.referenceId,
+            postingDate: params.movementDate.toISOString(),
+            currency: 'NGN',
+            description: `${params.referenceType} ${params.referenceId}`,
+          },
+          Math.abs(params.quantity * params.unitCost),
+          systemUserId,
+          client,
+        );
+      }
+
+      return result;
+    };
+
+    if (tx) {
+      return run(tx);
+    }
+
     return this.prisma.$transaction((client) => run(client));
   }
 
@@ -677,7 +1008,7 @@ export class InventoryService {
   // Internal: single point of truth for weighted-average recalculation.
   // A positive quantity increases stock (receipt/transfer-in/positive
   // count adjustment); negative decreases it (issue/transfer-out/negative
-  // count adjustment). unitCost is the cost of THIS movement — for
+  // count adjustment). unitCost is the cost of THIS movement â€” for
   // increases it's the acquisition cost, for decreases it's the current
   // running average (cost of goods leaving at weighted-average value).
   // -------------------------------------------------------------------
@@ -744,3 +1075,5 @@ export class InventoryService {
     });
   }
 }
+
+

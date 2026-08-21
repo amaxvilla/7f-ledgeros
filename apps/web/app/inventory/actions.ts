@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { revalidatePath } from 'next/cache';
 import { fetchApi, ApiError } from '../../lib/api';
@@ -237,4 +237,89 @@ export async function postStockCount(id: string): Promise<InventoryActionState> 
       error: errorMessage(e, 'Failed to post stock count.'),
     };
   }
+}
+
+export async function getWarehouse(id: string) {
+  return fetchApi(`/inventory/warehouses/${encodeURIComponent(id)}`, {
+    method: 'GET',
+  });
+}
+
+export async function updateWarehouse(
+  id: string,
+  input: { code?: string; name?: string; isActive?: boolean },
+): Promise<InventoryActionState> {
+  try {
+    await fetchApi(`/inventory/warehouses/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+
+    revalidatePath('/inventory');
+    revalidatePath(`/inventory/warehouses/${id}`);
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Unable to update warehouse',
+    };
+  }
+}
+
+export async function getStockItem(id: string) {
+  return fetchApi(`/inventory/stock-items/${encodeURIComponent(id)}`, {
+    method: 'GET',
+  });
+}
+
+export async function updateStockItem(
+  id: string,
+  input: {
+    code?: string;
+    name?: string;
+    domain?: string;
+    unitOfMeasure?: string;
+    isActive?: boolean;
+  },
+): Promise<InventoryActionState> {
+  try {
+    await fetchApi(`/inventory/stock-items/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    });
+
+    revalidatePath('/inventory');
+    revalidatePath(`/inventory/stock-items/${id}`);
+
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Unable to update stock item',
+    };
+  }
+}
+export async function updateWarehouseFromForm(
+  id: string,
+  formData: FormData,
+): Promise<void> {
+  await updateWarehouse(id, {
+    code: String(formData.get('code') ?? '').trim(),
+    name: String(formData.get('name') ?? '').trim(),
+    isActive: formData.get('isActive') === 'on',
+  });
+}
+
+export async function updateStockItemFromForm(
+  id: string,
+  formData: FormData,
+): Promise<void> {
+  await updateStockItem(id, {
+    code: String(formData.get('code') ?? '').trim(),
+    name: String(formData.get('name') ?? '').trim(),
+    domain: String(formData.get('domain') ?? '').trim(),
+    unitOfMeasure: String(formData.get('unitOfMeasure') ?? '').trim(),
+    isActive: formData.get('isActive') === 'on',
+  });
 }

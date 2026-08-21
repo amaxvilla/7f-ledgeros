@@ -1,6 +1,6 @@
 import { Badge, KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { ReportsTable } from './ReportsTables';
-import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
+import { fetchApi, formatMaskedCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 
 export const dynamic = 'force-dynamic';
@@ -225,8 +225,16 @@ const MONO_LINK_STATUS_TONE: Record<MonoLinkedAccountRegisterRow['status'], 'pos
  *  shared export exists for it). Every other money value on THIS page
  *  is already major-unit — this conversion stays local to the one
  *  section that needs it. */
+
+function safeSum(arr: any[], key: string): any {
+  if (arr.some((x: any) => typeof x[key] === 'string' && (x[key].includes('?') || x[key].includes('•')))) {
+    return '••••••••';
+  }
+  return arr.reduce((acc: number, x: any) => acc + (Number(x[key]) || 0), 0);
+}
+
 function formatMinorUnits(amount: number, currency: string): string {
-  return formatCurrency(amount / 100, currency);
+  return formatMaskedCurrency(amount / 100, currency);
 }
 
 function agingTotals(rows: AgingRow[]) {
@@ -444,7 +452,7 @@ async function loadCashAndAssetReports(entityId: string) {
  * `/payments/page.tsx`'s own identical local `amount / 100` conversion,
  * mirrored here as `formatMinorUnits` for the same reason that page's
  * own doc comment gives: this conversion is local to the one section
- * that needs it, not added to `formatCurrency` itself, since every
+ * that needs it, not added to `formatMaskedCurrency` itself, since every
  * other money value on this page (and most of this app) is already
  * major-unit.
  *
@@ -552,9 +560,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 }}
               >
                 <KpiCard label="Open invoices" value={String(vTotals.count)} />
-                <KpiCard label="Total open balance" value={formatCurrency(vTotals.totalOpen)} />
-                <KpiCard label="Overdue balance" value={formatCurrency(vTotals.overdueOpen)} tone={vTotals.overdueOpen > 0 ? 'warning' : 'positive'} />
-                <KpiCard label="90+ days balance" value={formatCurrency(vTotals.over90)} tone={vTotals.over90 > 0 ? 'negative' : 'positive'} />
+                <KpiCard label="Total open balance" value={formatMaskedCurrency(vTotals.totalOpen)} />
+                <KpiCard label="Overdue balance" value={formatMaskedCurrency(vTotals.overdueOpen)} tone={vTotals.overdueOpen > 0 ? 'warning' : 'positive'} />
+                <KpiCard label="90+ days balance" value={formatMaskedCurrency(vTotals.over90)} tone={vTotals.over90 > 0 ? 'negative' : 'positive'} />
               </section>
               <ReportsTable type="vendor-aging" rows={data.vendorAging} />
             </section>
@@ -576,9 +584,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 }}
               >
                 <KpiCard label="Open invoices" value={String(cTotals.count)} />
-                <KpiCard label="Total open balance" value={formatCurrency(cTotals.totalOpen)} />
-                <KpiCard label="Overdue balance" value={formatCurrency(cTotals.overdueOpen)} tone={cTotals.overdueOpen > 0 ? 'warning' : 'positive'} />
-                <KpiCard label="90+ days balance" value={formatCurrency(cTotals.over90)} tone={cTotals.over90 > 0 ? 'negative' : 'positive'} />
+                <KpiCard label="Total open balance" value={formatMaskedCurrency(cTotals.totalOpen)} />
+                <KpiCard label="Overdue balance" value={formatMaskedCurrency(cTotals.overdueOpen)} tone={cTotals.overdueOpen > 0 ? 'warning' : 'positive'} />
+                <KpiCard label="90+ days balance" value={formatMaskedCurrency(cTotals.over90)} tone={cTotals.over90 > 0 ? 'negative' : 'positive'} />
               </section>
               <ReportsTable type="customer-aging" rows={data.customerAging} />
             </section>
@@ -603,9 +611,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                 }}
               >
                 <KpiCard label="Projects" value={String(rows.length)} />
-                <KpiCard label="Total revenue" value={formatCurrency(totalRevenue)} />
-                <KpiCard label="Total cost" value={formatCurrency(totalCost)} />
-                <KpiCard label="Total profit" value={formatCurrency(totalProfit)} tone={totalProfit >= 0 ? 'positive' : 'negative'} />
+                <KpiCard label="Total revenue" value={formatMaskedCurrency(totalRevenue)} />
+                <KpiCard label="Total cost" value={formatMaskedCurrency(totalCost)} />
+                <KpiCard label="Total profit" value={formatMaskedCurrency(totalProfit)} tone={totalProfit >= 0 ? 'positive' : 'negative'} />
               </section>
               <ReportsTable type="project-profitability" rows={rows} />
             </section>
@@ -666,8 +674,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
               >
                 <KpiCard label="Assets" value={String(rows.length)} />
                 <KpiCard label="Active" value={String(activeCount)} />
-                <KpiCard label="Total net book value" value={formatCurrency(totalNbv)} />
-                <KpiCard label="Total accumulated depreciation" value={formatCurrency(totalAccumDep)} />
+                <KpiCard label="Total net book value" value={formatMaskedCurrency(totalNbv)} />
+                <KpiCard label="Total accumulated depreciation" value={formatMaskedCurrency(totalAccumDep)} />
               </section>
               <ReportsTable type="fixed-assets" rows={rows} />
             </section>
@@ -693,8 +701,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
               >
                 <KpiCard label="Transactions" value={String(rows.length)} />
                 <KpiCard label="Successful" value={String(successfulCount)} tone="positive" />
-                <KpiCard label="Net received (successful)" value={rows.length > 0 ? formatMinorUnits(totalNet, rows[0].currency) : formatCurrency(0)} />
-                <KpiCard label="Total refunded" value={rows.length > 0 ? formatMinorUnits(totalRefunded, rows[0].currency) : formatCurrency(0)} tone={totalRefunded > 0 ? 'warning' : 'neutral'} />
+                <KpiCard label="Net received (successful)" value={rows.length > 0 ? formatMinorUnits(totalNet, rows[0].currency) : formatMaskedCurrency(0)} />
+                <KpiCard label="Total refunded" value={rows.length > 0 ? formatMinorUnits(totalRefunded, rows[0].currency) : formatMaskedCurrency(0)} tone={totalRefunded > 0 ? 'warning' : 'neutral'} />
               </section>
               <ReportsTable type="payments" rows={rows} />
             </section>
@@ -737,13 +745,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
               marginBottom: tokens.space(4),
             }}
           >
-            <KpiCard label="Earned" value={formatCurrency(commissionData.summary.earned)} />
-            <KpiCard label="Approved" value={formatCurrency(commissionData.summary.approved)} />
-            <KpiCard label="Payable" value={formatCurrency(commissionData.summary.payable)} />
-            <KpiCard label="Paid" value={formatCurrency(commissionData.summary.paid)} tone="positive" />
+            <KpiCard label="Earned" value={formatMaskedCurrency(commissionData.summary.earned)} />
+            <KpiCard label="Approved" value={formatMaskedCurrency(commissionData.summary.approved)} />
+            <KpiCard label="Payable" value={formatMaskedCurrency(commissionData.summary.payable)} />
+            <KpiCard label="Paid" value={formatMaskedCurrency(commissionData.summary.paid)} tone="positive" />
             <KpiCard
               label="Outstanding"
-              value={formatCurrency(commissionData.summary.outstanding)}
+              value={formatMaskedCurrency(commissionData.summary.outstanding)}
               tone={commissionData.summary.outstanding > 0 ? 'warning' : 'positive'}
             />
           </section>
@@ -779,9 +787,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: { en
                   marginBottom: tokens.space(4),
                 }}
               >
-                <KpiCard label="Current" value={formatCurrency(totals.current)} tone="positive" />
-                <KpiCard label="Overdue" value={formatCurrency(overdue)} tone={overdue > 0 ? 'warning' : 'positive'} />
-                <KpiCard label="90+ days" value={formatCurrency(totals['90+'])} tone={totals['90+'] > 0 ? 'negative' : 'positive'} />
+                <KpiCard label="Current" value={formatMaskedCurrency(totals.current)} tone="positive" />
+                <KpiCard label="Overdue" value={formatMaskedCurrency(overdue)} tone={overdue > 0 ? 'warning' : 'positive'} />
+                <KpiCard label="90+ days" value={formatMaskedCurrency(totals['90+'])} tone={totals['90+'] > 0 ? 'negative' : 'positive'} />
               </section>
               <ReportsTable type="commission-aging" rows={commissionData.aging.rows} />
             </section>

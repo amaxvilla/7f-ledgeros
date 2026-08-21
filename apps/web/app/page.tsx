@@ -99,7 +99,7 @@ export default async function DashboardPage({
             <KpiCard label="Payables (open)" value={formatCurrency(data.arAp.payables.total)} tone="negative" caption={`${data.arAp.payables.invoiceCount} invoices`} />
             <KpiCard label="Receivables (open)" value={formatCurrency(data.arAp.receivables.total)} tone="positive" caption={`${data.arAp.receivables.invoiceCount} invoices`} />
             <KpiCard label="Net position" value={formatCurrency(data.arAp.netPosition)} tone={data.arAp.netPosition >= 0 ? 'positive' : 'negative'} />
-            <KpiCard label="Loan exposure" value={formatCurrency(data.loans.totalOutstanding)} tone="warning" caption={`${data.loans.facilities.length} facilities`} />
+            <KpiCard label="Loan exposure" value={typeof data.loans.totalOutstanding === 'number' ? formatCurrency(data.loans.totalOutstanding) : data.loans.totalOutstanding} tone="warning" caption={`${data.loans.facilities.length} facilities`} />
           </section>
 
           <section style={{ marginBottom: tokens.space(8) }}>

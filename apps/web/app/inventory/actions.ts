@@ -240,7 +240,7 @@ export async function postStockCount(id: string): Promise<InventoryActionState> 
 }
 
 export async function getWarehouse(id: string) {
-  return fetchApi(`/inventory/warehouses/${encodeURIComponent(id)}`, {
+  return fetchApi<any>(`/inventory/warehouses/${encodeURIComponent(id)}`, {
     method: 'GET',
   });
 }
@@ -268,7 +268,7 @@ export async function updateWarehouse(
 }
 
 export async function getStockItem(id: string) {
-  return fetchApi(`/inventory/stock-items/${encodeURIComponent(id)}`, {
+  return fetchApi<any>(`/inventory/stock-items/${encodeURIComponent(id)}`, {
     method: 'GET',
   });
 }

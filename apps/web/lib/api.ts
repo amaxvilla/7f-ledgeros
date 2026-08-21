@@ -71,3 +71,10 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
 export function formatCurrency(amount: number, currency = 'NGN'): string {
   return new Intl.NumberFormat('en-NG', { style: 'currency', currency, maximumFractionDigits: 0 }).format(amount);
 }
+
+export function formatMaskedCurrency(amount: any, currency = 'NGN'): string {
+  if (typeof amount === 'string' && amount.includes('•')) return amount;
+  const num = Number(amount);
+  if (Number.isNaN(num)) return String(amount);
+  return formatCurrency(num, currency);
+}

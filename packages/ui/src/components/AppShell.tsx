@@ -491,6 +491,7 @@ const NAV_LINKS = [
   { href: '/', label: 'Dashboard' },
   { href: '/recruitment', label: 'Recruitment' },
   { href: '/payments', label: 'Payments' },
+    { href: '/transfers', label: 'Transfers' },
   { href: '/security', label: 'Security' },
   { href: '/crm', label: 'CRM' },
   { href: '/fixed-assets', label: 'Fixed Assets' },
@@ -512,6 +513,7 @@ const NAV_LINKS = [
   { href: '/work-packages', label: 'Work Packages' },
   { href: '/general-ledger', label: 'General Ledger' },
   { href: '/chart-of-accounts', label: 'Chart of Accounts' },
+    { href: '/intercompany', label: 'Intercompany' },
   { href: '/consolidation', label: 'Consolidation' },
   { href: '/dimensions', label: 'Dimensions' },
   { href: '/hr', label: 'HR' },
@@ -535,6 +537,7 @@ const NAV_LINKS = [
   { href: '/feature-flags', label: 'Feature Flags' },
   { href: '/entities', label: 'Entities' },
   { href: '/admin-tools', label: 'Admin Tools' },
+    { href: '/workspace-admin', label: 'Workspace Admin' },
   { href: '/queue', label: 'Job Queue' },
   { href: '/workflow', label: 'Workflow' },
   { href: '/notifications', label: 'Notifications' },
@@ -549,6 +552,7 @@ const NAV_LINKS = [
   // FE-1.8 â€” Settings, the last of FE-1's four originally-named gaps.
   // See app/settings/page.tsx's own doc comment.
   { href: '/settings', label: 'Settings' },
+    { href: '/admin-branding', label: 'Admin Branding' },
 ];
 
 export function AppShell({

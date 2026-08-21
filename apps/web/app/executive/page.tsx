@@ -1,6 +1,6 @@
 import { KpiCard, PageContainer, PageHeader, tokens } from '@7f/ui';
 import { ExecutiveTables } from './ExecutiveTables';
-import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
+import { fetchApi, formatMaskedCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 
 export const dynamic = 'force-dynamic';
@@ -187,14 +187,14 @@ export default async function ExecutiveDashboardPage({
           <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: tokens.space(4), marginBottom: tokens.space(8) }}>
             <KpiCard
               label="Net position (AR − AP)"
-              value={formatCurrency(data.receivablesPayables.netPosition)}
+              value={formatMaskedCurrency(data.receivablesPayables.netPosition)}
               tone={data.receivablesPayables.netPosition >= 0 ? 'positive' : 'negative'}
             />
-            <KpiCard label="Budget available" value={formatCurrency(data.budget.totals.available)} caption={`of ${formatCurrency(data.budget.totals.budgeted)} budgeted`} />
-            <KpiCard label="Fixed assets — net book value" value={formatCurrency(data.fixedAssets.totalNetBookValue)} caption={`${data.fixedAssets.categoriesCount} categories`} />
+            <KpiCard label="Budget available" value={formatMaskedCurrency(data.budget.totals.available)} caption={`of ${formatMaskedCurrency(data.budget.totals.budgeted)} budgeted`} />
+            <KpiCard label="Fixed assets — net book value" value={formatMaskedCurrency(data.fixedAssets.totalNetBookValue)} caption={`${data.fixedAssets.categoriesCount} categories`} />
             <KpiCard
               label="Tax pending (WHT + VAT)"
-              value={formatCurrency(data.tax.whtPendingAmount + data.tax.vatPendingAmount)}
+              value={formatMaskedCurrency(data.tax.whtPendingAmount + data.tax.vatPendingAmount)}
               tone={data.tax.whtPendingCount + data.tax.vatPendingCount > 0 ? 'warning' : 'neutral'}
               caption={`${data.tax.whtPendingCount + data.tax.vatPendingCount} pending`}
             />
@@ -202,12 +202,12 @@ export default async function ExecutiveDashboardPage({
 
           {data.profitOrLoss ? (
             <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: tokens.space(4), marginBottom: tokens.space(8) }}>
-              <KpiCard label="Revenue" value={formatCurrency(data.profitOrLoss.totalRevenue)} caption={data.profitOrLoss.periodName ?? undefined} />
-              <KpiCard label="Gross profit" value={formatCurrency(data.profitOrLoss.grossProfit)} />
-              <KpiCard label="Operating profit" value={formatCurrency(data.profitOrLoss.operatingProfit)} />
+              <KpiCard label="Revenue" value={formatMaskedCurrency(data.profitOrLoss.totalRevenue)} caption={data.profitOrLoss.periodName ?? undefined} />
+              <KpiCard label="Gross profit" value={formatMaskedCurrency(data.profitOrLoss.grossProfit)} />
+              <KpiCard label="Operating profit" value={formatMaskedCurrency(data.profitOrLoss.operatingProfit)} />
               <KpiCard
                 label="Net profit"
-                value={formatCurrency(data.profitOrLoss.netProfit)}
+                value={formatMaskedCurrency(data.profitOrLoss.netProfit)}
                 tone={data.profitOrLoss.netProfit >= 0 ? 'positive' : 'negative'}
               />
             </section>

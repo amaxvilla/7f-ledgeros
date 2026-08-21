@@ -6,7 +6,7 @@ import {
   tokens,
 } from '@7f/ui';
 import type { SelectOption } from '@7f/ui';
-import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
+import { fetchApi, formatCurrency, formatMaskedCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreatePayrollRunForm } from './CreatePayrollRunForm';
 import { PayrollRunsTable } from './PayrollRunsTable';
@@ -351,16 +351,16 @@ export default async function PayrollPage({
                         {structure.name}
                       </td>
                       <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
-                        {formatCurrency(Number(structure.basicSalary))}
+                        {formatMaskedCurrency(structure.basicSalary)}
                       </td>
                       <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
-                        {formatCurrency(Number(structure.housingAllowance))}
+                        {formatMaskedCurrency(structure.housingAllowance)}
                       </td>
                       <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
-                        {formatCurrency(Number(structure.transportAllowance))}
+                        {formatMaskedCurrency(structure.transportAllowance)}
                       </td>
                       <td style={{ padding: tokens.space(3), textAlign: 'right' }}>
-                        {formatCurrency(Number(structure.otherAllowances))}
+                        {formatMaskedCurrency(structure.otherAllowances)}
                       </td>
                       <td style={{ padding: tokens.space(3) }}>
                         <Badge

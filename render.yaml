@@ -1,0 +1,76 @@
+version: "1"
+
+services:
+  - type: web
+    name: ledgeros-api
+    env: docker
+    dockerfilePath: docker/api.Dockerfile
+    healthCheckPath: /health
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ledgeros-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: ledgeros-redis
+          property: connectionString
+      - key: API_HOST
+        value: "0.0.0.0"
+      - key: API_PORT
+        value: "4000"
+      - key: CORS_ORIGINS
+        value: "https://ledgeros-web.onrender.com"
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: API_SERVICE_TOKEN
+        generateValue: true
+      - key: INTEGRATION_ENCRYPTION_KEY
+        generateValue: true
+
+  - type: web
+    name: ledgeros-web
+    env: docker
+    dockerfilePath: docker/web.Dockerfile
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_PUBLIC_API_URL
+        value: "https://ledgeros-api.onrender.com/api/v1"
+      - key: INTERNAL_API_BASE_URL
+        value: "https://ledgeros-api.onrender.com/api/v1"
+
+  - type: worker
+    name: ledgeros-worker
+    env: docker
+    dockerfilePath: docker/worker.Dockerfile
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ledgeros-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: ledgeros-redis
+          property: connectionString
+      - key: INTERNAL_API_BASE_URL
+        value: "https://ledgeros-api.onrender.com/api/v1"
+      - key: WORKER_SERVICE_USER_EMAIL
+        value: "worker-service@7fifteencapital.com"
+      - key: WORKER_HTTP_PORT
+        value: "4100"
+
+databases:
+  - name: ledgeros-db
+    databaseName: ledgeros
+    user: ledgeros
+    plan: starter

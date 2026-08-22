@@ -1,7 +1,8 @@
-﻿import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InventoryDomain } from '@prisma/client';
 import { InventoryService } from './inventory.service';
+import { BulkCreateStockItemDto } from './dto/bulk-create-stock-item.dto';
 import { InventoryAccountingService } from './accounting/inventory-accounting.service';
 import type { InventoryAccountConfiguration } from './accounting/inventory-accounting.types';
 import { InventoryExportService } from './exports/inventory-export.service';
@@ -54,6 +55,17 @@ export class InventoryController {
     @Body() body: { entityId: string; code: string; name: string; domain: InventoryDomain; unitOfMeasure: string },
   ) {
     return this.inventory.createStockItem(body.entityId, body.code, body.name, body.domain, body.unitOfMeasure);
+  }
+
+  @Post('stock-items/bulk')
+  @ApiOperation({ summary: 'Bulk create stock items', description: 'Creates multiple stock items in a single transaction.' })
+  @RequirePermissions('inventory.manage')
+  @RlsBodyCheck({ dimension: 'entity', bodyField: 'entityId', mode: 'post' })
+  createStockItemsBulk(@Body() body: BulkCreateStockItemDto) {
+    if (!body.items || body.items.length === 0) {
+      throw new BadRequestException('At least one item is required');
+    }
+    return this.inventory.createStockItemsBulk(body.entityId, body.items);
   }
 
   @Get('warehouses/:id')

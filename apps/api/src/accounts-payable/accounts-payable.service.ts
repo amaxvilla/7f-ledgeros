@@ -175,6 +175,26 @@ export class AccountsPayableService {
     });
   }
 
+  async bulkImportPaymentBatch(dto: any, userId: string) {
+    const batch = await this.createPaymentBatch({ entityId: dto.entityId, batchNumber: dto.batchNumber, paymentDate: dto.paymentDate }, userId);
+    const results = [];
+    try {
+      for (const v of dto.vouchers) {
+        v.batchId = batch.id;
+        v.entityId = dto.entityId;
+        results.push(await this.createPaymentVoucher(v, userId));
+      }
+      return { batchId: batch.id, createdVouchers: results.length };
+    } catch (error: any) {
+      for (const v of results) {
+        await this.prisma.paymentVoucherAllocation.deleteMany({ where: { paymentVoucherId: v.id } });
+        await this.prisma.paymentVoucher.delete({ where: { id: v.id } });
+      }
+      await this.prisma.paymentBatch.delete({ where: { id: batch.id } });
+      throw new BadRequestException(`Bulk import failed on voucher ${dto.vouchers[results.length]?.voucherNumber || 'unknown'}: ${error.message}`);
+    }
+  }
+
   async approvePaymentBatch(id: string, userId: string) {
     const batch = await this.getBatchOrThrow(id);
     if (batch.status !== PaymentBatchStatus.DRAFT) {

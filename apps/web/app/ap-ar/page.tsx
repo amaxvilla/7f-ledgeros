@@ -7,6 +7,7 @@ import { CreateARInvoiceForm } from './CreateARInvoiceForm';
 import { PostAPInvoiceButton } from './PostAPInvoiceButton';
 import { PostARInvoiceButton } from './PostARInvoiceButton';
 import { CreatePaymentBatchForm } from './CreatePaymentBatchForm';
+import { ImportPaymentBatchForm } from './ImportPaymentBatchForm';
 import { PaymentBatchActions } from './PaymentBatchActions';
 import { CreatePaymentVoucherForm } from './CreatePaymentVoucherForm';
 import { PaymentVoucherActions } from './PaymentVoucherActions';
@@ -327,6 +328,7 @@ export default async function ApArPage({ searchParams }: { searchParams: { entit
               subtitle="Group approved AP vouchers for one shared approval + posting step"
             />
             <CreatePaymentBatchForm entityId={entityId} />
+            <ImportPaymentBatchForm entityId={entityId} />
             <PaymentBatchActions accountOptions={data.accountOptions} />
             <CreatePaymentVoucherForm entityId={entityId} vendorOptions={data.vendorOptions} invoiceOptions={data.invoiceOptions} />
             <PaymentVoucherActions accountOptions={data.accountOptions} />

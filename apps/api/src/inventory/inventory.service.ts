@@ -1,4 +1,4 @@
-﻿import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InventoryDocStatus, InventoryDomain, Prisma, StockMovementType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RowLevelSecurityService } from '../security/row-level-security.service';
@@ -235,6 +235,18 @@ export class InventoryService {
     const existing = await this.prisma.stockItem.findUnique({ where: { entityId_code: { entityId, code } } });
     if (existing) throw new ConflictException(`Stock item code "${code}" already exists for this entity`);
     return this.prisma.stockItem.create({ data: { entityId, code, name, domain, unitOfMeasure } });
+  }
+
+  async createStockItemsBulk(entityId: string, items: { code: string; name: string; domain: InventoryDomain; unitOfMeasure: string }[]) {
+    return this.prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const item of items) {
+        const existing = await tx.stockItem.findUnique({ where: { entityId_code: { entityId, code: item.code } } });
+        if (existing) throw new ConflictException(`Stock item code "${item.code}" already exists for this entity`);
+        results.push(await tx.stockItem.create({ data: { entityId, code: item.code, name: item.name, domain: item.domain, unitOfMeasure: item.unitOfMeasure } }));
+      }
+      return { created: results.length, ids: results.map(r => r.id) };
+    });
   }
 
   findStockItems(scope: SecurityScope, entityId?: string, domain?: InventoryDomain) {

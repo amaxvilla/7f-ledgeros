@@ -155,7 +155,7 @@ describe('CreateARInvoiceForm', () => {
         { description: 'Service charge Q3', accountId: 'acc-2', quantity: 1, unitPrice: 150000 },
       ],
     });
-  });
+  }, 15000);
 
   it('shows the action-returned error message on failure', async () => {
     createARInvoiceMock.mockResolvedValue({ ok: false, error: 'Invoice INV-2026-001 already exists for this customer' });

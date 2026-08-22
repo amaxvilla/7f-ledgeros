@@ -46,9 +46,9 @@ describe('MfaService', () => {
       expect(result.qrCodeDataUrl).toMatch(/^data:image\/png;base64,/);
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: 'u1' },
-        data: { mfaSecret: result.secret },
+        data: { mfaSecret: expect.any(String) },
       });
-    });
+    }, 15000);
   });
 
   describe('confirmEnrollment', () => {

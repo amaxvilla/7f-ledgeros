@@ -77,6 +77,16 @@ export async function createJournalEntry(input: {
   return { ok: true };
 }
 
+export async function createDraftsBulk(entries: any[]): Promise<GlActionState & { data?: any }> {
+  try {
+    const res = await fetchApi('/gl/journal-entries/bulk', { method: 'POST', body: JSON.stringify({ entries }) });
+    revalidatePath('/general-ledger');
+    return { ok: true, data: res };
+  } catch (e) {
+    return { ok: false, error: e instanceof ApiError ? e.message : 'Failed to import journal entries.' };
+  }
+}
+
 export async function submitJournalEntry(id: string): Promise<GlActionState> {
   try {
     await fetchApi(`/gl/journal-entries/${id}/submit`, { method: 'POST' });

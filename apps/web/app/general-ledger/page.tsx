@@ -4,6 +4,7 @@ import { fetchApi, formatCurrency, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateAccountForm } from './CreateAccountForm';
 import { CreateJournalEntryForm } from './CreateJournalEntryForm';
+import { ImportJournalsForm } from './ImportJournalsForm';
 import { JournalEntryStatusActions } from './JournalEntryStatusActions';
 import { GeneralLedgerJournalEntriesTable, GeneralLedgerAccountsTable } from './GeneralLedgerTables';
 
@@ -178,6 +179,7 @@ export default async function GeneralLedgerPage({ searchParams }: { searchParams
           <section>
             <PageHeader title="Journal entries" />
             <CreateJournalEntryForm entityId={data.entityId} accountOptions={accountOptions} />
+            <ImportJournalsForm entityId={data.entityId} />
             <GeneralLedgerJournalEntriesTable rows={data.journalEntries} />
           </section>
         </>

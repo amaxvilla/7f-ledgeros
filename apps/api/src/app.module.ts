@@ -51,6 +51,7 @@ import { SmsModule } from './sms/sms.module';
 import { WhatsAppModule } from './whatsapp/whatsapp.module';
 import { PaymentsModule } from './payments/payments.module';
 import { BankIntegrationModule } from './bank-integration/bank-integration.module';
+import { ImportsModule } from './imports/imports.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { WorkspaceAdminModule } from './workspace-admin/workspace-admin.module';
@@ -124,6 +125,7 @@ import { IpRestrictionGuard } from './security-hardening/ip-restriction.guard';
     WhatsAppModule,
     PaymentsModule,
     BankIntegrationModule,
+    ImportsModule,
     CalendarModule,
     ContactsModule,
     WorkspaceAdminModule,

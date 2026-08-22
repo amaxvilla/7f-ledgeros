@@ -67,6 +67,16 @@ export async function createStockItem(
   }
 }
 
+export async function createStockItemsBulk(entityId: string, items: any[]): Promise<InventoryActionState & { data?: any }> {
+  try {
+    const res = await fetchApi('/inventory/stock-items/bulk', { method: 'POST', body: JSON.stringify({ entityId, items }) });
+    revalidatePath('/inventory');
+    return { ok: true, data: res };
+  } catch (e) {
+    return { ok: false, error: e instanceof ApiError ? e.message : 'Failed to import stock items.' };
+  }
+}
+
 export async function getStockBalance(
   stockItemId: string,
   warehouseId: string,

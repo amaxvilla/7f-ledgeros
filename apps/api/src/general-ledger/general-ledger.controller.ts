@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, BadRequestException } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PostingEngineService } from './posting-engine.service';
 import { GeneralLedgerQueryService } from './general-ledger-query.service';
 import { CreateJournalEntryDto } from './dto/create-journal-entry.dto';
+import { BulkCreateJournalEntryDto } from './dto/bulk-create-journal-entry.dto';
 import { RequirePermissions } from '../common/decorators/require-permissions.decorator';
 import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-user.decorator';
 import { RlsBodyCheck } from '../security/decorators/rls-dimensions.decorator';
@@ -30,6 +31,35 @@ export class GeneralLedgerController {
   @RlsBodyCheck({ dimension: 'entity', bodyField: 'entityId', mode: 'post' })
   createDraft(@Body() dto: CreateJournalEntryDto, @CurrentUser() user: AuthenticatedUser) {
     return this.postingEngine.createDraft(dto, user.id);
+  }
+
+  @Post('journal-entries/bulk')
+  @ApiOperation({
+    summary: 'Bulk create draft journal entries',
+    description: 'Creates multiple draft journal entries in a single atomic transaction.',
+  })
+  @RequirePermissions('gl.journal.create')
+  @RlsBodyCheck({ dimension: 'entity', bodyField: 'entries[0].entityId', mode: 'post' })
+  async createDraftsBulk(@Body() body: BulkCreateJournalEntryDto, @CurrentUser() user: AuthenticatedUser) {
+    if (!body.entries || body.entries.length === 0) {
+      throw new BadRequestException('At least one journal entry is required');
+    }
+    
+    // We enforce that all entries in the bulk request belong to the same entity
+    // This allows RlsBodyCheck on [0] to adequately secure the whole batch.
+    const entityId = body.entries[0].entityId;
+    if (body.entries.some(e => e.entityId !== entityId)) {
+      throw new BadRequestException('All bulk journal entries must belong to the same entityId');
+    }
+
+    // Process all in a single transaction
+    return this.postingEngine['prisma'].$transaction(async (tx: any) => {
+      const results = [];
+      for (const entry of body.entries) {
+        results.push(await this.postingEngine.createDraft(entry, user.id, tx));
+      }
+      return { created: results.length, ids: results.map(r => r.id) };
+    });
   }
 
   @Get('journal-entries')

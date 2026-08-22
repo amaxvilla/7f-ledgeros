@@ -28,27 +28,29 @@ export class PostingEngineService {
   // DRAFT CREATION
   // -------------------------------------------------------------------
 
-  async createDraft(dto: CreateJournalEntryDto, userId: string) {
+  async createDraft(dto: CreateJournalEntryDto, userId: string, tx?: Prisma.TransactionClient) {
     this.assertBalanced(dto.lines);
     this.assertNoZeroLines(dto.lines);
 
-    const entity = await this.prisma.entity.findUnique({ where: { id: dto.entityId } });
+    const client = (tx ?? this.prisma) as unknown as PrismaService;
+
+    const entity = await client.entity.findUnique({ where: { id: dto.entityId } });
     if (!entity || !entity.isActive) {
       throw new NotFoundException(`Entity ${dto.entityId} not found or inactive`);
     }
 
-    const fiscalPeriod = await this.getOrCreateFiscalPeriod(dto.entityId, new Date(dto.entryDate));
+    const fiscalPeriod = await this.getOrCreateFiscalPeriod(dto.entityId, new Date(dto.entryDate), tx);
     if (fiscalPeriod.status === PeriodStatus.LOCKED) {
       throw new ConflictException(
         `Fiscal period ${fiscalPeriod.name} is locked for entity ${entity.code}`,
       );
     }
 
-    await this.assertLinesPostable(dto.entityId, dto.lines);
+    await this.assertLinesPostable(dto.entityId, dto.lines, tx);
 
     const draftNumber = `DRAFT-${randomUUID()}`;
 
-    return this.prisma.journalEntry.create({
+    return client.journalEntry.create({
       data: {
         journalNumber: draftNumber,
         entityId: dto.entityId,

@@ -137,16 +137,30 @@ export async function createPaymentBatch(input: {
   entityId: string;
   batchNumber: string;
   paymentDate: string;
-}): Promise<CreatePaymentBatchState> {
-  let batch: { id: string };
+}): Promise<ApArActionState & { batchId?: string }> {
   try {
-    batch = await fetchApi<{ id: string }>('/ap/payment-batches', { method: 'POST', body: JSON.stringify(input) });
+    const res = await fetchApi<{ id: string }>('/accounts-payable/payment-batches', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    revalidatePath('/ap-ar');
+    return { ok: true, batchId: res.id };
   } catch (e) {
     return { ok: false, error: e instanceof ApiError ? e.message : 'Failed to create payment batch.' };
   }
+}
 
-  revalidatePath('/ap-ar');
-  return { ok: true, batchId: batch.id };
+export async function bulkImportPaymentBatch(input: any): Promise<ApArActionState & { data?: any }> {
+  try {
+    const res = await fetchApi('/accounts-payable/payment-batches/bulk-import', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+    revalidatePath('/ap-ar');
+    return { ok: true, data: res };
+  } catch (e) {
+    return { ok: false, error: e instanceof ApiError ? e.message : 'Failed to import payment batch.' };
+  }
 }
 
 /**

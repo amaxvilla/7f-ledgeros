@@ -38,7 +38,7 @@ afterEach(() => {
 describe('fetchApi — bearer token precedence (Checkpoint AJ)', () => {
   it('prefers the accessToken cookie over the service token when both are present', async () => {
     cookiesGetMock.mockImplementation((name: string) => (name === 'accessToken' ? { value: 'user-token' } : undefined));
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}), text: async () => "{}" });
     const { fetchApi } = await loadApi('service-token');
 
     await fetchApi('/some/path');
@@ -49,7 +49,7 @@ describe('fetchApi — bearer token precedence (Checkpoint AJ)', () => {
 
   it('falls back to the service token when no accessToken cookie exists', async () => {
     cookiesGetMock.mockReturnValue(undefined);
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}), text: async () => "{}" });
     const { fetchApi } = await loadApi('service-token');
 
     await fetchApi('/some/path');
@@ -60,7 +60,7 @@ describe('fetchApi — bearer token precedence (Checkpoint AJ)', () => {
 
   it('sends no Authorization header when neither an accessToken cookie nor a service token exists', async () => {
     cookiesGetMock.mockReturnValue(undefined);
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}), text: async () => "{}" });
     const { fetchApi } = await loadApi(undefined);
 
     await fetchApi('/some/path');

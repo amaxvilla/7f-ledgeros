@@ -5,6 +5,7 @@ import { AccountsPayableService } from './accounts-payable.service';
 import { CreateAPInvoiceDto } from './dto/create-ap-invoice.dto';
 import { PostAPInvoiceDto } from './dto/post-ap-invoice.dto';
 import { CreatePaymentBatchDto } from './dto/create-payment-batch.dto';
+import { BulkImportPaymentBatchDto } from './dto/bulk-import-payment-batch.dto';
 import { CreatePaymentVoucherDto } from './dto/create-payment-voucher.dto';
 import { PostPaymentVoucherDto } from './dto/post-payment-voucher.dto';
 import { RemitTaxDeductionDto } from './dto/remit-tax-deduction.dto';
@@ -71,6 +72,14 @@ export class AccountsPayableController {
   @RequirePermissions('ap.manage')
   createPaymentBatch(@Body() dto: CreatePaymentBatchDto, @CurrentUser() user: AuthenticatedUser) {
     return this.ap.createPaymentBatch(dto, user.id);
+  }
+
+  @Post('payment-batches/bulk-import')
+  @ApiOperation({ summary: 'Bulk import a payment batch with its vouchers', description: 'Creates the batch and all constituent vouchers atomically.' })
+  @RequirePermissions('ap.payment.create')
+  @RlsBodyCheck({ dimension: 'entity', bodyField: 'entityId', mode: 'post' })
+  bulkImportPaymentBatch(@Body() dto: BulkImportPaymentBatchDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.ap.bulkImportPaymentBatch(dto, user.id);
   }
 
   @Post('payment-batches/:id/approve')

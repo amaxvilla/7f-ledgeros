@@ -48,6 +48,36 @@ export function ImportStatementForm({ entityId }: { entityId: string }) {
   const [error, setError] = React.useState<string | null>(null);
   const [statementId, setStatementId] = React.useState<string | null>(null);
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPending(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      // We import it dynamically to avoid dependency issues if it's not imported at the top
+      const { parseImportFileAction } = await import('../../lib/importActions');
+      const res = await parseImportFileAction(formData);
+      if (res.ok) {
+        const newLines = res.data.rows.map((row: any) => ({
+          transactionDate: row.transactionDate || '',
+          description: row.description || '',
+          reference: row.reference || '',
+          amount: row.amount || '0',
+        }));
+        if (newLines.length > 0) setLines(newLines);
+      } else {
+        setError(res.error);
+      }
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setPending(false);
+      if (e.target) e.target.value = '';
+    }
+  }
+
   function updateLine(index: number, field: keyof Line, value: string) {
     setLines((prev) => prev.map((line, i) => (i === index ? { ...line, [field]: value } : line)));
   }
@@ -110,6 +140,18 @@ export function ImportStatementForm({ entityId }: { entityId: string }) {
         borderRadius: tokens.radius.md,
       }}
     >
+      <div style={{ display: 'flex', gap: tokens.space(4), justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0, fontFamily: tokens.font.body }}>Import Statement</h3>
+        <div style={{ display: 'flex', gap: tokens.space(3), alignItems: 'center' }}>
+          <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/imports/template/STATEMENT?format=csv`} style={{ fontSize: '13px', color: tokens.color.accent }}>Template (CSV)</a>
+          <a href={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1'}/imports/template/STATEMENT?format=xlsx`} style={{ fontSize: '13px', color: tokens.color.accent }}>Template (XLSX)</a>
+          <label style={{ fontSize: '13px', cursor: 'pointer', padding: '4px 8px', border: `1px solid ${tokens.color.border}`, borderRadius: '4px' }}>
+            Upload CSV/XLSX
+            <input type="file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleFileUpload} style={{ display: 'none' }} />
+          </label>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.space(3), alignItems: 'flex-end' }}>
         <TextField label="Bank account ID" value={bankAccountId} onChange={(e) => setBankAccountId(e.target.value)} required style={{ minWidth: '200px' }} />
         <TextField label="Statement date" type="date" value={statementDate} onChange={(e) => setStatementDate(e.target.value)} required style={{ minWidth: '160px' }} />

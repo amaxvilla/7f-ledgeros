@@ -4,6 +4,7 @@ import { fetchApi, ApiError } from '../../lib/api';
 import { EntitySelector } from '../EntitySelector';
 import { CreateWarehouseForm } from './CreateWarehouseForm';
 import { CreateStockItemForm } from './CreateStockItemForm';
+import { ImportItemsForm } from './ImportItemsForm';
 import { StockBalanceLookup } from './StockBalanceLookup';
 import { InventoryWarehousesTable, InventoryStockItemsTable } from './InventoryTables';
 import { InventoryTransactionForms } from './InventoryTransactionForms';
@@ -152,6 +153,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: { 
         {stockItemData && (
           <>
             <CreateStockItemForm entityId={stockItemData.entityId} />
+            <ImportItemsForm entityId={stockItemData.entityId} />
             <InventoryStockItemsTable rows={stockItemData.stockItems} />
           </>
         )}

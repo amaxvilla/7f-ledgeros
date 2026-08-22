@@ -65,7 +65,10 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
     throw new ApiError(res.status, `${path} failed (${res.status}): ${body}`);
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return null as T;
+
+  return JSON.parse(text) as T;
 }
 
 export function formatCurrency(amount: number, currency = 'NGN'): string {

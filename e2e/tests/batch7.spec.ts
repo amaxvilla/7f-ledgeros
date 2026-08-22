@@ -1,0 +1,27 @@
+import { test, expect } from '@playwright/test';
+
+const routes = [
+  '/api-gateway', '/integrations', '/intercompany', '/notifications',
+  '/power-bi', '/queue', '/reports', '/search', '/signatures', '/workflow'
+];
+
+test.describe('Batch 7 Integrations Modules', () => {
+  for (const route of routes) {
+    test(`Module ${route} read and navigation`, async ({ page }) => {
+      const response = await page.goto(route);
+      expect(response?.status()).toBe(200);
+
+      const bodyText = await page.locator('body').innerText();
+      expect(bodyText).not.toContain('failed (401)');
+      expect(bodyText).not.toContain('failed (500)');
+      expect(bodyText).not.toContain('Application error');
+
+      const createButton = page.locator('button:has-text("Create"), button:has-text("Add"), button:has-text("New")').first();
+      if (await createButton.isVisible()) {
+        await createButton.click();
+        const newBody = await page.locator('body').innerText();
+        expect(newBody).not.toContain('Application error');
+      }
+    });
+  }
+});

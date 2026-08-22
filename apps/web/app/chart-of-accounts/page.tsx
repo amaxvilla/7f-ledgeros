@@ -27,14 +27,7 @@ interface Account {
   } | null;
 }
 
-const ACCOUNT_TYPES: SelectOption[] = [
-  { value: "", label: "All account types" },
-  { value: "ASSET", label: "Asset" },
-  { value: "LIABILITY", label: "Liability" },
-  { value: "EQUITY", label: "Equity" },
-  { value: "REVENUE", label: "Revenue" },
-  { value: "EXPENSE", label: "Expense" },
-];
+import { AccountTypeFilter } from "./AccountTypeFilter";
 
 async function loadAccounts(accountType?: string) {
   const suffix = accountType
@@ -89,12 +82,7 @@ export default async function ChartOfAccountsPage({
           gap: tokens.space(4),
         }}
       >
-        <Select
-          label="Account type"
-          value={accountType}
-          options={ACCOUNT_TYPES}
-          onChange={() => undefined}
-        />
+        <AccountTypeFilter initialValue={accountType} />
       </section>
 
       <section style={{ marginBottom: tokens.space(8) }}>

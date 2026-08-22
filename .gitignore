@@ -27,3 +27,5 @@ prisma/_schema_expected.sql
 
 # Local LedgerOS database backups
 storage/backups/
+
+e2e/.auth/
